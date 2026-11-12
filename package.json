@@ -1,0 +1,9 @@
+{
+  "name": "spotlight-quiz",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Spotlight Quiz: a live party quiz",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" }
+}
