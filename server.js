@@ -16,7 +16,7 @@ const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5-5";
 const MODEL_FAST = process.env.CLAUDE_MODEL_FAST || "claude-haiku-5-5";
 const AI_PER_HOUR = +(process.env.AI_REQUESTS_PER_HOUR || 60); // per visitor, protects your API bill
 const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, "data.json");
-const PAGE = path.join(__dirname, "public", "index.html");
+const PAGE = path.join(__dirname, "index.html");
 
 /* ---------------- tiny JSON store ---------------- */
 let store = {};
