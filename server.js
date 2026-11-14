@@ -64,14 +64,22 @@ async function callClaude(b) {
   else messages = [{ role: "user", content: String(b.input || "") }];
   if (!messages.length) throw new Error("empty");
   if (imgs.length) { const last = messages[messages.length - 1]; last.content = [...imgs, { type: "text", text: last.content }]; }
+  if (Array.isArray(b._messages)) messages = b._messages;
+  const body = { model: b.tier === "quick" ? MODEL_FAST : MODEL, max_tokens: 8000, messages };
+  // b.web: let Claude search the web (used for the daily quiz's recent-news questions)
+  if (b.web) body.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 4 }];
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: b.tier === "quick" ? MODEL_FAST : MODEL, max_tokens: 8000, messages })
+    body: JSON.stringify(body)
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error((j.error && j.error.message) || ("HTTP " + r.status));
-  return (j.content || []).filter(c => c.type === "text").map(c => c.text).join("");
+  const content = j.content || [];
+  // with web search on, keep only the text written after the last search result (the answer itself)
+  let last = -1; content.forEach((c, i) => { if (c.type === "web_search_tool_result") last = i; });
+  if (b.web && j.stop_reason === "pause_turn" && (b._turns || 0) < 3) return callClaude({ ...b, _turns: (b._turns || 0) + 1, _messages: [...messages, { role: "assistant", content }] });
+  return content.slice(last + 1).filter(c => c.type === "text").map(c => c.text).join("");
 }
 
 /* ---------------- HTTP ---------------- */

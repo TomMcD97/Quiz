@@ -40,7 +40,7 @@
   let aiCfg=null; const ai=()=>aiCfg||(aiCfg=fetch("/api/config").then(r=>r.json()).catch(()=>({ai:false})));
   async function makeSample(){
     if(!(await ai()).ai) return null;
-    const sample=async(input,opts)=>{ opts=opts||{}; const images=opts.images?await Promise.all(opts.images.map(blobToData)):[]; const r=await post("/api/sample",{input, images, tier:opts.modelTier}); return {text:r.text, truncated:false}; };
+    const sample=async(input,opts)=>{ opts=opts||{}; const images=opts.images?await Promise.all(opts.images.map(blobToData)):[]; const r=await post("/api/sample",{input, images, tier:opts.modelTier, web:!!opts.web}); return {text:r.text, truncated:false}; };
     sample.json=async(input,opts)=>parseJSON((await sample(input,opts)).text);
     sample.limits=async()=>({images:true});
     return sample;
@@ -62,6 +62,7 @@
   }
 
   let lobby=null;
+  window.SQ_STANDALONE=true;
   window.claude={ use(name){
     if(name==="room") return Promise.resolve(lobby||(lobby=Object.assign(NET.room("lobby"),{ join:n=>Promise.resolve(NET.room("p:"+n)) })));
     if(name==="sample") return makeSample();
@@ -150,6 +151,7 @@ header.top{display:flex;align-items:center;gap:12px;justify-content:space-betwee
 .party-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line)}
 .code{font-family:var(--f-display);font-weight:800;letter-spacing:.14em}
 .daily-card{padding:24px;display:flex;flex-direction:column;gap:14px;background:var(--panel)}
+.dgsep{height:1px;background:var(--line,rgba(0,0,0,.12));margin:6px 0}
 .daily-card .date{font-family:var(--f-display);font-size:30px;font-weight:800}
 .daily-strip{display:flex;gap:6px}
 .daily-strip span{flex:1;height:8px;border-radius:4px;background:var(--line)}
@@ -2430,6 +2432,7 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -5158,9 +5161,10 @@ function boot(){
 }
 function durFor(t){ const base=RT[t].dur; if(t==="grid") return base; if(t==="sp") return (G&&G.diff==="hard")?8:12; return (G&&G.diff==="hard")?base:Math.round(base*1.5); }
 function aiOn(){ return !!app.sample && !app.sampleDenied; }
-async function ask(prompt, tier="default", ms=90000){
+async function ask(prompt, tier="default", ms=90000, extra){
   if(!aiOn()) throw new Error("no-ai");
-  try{ return await withTimeout(app.sample.json(prompt, {modelTier:tier, cache:false}), ms); }
+  const o={modelTier:tier, cache:false}; if(extra && extra.web && window.SQ_STANDALONE) o.web=true;
+  try{ return await withTimeout(app.sample.json(prompt, o), ms); }
   catch(e){ if(e && e.code==="not_granted") app.sampleDenied=true; throw e; }
 }
 
@@ -5182,9 +5186,11 @@ function render(){
   if(app.view==="home") v.innerHTML = homeHTML();
   else if(app.view==="party") v.innerHTML = `<div class="show" id="show"><div class="beam l" aria-hidden="true"></div><div class="beam r" aria-hidden="true"></div><div class="crowd" aria-hidden="true">${crowdSVG()}</div><section class="stage panel" id="stage"></section><footer class="contestants" id="board" aria-label="Players and scores"></footer></div>`;
   else if(app.view==="daily") v.innerHTML = `<div class="game"><section class="stage panel" id="dstage"></section><aside class="board panel" id="dboard"></aside></div>`;
+  else if(app.view==="dgrid") v.innerHTML = `<div class="game"><section class="stage panel" id="gstage"></section><aside class="board panel" id="gboard"></aside></div>`;
   if(app.view==="home"){ renderParties(); loadHomeDaily(); }
   if(app.view==="party"){ renderStage(); renderBoard(); }
   if(app.view==="daily"){ renderDaily(); renderDailyBoard(); }
+  if(app.view==="dgrid"){ renderDGrid(); renderDGridBoard(); }
   renderStatus();
 }
 
@@ -5209,8 +5215,12 @@ function homeHTML(){
     <section class="panel daily-card" id="dailycard">
       <div class="eyebrow">02 — Daily</div>
       <div class="date">${new Date().toLocaleDateString("en-GB",{weekday:"long", day:"numeric", month:"long"})}</div>
-      <p class="muted" style="margin:0">Ten questions, the same for everyone today: general knowledge, two guesstimates and two pin drops. Up to 30 points.</p>
+      <p class="muted" style="margin:0">Eleven questions, the same for everyone today: sport, pop culture, the news, guesstimates, pin drops and a find-the-country. Every question starts at 100 points and counts down, so answer fast.</p>
       <div id="dailyinfo"></div>
+      <div class="dgsep"></div>
+      <div class="eyebrow">Daily word grid</div>
+      <p class="muted" style="margin:0">One grid for everyone today. Find as many words as you can in 90 seconds.</p>
+      <div id="gridinfo"></div>
     </section>
   </div>
   <div class="rounds-preview">${rp}</div>
@@ -5235,6 +5245,9 @@ async function loadHomeDaily(){
   h += `<div id="homelb"></div>`;
   el.innerHTML = h;
   if(app.db) subscribeDailyLB(key, "#homelb", 5);
+  const gi=$("#gridinfo"); if(gi){ const g=LS.get("sq-grid-"+key);
+    gi.innerHTML = (g ? `<div class="row"><div class="scoreline num">${Number(g.score||0).toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts · ${g.n} word${g.n===1?"":"s"}</span></div></div><div class="row"><button class="btn" data-act="dgrid">See results</button></div>` : `<div class="row"><button class="btn spot" data-act="dgrid">Play today's grid</button></div>`) + `<div id="homegridlb"></div>`;
+    if(app.db) subscribeLB(`dg/${key}/scores`, "#homegridlb", 5, "Today's grid leaderboard"); }
 }
 function calcStreak(){ let n=0; const d=new Date(); for(let i=0;i<400;i++){ const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); if(LS.get("sq-daily-"+k)) n++; else if(i>0) break; d.setDate(d.getDate()-1); } return n; }
 
@@ -6312,7 +6325,8 @@ function paintTiles(){
   svg.innerHTML = gridPath.length>1 ? `<polyline points="${pts}" fill="none" stroke="var(--spot)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" opacity=".6"/>` : "";
 }
 let dragging=false;
-function curWord(){ return gridPath.map(j=>S.q.grid[j]).join("").toLowerCase(); }
+function gridNow(){ if(app.view==="dgrid") return DG.phase==="play"?DG.grid:null; return (S && S.phase==="q" && S.q && S.q.t==="grid" && !myAns) ? S.q.grid : null; }
+function curWord(){ const g=gridNow(); return g ? gridPath.map(j=>g[j]).join("").toLowerCase() : ""; }
 function showCur(){ const m=$("#wmsg"); if(m && gridPath.length) m.innerHTML=`<b style="color:var(--ink);font-size:18px;letter-spacing:.08em">${esc(curWord().toUpperCase())}</b>`; }
 function tileAt(x, y){
   const el=document.elementFromPoint(x, y); const t=el && el.closest && el.closest("#wg .tile"); if(!t) return -1;
@@ -6322,7 +6336,7 @@ function tileAt(x, y){
 }
 document.addEventListener("pointerdown", e=>{
   const t=e.target.closest && e.target.closest("#wg .tile");
-  if(!t || t.disabled || myAns || !S || S.phase!=="q" || !S.q || S.q.t!=="grid") return;
+  if(!t || t.disabled || !gridNow()) return;
   e.preventDefault(); dragging=true; gridPath=[+t.dataset.ti];
   try{ $("#wg").setPointerCapture(e.pointerId); }catch(_){}
   showCur(); paintTiles();
@@ -6338,29 +6352,30 @@ document.addEventListener("pointermove", e=>{
 }, {passive:false});
 document.addEventListener("pointerup", ()=>{
   if(!dragging) return; dragging=false;
-  const w=S && S.q && S.q.t==="grid" ? curWord() : ""; gridPath=[]; paintTiles();
+  const w=gridNow() ? curWord() : ""; gridPath=[]; paintTiles();
   if(w.length>=3) addWord(w); else { const m=$("#wmsg"); if(m) m.textContent = w ? "Words need at least 3 letters." : ""; }
 });
 document.addEventListener("pointercancel", ()=>{ if(!dragging) return; dragging=false; gridPath=[]; paintTiles(); });
 function gridTap(i){
-  if(myAns || !S || !S.q || S.q.t!=="grid") return;
+  const G0=gridNow(); if(!G0) return;
   const L=gridPath[gridPath.length-1], at=gridPath.indexOf(i);
   if(at>=0) gridPath=gridPath.slice(0, i===L?at:at+1); else if(gridPath.length && adj(L,i)) gridPath.push(i); else gridPath=[i];
-  const inp=$("#wordin"); if(inp) inp.value=gridPath.map(j=>S.q.grid[j]).join("").toLowerCase(); paintTiles();
+  const inp=$("#wordin"); if(inp) inp.value=gridPath.map(j=>G0[j]).join("").toLowerCase(); paintTiles();
 }
 function addWord(raw){
-  if(!S || S.phase!=="q" || S.q.t!=="grid" || myAns) return;
+  const G0=gridNow(); if(!G0) return; const daily=app.view==="dgrid";
   const w=String(raw||"").toLowerCase().replace(/[^a-z]/g,""); const m=$("#wmsg"); const say=t=>{ if(m) m.textContent=t; };
   const W=w.toUpperCase();
   if(w.length<3) return say("Words need at least 3 letters.");
   if(gridWords.some(x=>x.w===w)) return say(`You already have ${W}.`);
-  if(!findPath(S.q.grid, w)) return say(`${W} can't be made from touching letters.`);
+  if(!findPath(G0, w)) return say(`${W} can't be made from touching letters.`);
   const iw=isWord(w);
-  if(iw===false && !S.q.judge) return say(`${W} isn't in the dictionary.`);
+  if(iw===false && (daily || !S.q.judge)) return say(`${W} isn't in the dictionary.`);
+  if(daily && iw!==true) return say(`${W} isn't in the dictionary.`);
   gridWords.push({w, pend:iw!==true});
   say(iw===true ? `${W} +${wordPts(w.length)}` : `${W} added. It gets checked at the end.`);
   gridPath=[]; paintTiles(); const inp=$("#wordin"); if(inp) inp.value="";
-  renderWordList(); setMyPresence({wc:{k:S.q.k, n:gridWords.length}}); renderBoard();
+  renderWordList(); if(daily){ flashWord(w); return; } setMyPresence({wc:{k:S.q.k, n:gridWords.length}}); renderBoard();
 }
 function mmKey(i){ return `${S.q.k}-${me.pid}-${i}`; }
 function mmSimHTML(){
@@ -6568,6 +6583,7 @@ setInterval(()=>{
   if(app.view==="party" && !app.isHost && !S && joinedAt && now-joinedAt>9000 && stageKey==="wait"){ stageKey="nf"; const el=$("#stage"); if(el) el.innerHTML=`<div class="intro"><h2>No party found for ${esc(app.code)}</h2><p>Check the code with the host, and make sure they still have the page open.</p><div class="row"><button class="btn primary" data-act="leave">Back</button></div></div>`; }
   hostTick();
   if(app.view==="daily") dailyTick(now);
+  if(app.view==="dgrid" && DG.phase==="play" && now>=DG.end) dgFinish();
 }, 200);
 
 /* ---------------- map ---------------- */
@@ -6789,30 +6805,43 @@ const Pong={mount(){}, board(){}};
 
 /* ---------------- daily quiz ---------------- */
 const D = { key:null, qs:null, src:null, i:0, phase:"intro", answers:[], pts:[], end:0, start:0, draft:null, loading:false, lbUnsub:null };
+const DORDER=["gk","gk","est","pin","gk","ctry","gk","est","gk","pin","gk"];
+function dailyCtry(key){ const rnd=mulberry(hashStr("ctry-"+key)); const pool=CTRY.filter(c=>c[3]<=2); const c=pool[Math.floor(rnd()*pool.length)]; return {t:"ctry", text:"Find "+c[0]+" on the map", place:c[0], lat:c[1], lng:c[2]}; }
+function dailyAssemble(gk, est, pin, key){ const q={gk:gk.slice(), est:est.slice(), pin:pin.slice(), ctry:[dailyCtry(key)]}; return DORDER.map(t=>q[t].shift()); }
 function bankDaily(key){
   const rnd=mulberry(hashStr("spotlight-"+key));
-  const pick=(type,n)=>shuffle(BANK[type].map((x,i)=>i), rnd).slice(0,n).map(i=>({t:type, ...fromBank(type, BANK[type][i], rnd)}));
-  const gk=pick("gk",6), est=pick("est",2), pin=pick("pin",2);
-  return [...gk.slice(0,3), est[0], pin[0], ...gk.slice(3), est[1], pin[1]];
+  const pick=(type,n)=>{ const B=BANK[type]; const base=type.replace(/_pop$/,""); return shuffle(B.map((x,i)=>i), rnd).slice(0,n).map(i=>({t:base, ...fromBank(base, B[i], rnd)})); };
+  const pop=BANK.gk_pop?pick("gk_pop",4):[], gk=pick("gk",6-pop.length);
+  const gks=[pop[0],gk[0],pop[1],gk[1],pop[2],pop[3]].filter(Boolean).concat(gk.slice(2)).slice(0,6);
+  const est=BANK.est_pop?[...pick("est_pop",1),...pick("est",1)]:pick("est",2), pin=BANK.pin_pop?[...pick("pin_pop",1),...pick("pin",1)]:pick("pin",2);
+  return dailyAssemble(gks, est, pin, key);
 }
 async function getDaily(key){
-  if(app.db){ try{ const s=await app.db.doc("daily/"+key).get(); const d=s.exists&&s.data(); if(d && Array.isArray(d.qs) && d.qs.length>=8) return {qs:d.qs, src:d.src||"ai"}; }catch(e){} }
+  const ok=d=>d && Array.isArray(d.qs) && d.qs.length>=10;
+  if(app.db){ try{ const s=await app.db.doc("dq/"+key).get(); const d=s.exists&&s.data(); if(ok(d)) return {qs:d.qs, src:d.src||"ai"}; }catch(e){} }
   if(app.db && aiOn() && app.canWrite!==false){
-    const ref=app.db.doc("daily/"+key);
-    let lease=null; try{ lease=await ref.acquire({holder:me.pid, ttlMs:120000}); }catch(e){}
+    const ref=app.db.doc("dq/"+key);
+    let lease=null; try{ lease=await ref.acquire({holder:me.pid, ttlMs:180000}); }catch(e){}
     if(lease && lease.acquired){
       try{
-        const arr=await ask(`Write today's daily quiz: exactly 6 general knowledge multiple-choice questions, 2 guesstimate questions and 2 "where in the world" pin-drop questions. Mix easy and hard: of the 6 general knowledge questions make 3 easy (most adults would know them) and 3 genuinely hard (a keen quizzer might get them); make one guesstimate easy and one hard; make one pin an instantly recognisable landmark or city and the other a harder, less famous place that is still findable on a map. Order the general knowledge questions easy, hard, easy, hard, easy, hard. Guesstimates need min and max ends for a slider, round numbers, with the answer between 15% and 85% of the way along. ${AI_RULES}\nDate code: ${key}\nReply with only JSON: {"gk":[{"q":"...","options":["a","b","c","d"],"answer":0}],"est":[{"q":"How tall is the Eiffel Tower to its tip, in metres?","answer":330,"unit":"m","min":0,"max":600}],"pin":[{"q":"Where is Machu Picchu?","place":"Machu Picchu, Peru","lat":-13.1631,"lng":-72.545}]}`, "default", 100000);
+        const web=!!window.SQ_STANDALONE;
+        const arr=await ask(`Write today's daily quiz for a British audience who love sport and pop culture. Write exactly 6 multiple-choice questions, 2 guesstimate questions and 2 "where in the world" pin-drop questions.
+The 6 multiple-choice questions, in this order: 1 sport, 1 pop culture, 1 recent news, 1 sport, 1 pop culture, 1 sport or pop culture. Sport means football, cricket, rugby, tennis, F1, golf, darts, boxing, the Olympics and so on. Pop culture means music, film, TV, celebrities, video games and viral moments. The news question is about a story from ${web?"the last week or two: search the web for this week's biggest news first":"the last few months that you are sure about"}, and must have a clear, settled answer. Make half easy (most adults would know) and half genuinely hard.
+Both guesstimates are about sport or pop culture, such as stadium capacities, transfer fees, box office takings, chart records or career totals. Guesstimates need min and max ends for a slider, round numbers, with the answer between 15% and 85% of the way along.
+Pins: one instantly recognisable stadium, landmark or city, and one harder place that is still findable on a map; famous sports venues and film or TV locations are ideal.
+Facts must be accurate. News questions must be about something that has already happened, so the answer won't change. Keep questions under 140 characters. British English.
+Date code: ${key}
+Reply with only JSON: {"gk":[{"q":"...","options":["a","b","c","d"],"answer":0}],"est":[{"q":"How tall is the Eiffel Tower to its tip, in metres?","answer":330,"unit":"m","min":0,"max":600}],"pin":[{"q":"Where is Machu Picchu?","place":"Machu Picchu, Peru","lat":-13.1631,"lng":-72.545}]}`, "default", web?180000:100000, {web});
         const gk=cleanQs("gk", arr&&arr.gk).slice(0,6), est=cleanQs("est", arr&&arr.est).slice(0,2), pin=cleanQs("pin", arr&&arr.pin).slice(0,2);
         if(gk.length===6 && est.length===2 && pin.length===2){
           const T=x=>t=>({t:x, ...t});
-          const qs=[...gk.slice(0,3).map(T("gk")), T("est")(est[0]), T("pin")(pin[0]), ...gk.slice(3).map(T("gk")), T("est")(est[1]), T("pin")(pin[1])];
+          const qs=dailyAssemble(gk.map(T("gk")), est.map(T("est")), pin.map(T("pin")), key);
           await ref.set({qs, src:"ai", at:Date.now()});
           return {qs, src:"ai"};
         }
       }catch(e){ console.warn("daily gen", e); }
     } else if(lease && !lease.acquired){
-      for(let i=0;i<30;i++){ await new Promise(r=>setTimeout(r,3000)); try{ const s=await ref.get(); const d=s.exists&&s.data(); if(d && Array.isArray(d.qs) && d.qs.length>=8) return {qs:d.qs, src:d.src||"ai"}; }catch(e){} }
+      for(let i=0;i<40;i++){ await new Promise(r=>setTimeout(r,3000)); try{ const s=await ref.get(); const d=s.exists&&s.data(); if(ok(d)) return {qs:d.qs, src:d.src||"ai"}; }catch(e){} }
     }
   }
   return {qs:bankDaily(key), src:"bank"};
@@ -6822,40 +6851,48 @@ async function startDaily(){
   D.key=todayKey(); const prev=LS.get("sq-daily-"+D.key);
   app.view="daily"; D.phase = prev ? "done" : "loading"; D.result=prev; render();
   if(prev) return;
+  GeoData.load();
   const r=await getDaily(D.key);
   if(app.view!=="daily") return;
   D.qs=r.qs; D.src=r.src;
-  D.qs.forEach(q=>{ if(q.t==="est" && !(q.max>q.min)) Object.assign(q, estRange(q.ans, q.unit, mulberry(hashStr(D.key+q.text)))); }); D.i=0; D.pts=[]; D.answers=[]; D.phase="intro"; renderDaily();
-  if(D.qs.some(q=>q.t==="pin")) loadMap();
+  D.qs.forEach(q=>{ if(q.t==="est" && !(q.max>q.min)) Object.assign(q, estRange(q.ans, q.unit, mulberry(hashStr(D.key+q.text)))); }); D.i=0; D.pts=[]; D.answers=[]; D.secs=[]; D.phase="intro"; renderDaily();
+  if(D.qs.some(q=>q.t==="pin"||q.t==="ctry")) loadMap();
 }
-function dailyScore(q, v){
+/* every question starts at 100 and counts down to 10 as the timer runs; how right you are scales it */
+function dailyAvail(q, ms){ const f=Math.max(0, Math.min(1, ms/(DDUR[q.t]*1000))); return Math.round(100-90*f); }
+function dailyAcc(q, v){
   if(v==null) return 0;
-  if(q.t==="gk") return Number(v)===q.ans ? 100 : 0;
-  if(q.t==="est"){ const n=typeof v==="number"?v:parseNum(v); if(n==null) return 0; const r=Math.abs(n-q.ans)/Math.max(1e-9,(q.max-q.min)); return r<=0.01?100:Math.max(0, Math.round(100*(1-(r-0.01)/0.24))); }
-  if(q.t==="pin"){ if(!v||!isFinite(v.lat)) return 0; const d=km(v,q); return d<=10?500:Math.max(0, Math.round(500*Math.exp(-(d-10)/1500))); }
+  if(q.t==="gk") return Number(v)===q.ans ? 1 : 0;
+  if(q.t==="est"){ const n=typeof v==="number"?v:parseNum(v); if(n==null) return 0; const r=Math.abs(n-q.ans)/Math.max(1e-9,(q.max-q.min)); return r<=0.01?1:Math.max(0, 1-(r-0.01)/0.24); }
+  if(q.t==="pin"){ if(!v||!isFinite(v.lat)) return 0; const d=km(v,q); return d<=15?1:Math.exp(-(d-15)/1200); }
+  if(q.t==="ctry"){ if(!v||!isFinite(v.lat)) return 0; const f=ctryFeature(q.place); const inside=f?inRings(f,v):km(v,q)<200; if(inside) return 1; const d=f?kmToFeature(f,v):Math.max(0,km(v,q)-200); return d<=150?.7:d<=400?.5:d<=800?.3:d<=1500?.1:0; }
   return 0;
 }
-const DDUR={gk:20, est:30, pin:30};
-const DMAX={gk:100, est:100, pin:500};
+function dailyScore(q, v, ms){ return Math.round(dailyAcc(q,v)*dailyAvail(q, ms==null?DDUR[q.t]*1000:ms)); }
+const DDUR={gk:20, est:30, pin:30, ctry:30};
+const DMAX={gk:100, est:100, pin:100, ctry:100};
+const DNAME={gk:"Question", est:"Guesstimate", pin:"Pin drop", ctry:"Find the country"};
 function dailyMax(qs){ return (qs||[]).reduce((a,q)=>a+(DMAX[q.t]||0),0)||30; }
 function resMax(r){ return (r&&r.max)||30; }
-function tier(p,m){ const f=m?p/m:0; return f>=0.85?3:f>=0.5?2:f>0?1:0; }
+function tier(p,m){ const f=m?p/m:0; return f>=0.75?3:f>=0.4?2:f>0?1:0; }
 function dailyBegin(){ D.phase="q"; D.end=Date.now()+DDUR[D.qs[D.i].t]*1000; D.start=Date.now(); D.draft=null; renderDaily(); }
+function dailyGeoTag(q){ return q.t==="pin"?"Where in the world":q.t==="ctry"?"No names on the map":""; }
 function dailyAnswer(v){
   if(D.phase!=="q") return;
-  const q=D.qs[D.i]; D.answers[D.i]=v; D.pts[D.i]=dailyScore(q,v); D.phase="fb"; renderDaily();
+  const q=D.qs[D.i], ms=Math.min(Date.now()-D.start, DDUR[q.t]*1000); D.answers[D.i]=v; D.secs[D.i]=ms/1000; D.pts[D.i]=dailyScore(q,v,ms); D.phase="fb"; renderDaily();
 }
 function dailyNext(){ D.i++; if(D.i>=D.qs.length) return dailyFinish(); dailyBegin(); }
 async function dailyFinish(){
   const score=D.pts.reduce((a,b)=>a+b,0);
   const res={score, max:dailyMax(D.qs), pts:D.pts, pmax:D.qs.map(q=>DMAX[q.t]||3), src:D.src, at:Date.now()};
   LS.set("sq-daily-"+D.key, res); D.result=res; D.phase="done"; renderDaily();
-  if(app.db){ try{ await app.db.doc(`daily/${D.key}/scores/${safeSeg(me.pid)}`).set({nick:me.nick||"Player", score, max:res.max, pts:D.pts, at:Date.now()}); }catch(e){ if(e&&e.code==="invalid_argument") toast("Your score is saved here, but you can't post to the shared leaderboard"); } }
+  if(app.db){ try{ await app.db.doc(`dq/${D.key}/scores/${safeSeg(me.pid)}`).set({nick:me.nick||"Player", score, max:res.max, pts:D.pts, at:Date.now()}); }catch(e){ if(e&&e.code==="invalid_argument") toast("Your score is saved here, but you can't post to the shared leaderboard"); } }
 }
 function safeSeg(s){ return String(s).replace(/[^A-Za-z0-9_\-.~:@+]/g,"_").slice(0,120); }
 function dailyTick(now){
   if(D.phase!=="q") return;
-  if(now>D.end){ const q=D.qs[D.i]; let v=null; if(q.t==="pin") v=D.draft; else if(q.t==="est") v=D.draft; dailyAnswer(v); }
+  const pa=$("#dpav"); if(pa){ const q=D.qs[D.i]; pa.textContent=dailyAvail(q, now-D.start); }
+  if(now>D.end){ const q=D.qs[D.i]; let v=null; if(q.t==="pin"||q.t==="ctry"||q.t==="est") v=D.draft; dailyAnswer(v); }
 }
 function shareText(res){ const sq=(res.pts||[]).map((p,i)=>["⬜","🟧","🟨","🟩"][res.pmax?tier(p,res.pmax[i]):p]||"⬜").join(""); return `Spotlight Quiz · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}\n${sq}\n${res.score.toLocaleString("en-GB")}/${resMax(res).toLocaleString("en-GB")}`; }
 function renderDaily(){
@@ -6864,14 +6901,15 @@ function renderDaily(){
   const prog = D.qs ? `<div class="progress">${D.qs.map((_,i)=>`<i class="${i<D.i||(i===D.i&&D.phase==="fb")?"done":i===D.i&&D.phase==="q"?"cur":""}"></i>`).join("")}</div>` : "";
   let h="";
   if(D.phase==="loading") h=`<div class="intro"><div class="spinner"></div><h2>Loading today's quiz</h2><p>If you're the first player today, Claude is writing the questions. Everyone else gets the same set.</p></div>`;
-  else if(D.phase==="intro") h=`${prog}<div class="intro"><div class="eyebrow">Daily quiz · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}))}</div><div class="ri">10 questions · ${dailyMax(D.qs).toLocaleString("en-GB")} points</div><p>A mix of easy and hard questions. Each correct general knowledge answer scores 100. Guesstimates score up to 100, more the closer your marker lands. Pin drops score up to 500: the closer your pin, the closer you get to 500. You get one go per day.</p><div class="row"><button class="btn spot" data-act="dbegin">Start</button><span class="muted" style="font-size:13px">${D.src==="ai"?"Today's questions were written by Claude.":"Today's questions come from the built-in bank."}</span></div></div>`;
+  else if(D.phase==="intro") h=`${prog}<div class="intro"><div class="eyebrow">Daily quiz · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}))}</div><div class="ri">${D.qs.length} questions · up to ${dailyMax(D.qs).toLocaleString("en-GB")} points</div><p>Sport, pop culture, the news, guesstimates, pin drops and a find-the-country with no names on the map. Every question starts at <b>100 points</b> and counts down while the clock runs, so the quicker you answer, the more you score. A wrong answer scores nothing; guesstimates, pins and the country score more the closer you get. You get one go per day.</p><div class="row"><button class="btn spot" data-act="dbegin">Start</button><span class="muted" style="font-size:13px">${D.src==="ai"?"Today's questions were written by Claude.":"Today's questions come from the built-in bank."}</span></div></div>`;
   else if(D.phase==="q"||D.phase==="fb"){
     const q=D.qs[D.i]; const fb=D.phase==="fb";
-    h = prog + `<div class="stagehead"><div><div class="eyebrow">${q.t==="gk"?"General knowledge":q.t==="est"?"Guesstimate":"Pin drop"}</div><div class="muted num" style="font-size:14px">Question ${D.i+1} of ${D.qs.length}</div></div>${fb?`<span class="pts on" style="font-size:28px">+${D.pts[D.i]}${q.t!=="gk"?`<span class="muted" style="font-size:.5em">/${DMAX[q.t]}</span>`:""}</span>`:timerHTML(D.end, DDUR[q.t])}</div><div class="qtext">${esc(q.text)}</div>`;
+    h = prog + `<div class="stagehead"><div><div class="eyebrow">${DNAME[q.t]||"Question"}</div><div class="muted num" style="font-size:14px">Question ${D.i+1} of ${D.qs.length}</div></div>${fb?`<span class="pts on" style="font-size:28px">+${D.pts[D.i]}<span class="muted" style="font-size:.45em;display:block;text-align:right">${D.answers[D.i]==null?"no answer":"in "+D.secs[D.i].toFixed(1)+"s"}</span></span>`:`<div class="row" style="gap:12px;flex-wrap:nowrap"><span class="pts on num" style="font-size:28px;min-width:2.4em;text-align:right" title="Points available"><span id="dpav">100</span><span class="muted" style="font-size:.4em;display:block">pts left</span></span>${timerHTML(D.end, DDUR[q.t])}</div>`}</div><div class="qtext">${esc(q.text)}</div>`;
     if(q.t==="gk") h += `<div class="opts">${q.opts.map((o,i)=>`<button class="opt ${fb?(i===q.ans?"right":(Number(D.answers[D.i])===i?"wrong mine":"")):""}" data-act="dopt" data-i="${i}" ${fb?"disabled":""}><span class="k">${"ABCD"[i]}</span><span>${esc(o)}</span></button>`).join("")}</div>`;
     else if(q.t==="est") h += fb ? scaleRevealHTML(q.min, q.max, q.unit, q.ans, D.answers[D.i]==null?[]:[{v:D.answers[D.i], color:pcol(me.pid), label:"You", e:me.av}]) + `<div class="bigans"><div class="eyebrow">Answer</div><b class="num">${esc(fmtNum(q.ans,q.unit))}</b>${esc(unitTxt(q.unit))}</div>` : scaleInputHTML("destr", q) + `<div class="row"><span class="maphint grow">Drag the marker along the scale, then lock it in.</span><button class="btn primary" data-act="dlockest" id="dlockest" disabled>Lock in</button></div>`;
     else if(q.t==="pin") h += (fb?`<div class="bigans"><div class="eyebrow">Answer</div><b>${esc(q.place)}</b> ${D.answers[D.i]?`<span class="num">· ${Math.round(km(D.answers[D.i],q)).toLocaleString("en-GB")} km from your pin</span>`:""}</div>`:"") + `<div class="map" id="map"></div>` + (fb?"":`<div class="row"><span class="maphint grow">Tap the map to drop your pin. Drag to move the map, and pinch or use + and − to zoom.</span><button class="btn primary" data-act="dlockpin" id="dlockpin" disabled>Lock in pin</button></div>`);
-    if(fb && tier(D.pts[D.i], DMAX[q.t])>=3) setTimeout(()=>confetti(50), 300);
+    else if(q.t==="ctry"){ const a=D.answers[D.i]; let note=""; if(fb && a){ const f=ctryFeature(q.place); const inside=f?inRings(f,a):km(a,q)<200; note=inside?`<span class="num ctry-in">· inside</span>`:`<span class="num">· ${Math.round(f?kmToFeature(f,a):km(a,q)).toLocaleString("en-GB")} km off</span>`; }
+      h += (fb?`<div class="bigans"><div class="eyebrow">The country</div><b>${esc(q.place)}</b> ${note}</div>`:"") + `<div class="map" id="map"></div>` + (fb?"":`<div class="row"><span class="maphint grow">Tap anywhere inside the country. There are no names on the map. Drag to move, pinch or use + and − to zoom.</span><button class="btn primary" data-act="dlockpin" id="dlockpin" disabled>Lock in</button></div>`); }
     if(fb) h += `<div class="hostbar"><button class="btn primary" data-act="dnext">${D.i+1<D.qs.length?"Next question":"See my score"}</button></div>`;
   }
   else if(D.phase==="done"){
@@ -6882,30 +6920,84 @@ function renderDaily(){
     h=`<div class="intro"><div class="eyebrow">Today's score</div><div class="scoreline num">${r.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em">/${M.toLocaleString("en-GB")}</span></div><p>${f>=0.8?"Brilliant.":f>=0.53?"Solid effort.":"Tomorrow's another quiz."} ${calcStreak()>1?`You're on a ${calcStreak()}-day streak.`:""} Come back tomorrow for a new set.</p></div><div class="share" id="sharetxt">${esc(txt)}</div><div class="row"><button class="btn" data-act="copyshare">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div>`;
   }
   el.innerHTML=h;
-  if((D.phase==="q"||D.phase==="fb") && D.qs[D.i].t==="pin"){
-    const q=D.qs[D.i];
-    if(D.phase==="q") mapView=new MapView($("#map"),{pick:ll=>{ D.draft=ll; mapView.setPins([{...ll,color:pcol(me.pid),label:"You",av:me.av}]); const b=$("#dlockpin"); if(b) b.disabled=false; }});
-    else { mapView=new MapView($("#map"),{}); mapView.reveal(D.answers[D.i]?[{...D.answers[D.i],color:pcol(me.pid),label:"You",av:me.av}]:[], {lat:q.lat,lng:q.lng,label:q.place}); }
+  if((D.phase==="q"||D.phase==="fb") && (D.qs[D.i].t==="pin"||D.qs[D.i].t==="ctry")){
+    const q=D.qs[D.i], ct=q.t==="ctry";
+    if(D.phase==="q") mapView=new MapView($("#map"),{labels:ct?false:undefined, pick:ll=>{ D.draft=ll; mapView.setPins([{...ll,color:pcol(me.pid),label:"You",av:me.av}]); const b=$("#dlockpin"); if(b) b.disabled=false; }});
+    else { mapView=new MapView($("#map"),ct?{labels:false, hl:q.place}:{}); mapView.reveal(D.answers[D.i]?[{...D.answers[D.i],color:pcol(me.pid),label:"You",av:me.av}]:[], {lat:q.lat,lng:q.lng,label:q.place}); }
   }
   const i=$("#dansin"); if(i) setTimeout(()=>i.focus({preventScroll:true}),30);
 }
-let lbUnsub=null;
-function subscribeDailyLB(key, sel, lim){
+let lbUnsub=null; const LBS={};
+function stopLBs(){ for(const k in LBS){ try{ LBS[k](); }catch(e){} delete LBS[k]; } lbUnsub=null; }
+function subscribeDailyLB(key, sel, lim){ return subscribeLB(`dq/${key}/scores`, sel, lim, "Today's leaderboard"); }
+function subscribeLB(col, sel, lim, title){
   if(!app.db) return;
-  if(lbUnsub){ try{ lbUnsub(); }catch(e){} lbUnsub=null; }
+  if(LBS[sel]){ try{ LBS[sel](); }catch(e){} delete LBS[sel]; }
   const t=setTimeout(()=>{ const el=$(sel); if(el && !el.dataset.got) el.innerHTML=`<p class="muted" style="font-size:13px">The leaderboard can't be reached right now.</p>`; }, 10000);
   try{
-    lbUnsub=app.db.collection(`daily/${key}/scores`).orderBy("score","desc").limit(lim).onSnapshot(snap=>{
+    LBS[sel]=app.db.collection(col).orderBy("score","desc").limit(lim).onSnapshot(snap=>{
       if(!snap.metadata.fromCache) clearTimeout(t);
       const el=$(sel); if(!el) return; el.dataset.got="1";
       if(snap.empty){ el.innerHTML=`<p class="muted" style="font-size:13px;margin:0">Nobody has played today yet.</p>`; return; }
-      el.innerHTML=`<div class="eyebrow" style="margin:6px 0">Today's leaderboard</div><ol class="lb">${snap.docs.map((d,i)=>{ const x=d.data()||{}; return `<li class="${d.id===safeSeg(me.pid)?"me":""}"><span class="rk">${i+1}</span><span>${esc(String(x.nick||"Player").slice(0,18))}</span><b class="num">${Number(x.score)||0}</b></li>`; }).join("")}</ol>`;
+      el.innerHTML=`<div class="eyebrow" style="margin:6px 0">${esc(title)}</div><ol class="lb">${snap.docs.map((d,i)=>{ const x=d.data()||{}; return `<li class="${d.id===safeSeg(me.pid)?"me":""}"><span class="rk">${i+1}</span><span>${esc(String(x.nick||"Player").slice(0,18))}</span><b class="num">${(Number(x.score)||0).toLocaleString("en-GB")}</b></li>`; }).join("")}</ol>`;
     }, ()=>{ clearTimeout(t); const el=$(sel); if(el) el.innerHTML=""; });
+    lbUnsub=stopLBs;
   }catch(e){ clearTimeout(t); }
+}
+
+/* ---------------- daily word grid: one grid for everyone each day, 90 seconds ---------------- */
+const DG={ key:null, grid:null, phase:"loading", end:0, result:null, all:null };
+const DG_SECS=90;
+function dailyGridFor(key){
+  let best=null, bestN=-1;
+  for(let k=0;k<12;k++){ const rnd=mulberry(hashStr("grid-"+key+"-"+k)); const g=shuffle(DICE.slice(), rnd).map(d=>{ const c=d[Math.floor(rnd()*6)]; return c==="Q"?"Qu":c; });
+    const n=DICT?solveGrid(g).length:0; if(!DICT) return g; if(n>=70) return g; if(n>bestN){ best=g; bestN=n; } }
+  return best;
+}
+async function startDGrid(){
+  await Promise.race([userReady, new Promise(r=>setTimeout(r,3000))]);
+  DG.key=todayKey(); DG.result=LS.get("sq-grid-"+DG.key); DG.phase=DG.result?"done":"loading"; app.view="dgrid"; render();
+  await loadDict(); if(app.view!=="dgrid") return;
+  DG.grid=dailyGridFor(DG.key); DG.all=solveGrid(DG.grid).sort((a,b)=>b.length-a.length||a.localeCompare(b));
+  if(!DG.result) DG.phase="intro"; renderDGrid();
+}
+function dgBegin(){ if(DG.phase!=="intro") return; gridWords=[]; gridPath=[]; DG.phase="play"; DG.end=Date.now()+DG_SECS*1000; renderDGrid(); const i=$("#wordin"); if(i && !matchMedia("(pointer:coarse)").matches) i.focus({preventScroll:true}); }
+function flashWord(w){ const m=$("#wmsg"); if(m) m.innerHTML=`<b style="color:var(--ink);font-size:18px">${esc(w.toUpperCase())}</b> <span class="num" style="color:var(--accent)">+${wordPts(w.length)}</span>`; }
+async function dgFinish(){
+  if(DG.phase!=="play") return;
+  const ws=gridWords.filter(x=>!x.pend).map(x=>x.w).sort((a,b)=>b.length-a.length||a.localeCompare(b));
+  const score=ws.reduce((t,w)=>t+wordPts(w.length),0);
+  const res={score, n:ws.length, words:ws.slice(0,60), at:Date.now()};
+  LS.set("sq-grid-"+DG.key, res); DG.result=res; DG.phase="done"; gridPath=[]; renderDGrid();
+  if(app.db){ try{ await app.db.doc(`dg/${DG.key}/scores/${safeSeg(me.pid)}`).set({nick:me.nick||"Player", score, n:ws.length, best:ws.slice(0,3), at:Date.now()}); }catch(e){ if(e&&e.code==="invalid_argument") toast("Your score is saved here, but you can't post to the shared leaderboard"); } }
+}
+function gridShareText(r){ return `Spotlight Word Grid · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}\n${r.n} word${r.n===1?"":"s"} · ${Number(r.score).toLocaleString("en-GB")} points${r.words&&r.words[0]?`\nLongest: ${r.words[0].length} letters`:""}`; }
+function renderDGrid(){
+  const el=$("#gstage"); if(!el) return;
+  const date=esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}));
+  let h="";
+  if(DG.phase==="loading") h=`<div class="intro"><div class="spinner"></div><h2>Loading today's grid</h2></div>`;
+  else if(DG.phase==="intro") h=`<div class="intro"><div class="eyebrow">Daily word grid · ${date}</div><div class="ri">90 seconds</div><p>Everyone gets the same grid today. Drag across touching letters, including diagonally, to make words of 3 letters or more. You can also type them.</p><p class="num" style="font-size:15px;margin:0">3 letters <b>10</b> · 4 <b>20</b> · 5 <b>40</b> · 6 <b>100</b> · 7 <b>150</b> · 8 <b>200</b>, then +50 a letter</p><p class="muted" style="font-size:14px;margin:0">${DG.all?`There are ${DG.all.length} words hidden in today's grid.`:""} You get one go per day.</p><div class="row"><button class="btn spot" data-act="dgstart">Start the clock</button></div></div>`;
+  else if(DG.phase==="play") h=`<div class="stagehead"><div><div class="eyebrow">Daily word grid</div><div class="muted num" style="font-size:14px">${date}</div></div>${timerHTML(DG.end, DG_SECS)}</div>`+gridAreaHTML({grid:DG.grid}, false);
+  else if(DG.phase==="done"){
+    const r=DG.result||{score:0,n:0,words:[]}; const mine=new Set(r.words||[]);
+    const missed=(DG.all||[]).filter(w=>!mine.has(w)).slice(0,8);
+    if(r.score>=600) setTimeout(()=>confetti(r.score>=1200?160:80), 400);
+    h=`<div class="intro"><div class="eyebrow">Today's word grid</div><div class="scoreline num">${Number(r.score).toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> points</span></div><p>${r.n} word${r.n===1?"":"s"}${DG.all?` out of ${DG.all.length} in the grid`:""}. Come back tomorrow for a new grid.</p></div>`;
+    if(DG.grid) h+=`<div class="wgwrap"><div class="wg" style="max-width:220px">${DG.grid.map(c=>`<div class="tile" style="font-size:22px">${esc(c)}</div>`).join("")}</div><div style="display:grid;gap:10px;min-width:0">${(r.words||[]).length?`<div><div class="eyebrow" style="margin-bottom:6px">Your words</div><div class="words">${r.words.map(w=>`<span class="w">${esc(w.toUpperCase())}<sup>${wordPts(w.length)}</sup></span>`).join("")}</div></div>`:""}${missed.length?`<div><div class="eyebrow" style="margin-bottom:6px">Longest words you missed</div><div class="words">${missed.map(w=>`<span class="w pend">${esc(w.toUpperCase())}<sup>${wordPts(w.length)}</sup></span>`).join("")}</div></div>`:""}</div></div>`;
+    h+=`<div class="share" id="sharetxt">${esc(gridShareText(r))}</div><div class="row"><button class="btn" data-act="copygrid">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div>`;
+  }
+  el.innerHTML=h;
+  if(DG.phase==="play"){ renderWordList(); paintTiles(); }
+}
+function renderDGridBoard(){
+  const el=$("#gboard"); if(!el) return;
+  el.innerHTML=`<h3>Daily word grid</h3><p class="muted" style="font-size:13px;margin:0">Same grid for everyone today, 90 seconds each. ${app.db?"":"The shared leaderboard isn't available on this view."}</p><div id="gridlb"></div><div class="row"><button class="btn small ghost" data-act="home">Back home</button></div>`;
+  if(app.db) subscribeLB(`dg/${todayKey()}/scores`, "#gridlb", 15, "Today's grid leaderboard");
 }
 function renderDailyBoard(){
   const el=$("#dboard"); if(!el) return;
-  el.innerHTML=`<h3>Daily quiz</h3><p class="muted" style="font-size:13px;margin:0">Everyone gets the same ten questions today. ${app.db?"":"The shared leaderboard isn't available on this view."}</p><div id="dailylb"></div><div class="row"><button class="btn small ghost" data-act="home">Back home</button></div>`;
+  el.innerHTML=`<h3>Daily quiz</h3><p class="muted" style="font-size:13px;margin:0">Everyone gets the same questions today. Faster answers score more. ${app.db?"":"The shared leaderboard isn't available on this view."}</p><div id="dailylb"></div><div class="row"><button class="btn small ghost" data-act="home">Back home</button></div>`;
   if(app.db) subscribeDailyLB(todayKey(), "#dailylb", 15);
 }
 
@@ -6913,7 +7005,7 @@ function renderDailyBoard(){
 document.addEventListener("click", async e=>{
   const b=e.target.closest("[data-act]"); if(!b) return;
   const a=b.dataset.act;
-  if(a==="home"){ if(app.party){ leaveParty(); return; } if(lbUnsub){ lbUnsub(); lbUnsub=null; } app.view="home"; render(); return; }
+  if(a==="home"){ if(app.party){ leaveParty(); return; } stopLBs(); if(DG.timer){ clearInterval(DG.timer); DG.timer=0; } if(app.view==="dgrid" && DG.phase==="play"){ dgFinish(); } app.view="home"; render(); return; }
   if(a==="host"){ if(!readNick()) return; const code=Array.from(crypto.getRandomValues(new Uint8Array(4)), x=>"ABCDEFGHJKMNPQRSTUVWXYZ"[x%23]).join(""); openParty(code, true); return; }
   if(a==="join"||a==="joinlist"){ if(!readNick()) return; const code=(a==="join"?($("#joincode").value||""):b.dataset.code).toUpperCase().replace(/[^A-Z]/g,"").slice(0,4); if(code.length!==4){ toast("Party codes are 4 letters"); return; } openParty(code, false); return; }
   if(a==="leave"){ leaveParty(); return; }
@@ -6926,6 +7018,9 @@ document.addEventListener("click", async e=>{
   if(a==="mksave"){ const id=encodeToon(app.mk); LS.set("sq-av-custom",id); me.av=id; LS.set("sq-av",id); closeMaker(); document.querySelectorAll("#avpick").forEach(pk=>{ const tmp=document.createElement("div"); tmp.innerHTML=avPickerHTML(); pk.replaceWith(...tmp.childNodes); }); if(app.party){ setMyPresence({av:id}); renderBoard(); renderLobbyStage(); } toast("Avatar saved. You're using it now."); return; }
   if(a==="pickav"){ const v=b.dataset.av; if(!validAv(v)) return; me.av=v; LS.set("sq-av", v); document.querySelectorAll(".avopt").forEach(o=>{ const on=o.dataset.av===v; o.classList.toggle("sel", on); o.setAttribute("aria-pressed", on); }); if(app.party){ setMyPresence({av:v}); renderBoard(); } return; }
   if(a==="daily"||a==="dailyresult"){ startDaily(); return; }
+  if(a==="dgrid"){ startDGrid(); return; }
+  if(a==="dgstart"){ dgBegin(); return; }
+  if(a==="copygrid"){ const txt=gridShareText(DG.result||{score:0,n:0}); try{ await navigator.clipboard.writeText(txt); toast("Copied"); }catch(err){ toast("Select the text above to copy it"); } return; }
   if(a==="copycode"||a==="copyshare"){ const txt = a==="copycode" ? app.code : shareText(D.result||{score:0,pts:[]}); try{ await navigator.clipboard.writeText(txt); toast("Copied"); }catch(err){ toast(a==="copycode"?"Code: "+txt:"Select the text above to copy it"); const s=$("#sharetxt"); if(s){ const r=document.createRange(); r.selectNodeContents(s); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); } } return; }
   if(a==="savetopic"){ const v=($("#topic").value||"").trim().slice(0,60); me.topic=v; LS.set("sq-topic", v); setMyPresence({topic:v}); toast(v?"Subject saved":"Subject cleared"); renderBoard(); return; }
   // host lobby config
@@ -6948,7 +7043,7 @@ document.addEventListener("click", async e=>{
   if(a==="lockest"){ if(draft!=null) submitAnswer(draft); return; }
   if(a==="dlockest"){ if(D.draft!=null) dailyAnswer(D.draft); return; }
   if(a==="tile"){ gridTap(+b.dataset.i); return; }
-  if(a==="wdone"){ submitAnswer(gridWords.map(x=>x.w)); return; }
+  if(a==="wdone"){ if(app.view==="dgrid"){ dgFinish(); return; } submitAnswer(gridWords.map(x=>x.w)); return; }
   if(a==="mmgo"){ if(app.isHost) mmBegin(); return; }
   if(a==="mftopic"||a==="mfpick"){ if(S && S.q && S.q.t==="mf" && !myAns){ const mine=S.q.pick?S.q.chooser===me.pid:S.q.turn===me.pid; if(mine){ myAns={k:S.q.k, v:+b.dataset.i, t:Date.now()-qShownAt}; setMyPresence({ans:myAns}); if(app.isHost) hostCollect(); stageKey=""; renderStage(); } } return; }
   if(a==="mfskip"){ if(app.isHost && G && G.q && G.q.t==="mf") hostQEnd=0; return; }
@@ -6982,7 +7077,7 @@ document.addEventListener("input", e=>{
   const id=e.target.id;
   if(id==="nick"){ me.nick=e.target.value.trim().slice(0,18); }
   if(id==="estr"||id==="destr"){ const q = id==="estr" ? (S&&S.q) : D.qs[D.i]; if(!q) return; const v=snap(+e.target.value, q.min, q.max, q.unit); if(id==="estr") draft=v; else D.draft=v; const ro=$("#"+id+"-ro"); if(ro) ro.textContent=fmtNum(v, q.unit)+unitTxt(q.unit); const lb=$(id==="estr"?"#lockest":"#dlockest"); if(lb) lb.disabled=false; }
-  if(id==="wordin" && S && S.q && S.q.t==="grid"){ const w=e.target.value.toLowerCase().replace(/[^a-z]/g,""); gridPath = w ? (findPath(S.q.grid, w)||[]) : []; paintTiles(); }
+  if(id==="wordin" && gridNow()){ const w=e.target.value.toLowerCase().replace(/[^a-z]/g,""); gridPath = w ? (findPath(gridNow(), w)||[]) : []; paintTiles(); }
 });
 
 boot();
