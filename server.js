@@ -2,7 +2,8 @@
  * - serves the game (public/index.html)
  * - relays live multiplayer over WebSockets (/ws)
  * - optional: Claude-written questions via your Anthropic API key (/api/sample)
- * - tiny JSON store for the daily quiz leaderboard (/api/db)
+ * - small data store for the daily leaderboards (/api/db): kept in Supabase when configured, otherwise in data.json
+ * - optional player accounts (email + password) through Supabase Auth (/api/auth/*)
  * No npm packages needed: just Node.js 18 or newer.  Start with:  node server.js
  */
 const http = require("http");
@@ -16,27 +17,74 @@ const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5-5";
 const MODEL_FAST = process.env.CLAUDE_MODEL_FAST || "claude-haiku-5-5";
 const AI_PER_HOUR = +(process.env.AI_REQUESTS_PER_HOUR || 60); // per visitor, protects your API bill
 const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, "data.json");
-const PAGE = path.join(__dirname, "index.html");
+const SB_URL = (process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+const SB_ANON = process.env.SUPABASE_ANON_KEY || "";        // the "anon" / "publishable" key
+const SB_SERVICE = process.env.SUPABASE_SERVICE_KEY || "";  // the "service_role" / "secret" key: server only, never in the page
+const SB_ON = !!(SB_URL && SB_ANON && SB_SERVICE);
+const PAGE = fs.existsSync(path.join(__dirname, "index.html")) ? path.join(__dirname, "index.html") : path.join(__dirname, "public", "index.html");
 
-/* ---------------- tiny JSON store ---------------- */
+/* ---------------- data store ---------------- */
+/* Everything lives in memory for speed. With Supabase set up, each change is also written to its "kv" table and the
+   whole table is loaded at start-up, so leaderboards and accounts survive restarts and redeploys. Without it, data.json. */
 let store = {};
-try { store = JSON.parse(fs.readFileSync(DATA_FILE, "utf8")); } catch (e) { store = {}; }
-let saveT = null;
-function save() { clearTimeout(saveT); saveT = setTimeout(() => { fs.writeFile(DATA_FILE, JSON.stringify(store), () => {}); }, 1000); }
+const sbHead = (key, extra) => Object.assign({ apikey: key, "content-type": "application/json" }, key.startsWith("eyJ") ? { authorization: "Bearer " + key } : {}, extra || {});
+async function sbFetch(pathq, opts) {
+  const r = await fetch(SB_URL + pathq, opts);
+  const t = await r.text(); let j = null; try { j = t ? JSON.parse(t) : null; } catch (e) {}
+  if (!r.ok) { const e = new Error((j && (j.msg || j.message || j.error_description || j.error)) || ("HTTP " + r.status)); e.status = r.status; e.body = j; throw e; }
+  return j;
+}
+const ready = (async () => {
+  if (!SB_ON) { try { store = JSON.parse(fs.readFileSync(DATA_FILE, "utf8")); } catch (e) { store = {}; } return; }
+  for (let off = 0; ; off += 1000) {
+    let rows;
+    try { rows = await sbFetch(`/rest/v1/kv?select=path,data&order=path&offset=${off}&limit=1000`, { headers: sbHead(SB_SERVICE) }); }
+    catch (e) { console.error("Supabase: couldn't load the kv table. Did you run the setup SQL?", e.message); return; }
+    for (const r of rows || []) store[r.path] = r.data;
+    if (!rows || rows.length < 1000) break;
+  }
+  console.log("Supabase: loaded " + Object.keys(store).length + " saved items");
+})();
+const dirty = new Set(), gone = new Set(); let saveT = null;
+function save(p) {
+  if (p) { dirty.add(p); gone.delete(p); }
+  clearTimeout(saveT); saveT = setTimeout(flush, SB_ON ? 300 : 1000);
+}
+async function flush() {
+  if (!SB_ON) { fs.writeFile(DATA_FILE, JSON.stringify(store), () => {}); return; }
+  const up = [...dirty].filter(p => p in store).map(p => ({ path: p, data: store[p], updated_at: new Date().toISOString() })); dirty.clear();
+  const del = [...gone]; gone.clear();
+  try {
+    if (up.length) await sbFetch("/rest/v1/kv?on_conflict=path", { method: "POST", headers: sbHead(SB_SERVICE, { prefer: "resolution=merge-duplicates,return=minimal" }), body: JSON.stringify(up) });
+    for (let i = 0; i < del.length; i += 50) await sbFetch("/rest/v1/kv?path=in.(" + del.slice(i, i + 50).map(p => '"' + p + '"').join(",") + ")", { method: "DELETE", headers: sbHead(SB_SERVICE, { prefer: "return=minimal" }) });
+  } catch (e) { console.error("Supabase save failed, will retry:", e.message); up.forEach(r => dirty.add(r.path)); del.forEach(p => gone.add(p)); setTimeout(flush, 5000); }
+}
 const leases = {};
 const okPath = p => typeof p === "string" && p.length < 300 && /^[A-Za-z0-9_.~:@+-]+(\/[A-Za-z0-9_.~:@+-]+)*$/.test(p) && p.split("/").length <= 8;
-function prune() { // keep only the last 14 days of daily quizzes
-  const keys = Object.keys(store); if (keys.length < 5000) return;
-  const days = [...new Set(keys.map(k => k.split("/")[1]))].sort().reverse().slice(0, 14);
-  for (const k of keys) if (!days.includes(k.split("/")[1])) delete store[k];
+const DAILY = /^(daily|dq\d*|dg\d*)\//;
+function prune() { // keep only the last 30 days of daily quizzes and grids (accounts are never pruned)
+  const keys = Object.keys(store).filter(k => DAILY.test(k)); if (keys.length < 5000) return;
+  const days = [...new Set(keys.map(k => k.split("/")[1]))].sort().reverse().slice(0, 30);
+  for (const k of keys) if (!days.includes(k.split("/")[1])) { delete store[k]; gone.add(k); }
 }
-function dbOp(b) {
+const SCORE = /^(daily|dq\d*|dg\d*)\/[^/]+\/scores\/([^/]+)$/;
+function dbOp(b, user) {
   const p = b.path;
   if (!okPath(p)) return { error: "bad_path" };
+  if (b.op === "set" && /^users\//.test(p)) return { error: "not_allowed" };
+  if (b.op === "set" && SB_ON) { // with accounts on, a leaderboard score must come from that player's own account
+    const m = SCORE.exec(p);
+    if (m) {
+      if (!user) return { error: "login_required", code: "login_required" };
+      if (m[2] !== user.id) return { error: "not_allowed" };
+      const prof = store["users/" + user.id] || {};
+      b.data = Object.assign({}, b.data || {}, { nick: String(prof.name || user.name || "Player").slice(0, 18), uid: user.id });
+    }
+  }
   if (b.op === "get") return store[p] ? { exists: true, data: store[p] } : { exists: false };
   if (b.op === "set") {
     const s = JSON.stringify(b.data || {}); if (s.length > 60000) return { error: "too_big" };
-    store[p] = b.data || {}; prune(); save(); return { ok: true };
+    store[p] = b.data || {}; prune(); save(p); return { ok: true };
   }
   if (b.op === "acquire") {
     const l = leases[p], now = Date.now();
@@ -50,6 +98,83 @@ function dbOp(b) {
     return { docs: docs.slice(0, lim) };
   }
   return { error: "bad_op" };
+}
+
+/* ---------------- accounts (Supabase Auth, email + password) ---------------- */
+const tokCache = new Map();
+async function userOf(req) {
+  if (!SB_ON) return null;
+  const h = String(req.headers.authorization || ""); const tok = h.startsWith("Bearer ") ? h.slice(7) : ""; if (!tok || tok.length > 4000) return null;
+  const c = tokCache.get(tok); if (c && c.until > Date.now()) return c.user;
+  try { const u = await sbFetch("/auth/v1/user", { headers: { apikey: SB_ANON, authorization: "Bearer " + tok } });
+    const user = u && u.id ? { id: u.id, email: u.email, name: (u.user_metadata && u.user_metadata.name) || "" } : null;
+    if (tokCache.size > 5000) tokCache.clear(); tokCache.set(tok, { user, until: Date.now() + 5 * 60000 }); return user; }
+  catch (e) { tokCache.set(tok, { user: null, until: Date.now() + 30000 }); return null; }
+}
+const cleanName = n => String(n || "").replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, 18);
+function profileOut(user) { const p = store["users/" + user.id] || {}; return { id: user.id, email: user.email, name: p.name || user.name || "", av: p.av || null, dq: p.dq || {}, dg: p.dg || {} }; }
+function sessOut(j) { return { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: j.expires_at || (Math.floor(Date.now() / 1000) + (j.expires_in || 3600)) }; }
+const authTries = new Map();
+function authAllowed(ip) { const now = Date.now(), a = (authTries.get(ip) || []).filter(t => now - t < 600000); if (a.length >= 30) return false; a.push(now); authTries.set(ip, a); return true; }
+function friendly(e) {
+  const m = String(e.message || "").toLowerCase();
+  if (m.includes("invalid login")) return "That email and password don't match.";
+  if (m.includes("not confirmed")) return "Check your inbox and tap the confirmation link first.";
+  if (m.includes("already registered") || m.includes("already been registered")) return "There's already an account with that email. Try logging in.";
+  if (m.includes("password") && (m.includes("6") || m.includes("short") || m.includes("weak"))) return "Use a longer password (at least 8 characters).";
+  if (m.includes("rate") || e.status === 429) return "Too many tries. Wait a few minutes and try again.";
+  if (m.includes("email") && m.includes("invalid")) return "That email address doesn't look right.";
+  return "Something went wrong: " + (e.message || "try again");
+}
+async function authRoute(req, res, url) {
+  const ip = ipOf(req), act = url.pathname.slice("/api/auth/".length), origin = (req.headers["x-forwarded-proto"] || "https") + "://" + req.headers.host + "/";
+  if (!SB_ON) return json(res, 404, { error: "Accounts are off on this server" });
+  if (req.method === "POST" && !["me", "profile", "refresh"].includes(act) && !authAllowed(ip)) return json(res, 429, { error: "Too many tries. Wait a few minutes and try again." });
+  const b = req.method === "POST" ? await readBody(req, 20000) : {};
+  const email = String(b.email || "").trim().toLowerCase().slice(0, 200), password = String(b.password || "").slice(0, 200);
+  try {
+    if (act === "signup") {
+      const name = cleanName(b.name); if (!name) return json(res, 400, { error: "Add a name for the leaderboard." });
+      if (password.length < 8) return json(res, 400, { error: "Use a longer password (at least 8 characters)." });
+      const j = await sbFetch("/auth/v1/signup?redirect_to=" + encodeURIComponent(origin), { method: "POST", headers: { apikey: SB_ANON, "content-type": "application/json" }, body: JSON.stringify({ email, password, data: { name } }) });
+      const u = (j && (j.user || (j.id ? j : null))) || null;
+      if (u && u.id && !store["users/" + u.id]) { store["users/" + u.id] = { name, av: b.av || null, at: Date.now() }; save("users/" + u.id); }
+      if (j && j.access_token) return json(res, 200, { session: sessOut(j), profile: profileOut({ id: u.id, email, name }) });
+      return json(res, 200, { confirm: true });
+    }
+    if (act === "login") {
+      const j = await sbFetch("/auth/v1/token?grant_type=password", { method: "POST", headers: { apikey: SB_ANON, "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
+      const u = j.user; return json(res, 200, { session: sessOut(j), profile: profileOut({ id: u.id, email: u.email, name: (u.user_metadata || {}).name }) });
+    }
+    if (act === "refresh") {
+      const j = await sbFetch("/auth/v1/token?grant_type=refresh_token", { method: "POST", headers: { apikey: SB_ANON, "content-type": "application/json" }, body: JSON.stringify({ refresh_token: String(b.refresh_token || "") }) });
+      return json(res, 200, { session: sessOut(j) });
+    }
+    if (act === "forgot") {
+      await sbFetch("/auth/v1/recover?redirect_to=" + encodeURIComponent(origin), { method: "POST", headers: { apikey: SB_ANON, "content-type": "application/json" }, body: JSON.stringify({ email, redirect_to: origin }) });
+      return json(res, 200, { ok: true });
+    }
+    const user = await userOf(req); if (!user) return json(res, 401, { error: "Please log in again.", code: "login_required" });
+    if (act === "me") return json(res, 200, { profile: profileOut(user) });
+    if (act === "password") {
+      if (password.length < 8) return json(res, 400, { error: "Use a longer password (at least 8 characters)." });
+      await sbFetch("/auth/v1/user", { method: "PUT", headers: { apikey: SB_ANON, authorization: req.headers.authorization, "content-type": "application/json" }, body: JSON.stringify({ password }) });
+      return json(res, 200, { ok: true });
+    }
+    if (act === "profile") {
+      const k = "users/" + user.id, p = Object.assign({}, store[k] || {});
+      if (b.name !== undefined) { const n = cleanName(b.name); if (n) p.name = n; }
+      if (typeof b.av === "string" && b.av.length < 600) p.av = b.av;
+      for (const f of ["dq", "dg"]) if (b[f] && typeof b[f] === "object") { // daily results by date, for streaks on every device
+        p[f] = Object.assign({}, p[f] || {});
+        for (const [d, v] of Object.entries(b[f])) if (/^\d{4}-\d{2}-\d{2}$/.test(d) && v && typeof v === "object") p[f][d] = { score: +v.score || 0, n: +v.n || 0 };
+        const ks = Object.keys(p[f]).sort(); ks.slice(0, Math.max(0, ks.length - 120)).forEach(d => delete p[f][d]);
+      }
+      p.at = Date.now(); store[k] = p; save(k);
+      return json(res, 200, { profile: profileOut(user) });
+    }
+    return json(res, 404, { error: "unknown" });
+  } catch (e) { return json(res, e.status && e.status < 500 ? 400 : 502, { error: friendly(e) }); }
 }
 
 /* ---------------- Claude (optional) ---------------- */
@@ -100,7 +225,8 @@ const server = http.createServer(async (req, res) => {
       return fs.createReadStream(PAGE).pipe(res);
     }
     if (url.pathname === "/healthz") return json(res, 200, { ok: true });
-    if (url.pathname === "/api/config") return json(res, 200, { ai: !!API_KEY });
+    if (url.pathname === "/api/config") return json(res, 200, { ai: !!API_KEY, auth: SB_ON });
+    if (url.pathname.startsWith("/api/auth/")) { await ready; return authRoute(req, res, url); }
     if (url.pathname === "/api/sample" && req.method === "POST") {
       if (!API_KEY) return json(res, 403, { code: "not_granted", message: "AI is off on this server" });
       if (!aiAllowed(ipOf(req))) return json(res, 429, { code: "rate_limited", message: "Too many requests, try again later" });
@@ -109,8 +235,8 @@ const server = http.createServer(async (req, res) => {
       catch (e) { return json(res, 502, { code: "upstream", message: String(e.message || e) }); }
     }
     if (url.pathname === "/api/db" && req.method === "POST") {
-      const b = await readBody(req, 100000); const r = dbOp(b);
-      return json(res, r.error ? 400 : 200, r);
+      await ready; const b = await readBody(req, 100000); const r = dbOp(b, b.op === "set" ? await userOf(req) : null);
+      return json(res, r.error ? (r.code === "login_required" ? 401 : 400) : 200, r);
     }
     res.writeHead(404, { "content-type": "text/plain" }); res.end("Not found");
   } catch (e) { json(res, 400, { error: String(e.message || e) }); }
@@ -180,4 +306,4 @@ server.on("upgrade", (req, sock) => {
 });
 setInterval(() => { for (const c of conns.values()) { c.send(JSON.stringify({ t: "ping" })); } }, 25000);
 
-server.listen(PORT, () => console.log(`Spotlight Quiz running on port ${PORT}${API_KEY ? " (Claude questions on)" : " (built-in questions only)"}`));
+server.listen(PORT, () => console.log(`Spotlight Quiz running on port ${PORT}${API_KEY ? " (Claude questions on)" : " (built-in questions only)"}${SB_ON ? ", accounts + Supabase storage on" : ", accounts off (data.json storage)"}`));

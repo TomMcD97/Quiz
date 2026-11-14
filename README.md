@@ -30,6 +30,14 @@ Send that link to your friends. One person taps **Host a party**; everyone else 
 - **Fresh questions written by Claude:** on Render open your service, then **Environment**, and add `ANTHROPIC_API_KEY` with a key from https://console.anthropic.com. This also turns on **Match a selfie** in the avatar maker. Without a key, the game uses its built-in bank of about 1,200 questions. Each visitor is limited to 60 AI requests an hour (change with `AI_REQUESTS_PER_HOUR`). API use is billed to your Anthropic account.
 - **Your own address** (like `spotlightquiz.com`): buy the domain anywhere, then on Render go to **Settings**, then **Custom Domains**, and follow the steps.
 
+- **Player accounts and lasting leaderboards (Supabase, free):** players can log in with email and password, and leaderboards, accounts and today's questions are saved in a Supabase database so they survive restarts. Setup:
+  1. Create a free project at https://supabase.com.
+  2. In **SQL Editor**, paste the contents of `supabase-setup.sql` and press **Run**.
+  3. In **Authentication > URL Configuration**, set **Site URL** to your game's address (e.g. `https://spotlightquiz.app`) and add it under **Redirect URLs** too.
+  4. In **Project Settings > API Keys**, copy the project URL, the publishable (anon) key and the secret (service_role) key.
+  5. On Render, under **Environment**, add `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_KEY`. Keep the secret key private: it only goes on Render, never in the page.
+  Supabase's built-in email sender only sends a few emails an hour. For a busy game, connect your own email provider under **Authentication > Emails > SMTP Settings**, or turn off **Confirm email** under **Authentication > Sign In / Providers** so new players can log in straight away.
+
 ## Good to know
 
 - On Render's free plan the site **goes to sleep after 15 minutes with nobody on it**. The first visit after that takes about a minute to wake up; open it a minute before game night. A paid instance (about $7 a month) stays awake.

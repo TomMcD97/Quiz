@@ -32,7 +32,22 @@
     return {room};
   })();
 
-  const post=(url,body)=>fetch(url,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}).then(async r=>{ const j=await r.json().catch(()=>({})); if(!r.ok){ const e=new Error(j.message||j.error||("HTTP "+r.status)); e.code=j.code||"error"; throw e; } return j; });
+  /* ---- accounts: the session lives in this browser; the server checks it with Supabase ---- */
+  const SK="sq-sess"; let sess=null; try{ sess=JSON.parse(localStorage.getItem(SK)||"null"); }catch(e){}
+  const keep=v=>{ sess=v; try{ v?localStorage.setItem(SK,JSON.stringify(v)):localStorage.removeItem(SK); }catch(e){} };
+  let recovery=false;
+  try{ const h=new URLSearchParams(location.hash.slice(1)); /* links from Supabase emails land here */
+    if(h.get("access_token")){ keep({access_token:h.get("access_token"), refresh_token:h.get("refresh_token")||"", expires_at:Math.floor(Date.now()/1000)+(+h.get("expires_in")||3600)}); recovery=h.get("type")==="recovery"; history.replaceState(null,"",location.pathname+location.search); }
+    else if(h.get("error_description")){ window.SQ_AUTH_ERR=h.get("error_description").replace(/\+/g," "); history.replaceState(null,"",location.pathname+location.search); } }catch(e){}
+  let refreshing=null;
+  async function token(){
+    if(!sess) return null;
+    if(sess.expires_at && sess.expires_at-Date.now()/1000<90 && sess.refresh_token){
+      refreshing=refreshing||fetch("/api/auth/refresh",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({refresh_token:sess.refresh_token})}).then(r=>r.json().then(j=>{ if(r.ok&&j.session) keep(j.session); else if(r.status===400||r.status===401) keep(null); })).catch(()=>{}).finally(()=>{ refreshing=null; });
+      await refreshing; }
+    return sess&&sess.access_token;
+  }
+  const post=async(url,body)=>{ const t=await token(); return fetch(url,{method:"POST",headers:Object.assign({"content-type":"application/json"},t?{authorization:"Bearer "+t}:{}),body:JSON.stringify(body)}).then(async r=>{ const j=await r.json().catch(()=>({})); if(!r.ok){ const e=new Error(j.message||j.error||("HTTP "+r.status)); e.code=j.code||"error"; e.status=r.status; throw e; } return j; }); };
   const blobToData=b=>new Promise((res,rej)=>{ const f=new FileReader(); f.onload=()=>res(f.result); f.onerror=rej; f.readAsDataURL(b); });
   const parseJSON=t=>{ let s=String(t||"").trim().replace(/^```(?:json)?\s*/i,"").replace(/```\s*$/,""); try{ return JSON.parse(s); }catch(e){}
     const i=Math.min(...["[","{"].map(c=>{ const k=s.indexOf(c); return k<0?1e9:k; })); const j=Math.max(s.lastIndexOf("]"), s.lastIndexOf("}"));
@@ -61,6 +76,19 @@
     return {doc, collection};
   }
 
+  const A={
+    enabled:async()=>!!(await ai()).auth,
+    signedIn:()=>!!sess,
+    recovery:()=>recovery,
+    async signup(name,email,password,av){ const j=await post("/api/auth/signup",{name,email,password,av}); if(j.session) keep(j.session); return j; },
+    async login(email,password){ const j=await post("/api/auth/login",{email,password}); keep(j.session); return j; },
+    async forgot(email){ return post("/api/auth/forgot",{email}); },
+    async setPassword(password){ const j=await post("/api/auth/password",{password}); recovery=false; return j; },
+    async me(){ if(!sess) return null; try{ return (await post("/api/auth/me",{})).profile; }catch(e){ if(e.status===401) keep(null); return null; } },
+    async saveProfile(patch){ if(!sess) return null; return (await post("/api/auth/profile",patch)).profile; },
+    logout(){ keep(null); }
+  };
+  window.SQ_AUTH=A;
   let lobby=null;
   window.SQ_STANDALONE=true;
   window.claude={ use(name){
@@ -946,6 +974,13 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .avimg.toon{background:#22232A}
 .maker{grid-template-columns:170px 1fr}.maker .pv{width:170px;height:170px}
 .mk-lock{overflow:hidden}
+.acct-sheet{width:min(420px,100%);max-height:100%;overflow:auto;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:22px;padding:22px;display:grid;gap:14px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.acct-sheet .mk-top{padding:0;border:0}
+.acct-form{display:grid;gap:12px}
+.acct-err{color:var(--bad);font-size:14px;min-height:1.2em;margin:-4px 0}
+.linkbtn{background:none;border:0;color:var(--accent);padding:0;font:inherit;font-size:14px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.acct-cta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2);font-size:14px}
+.acct-cta span{flex:1;min-width:180px}
 .mk-modal{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);display:grid;place-items:center;padding:max(12px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));animation:mkin .18s ease-out}
 @keyframes mkin{from{opacity:0}to{opacity:1}}
 .mk-sheet{width:min(980px,100%);max-height:100%;display:flex;flex-direction:column;background:#111114;border:1px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
@@ -5157,7 +5192,8 @@ function boot(){
   }).catch(()=>{});
   C.use("room").then(r=>{ app.room=r; if(r){ r.onPeers(c=>{ app.lobbyPeers=c.peers; if(app.view==="home") renderParties(); }, ()=>{}); r.onConnection(()=>renderStatus(), ()=>{}); } renderStatus(); if(app.view==="home") renderParties(); }).catch(()=>{});
   C.use("sample").then(s=>{ app.sample=s; renderStatus(); }).catch(()=>{});
-  C.use("db").then(d=>{ app.db=d; if(app.view==="home") loadHomeDaily(); }).catch(()=>{});
+  C.use("db").then(d=>{ app.db=d; if(app.view==="home") loadHomeDaily(); postPending(); }).catch(()=>{});
+  acctInit();
 }
 function durFor(t){ const base=RT[t].dur; if(t==="grid") return base; if(t==="sp") return (G&&G.diff==="hard")?8:12; return (G&&G.diff==="hard")?base:Math.round(base*1.5); }
 function aiOn(){ return !!app.sample && !app.sampleDenied; }
@@ -5175,6 +5211,7 @@ function renderStatus(){
   if(app.party && app.code) h += `<span class="chip"><span class="code">${esc(app.code)}</span></span>`;
   h += `<span class="chip ${live?"live":""}"><span class="dot"></span>${live?"Live":(app.room?"Connecting":"Solo mode")}</span>`;
   if(app.party) h += `<button class="btn small leavebtn" data-act="leave">${app.isHost?"End party":"Leave"}</button>`;
+  if(ACCT.on && !app.party) h += `<button class="btn small" data-act="acct">${app.acct?esc(app.acct.name||"Account"):"Log in"}</button>`;
   el.innerHTML = h;
 }
 
@@ -5247,9 +5284,9 @@ async function loadHomeDaily(){
   if(app.db) subscribeDailyLB(key, "#homelb", 5);
   const gi=$("#gridinfo"); if(gi){ const g=LS.get(DG_LS+key);
     gi.innerHTML = (g ? `<div class="row"><div class="scoreline num">${Number(g.score||0).toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts · ${g.n} word${g.n===1?"":"s"}</span></div></div><div class="row"><button class="btn" data-act="dgrid">See results</button></div>` : `<div class="row"><button class="btn spot" data-act="dgrid">Play today's grid</button></div>`) + `<div id="homegridlb"></div>`;
-    if(app.db) subscribeLB(`dg2/${key}/scores`, "#homegridlb", 5, "Today's grid leaderboard"); }
+    if(app.db) subscribeLB(`${DG_DB}/${key}/scores`, "#homegridlb", 5, "Today's grid leaderboard"); }
 }
-const DQ_LS="sq-dq3-", DG_LS="sq-grid2-"; /* fresh keys: the daily quiz and grid were reset on 14 Nov 2026 */
+const DQ_LS="sq-dq3-", DG_LS="sq-grid2-", DQ_DB="dq3", DG_DB="dg2"; /* fresh keys: the daily quiz and grid were reset on 14 Nov 2026 */
 function calcStreak(){ let n=0; const d=new Date(); for(let i=0;i<400;i++){ const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); if(LS.get(DQ_LS+k)||LS.get("sq-dq2-"+k)||LS.get("sq-daily-"+k)) n++; else if(i>0) break; d.setDate(d.getDate()-1); } return n; }
 
 /* ---------------- party join / host ---------------- */
@@ -5262,7 +5299,7 @@ function localParty(){
     peers(){ return cur; }, onPeers(f){ fns.add(f); queueMicrotask(()=>f({peers:cur, joined:cur, left:[], updated:[]})); return ()=>fns.delete(f); },
     connected(){ return true; }, leave(){ fns.clear(); return Promise.resolve(); } };
 }
-function readNick(){ const ni=$("#nick"); const v=(ni?ni.value:me.nick).trim().slice(0,18); if(!v){ toast("Add your name first"); ni && ni.focus(); return false; } me.nick=v; LS.set("sq-nick", v); return true; }
+function readNick(){ const ni=$("#nick"); const v=(ni?ni.value:me.nick).trim().slice(0,18); if(!v){ toast("Add your name first"); ni && ni.focus(); return false; } me.nick=v; LS.set("sq-nick", v); if(app.acct && v!==app.acct.name){ app.acct.name=v; window.SQ_AUTH.saveProfile({name:v}).catch(()=>{}); renderStatus(); } return true; }
 
 async function openParty(code, host){
   await Promise.race([userReady, new Promise(r=>setTimeout(r,3000))]);
@@ -6819,9 +6856,9 @@ function bankDaily(key){
 }
 async function getDaily(key){
   const ok=d=>d && Array.isArray(d.qs) && d.qs.length>=10;
-  if(app.db){ try{ const s=await app.db.doc("dq3/"+key).get(); const d=s.exists&&s.data(); if(ok(d)) return {qs:d.qs, src:d.src||"ai"}; }catch(e){} }
+  if(app.db){ try{ const s=await app.db.doc(DQ_DB+"/"+key).get(); const d=s.exists&&s.data(); if(ok(d)) return {qs:d.qs, src:d.src||"ai"}; }catch(e){} }
   if(app.db && aiOn() && app.canWrite!==false){
-    const ref=app.db.doc("dq3/"+key);
+    const ref=app.db.doc(DQ_DB+"/"+key);
     let lease=null; try{ lease=await ref.acquire({holder:me.pid, ttlMs:180000}); }catch(e){}
     if(lease && lease.acquired){
       try{
@@ -6887,7 +6924,8 @@ async function dailyFinish(){
   const score=D.pts.reduce((a,b)=>a+b,0);
   const res={score, max:dailyMax(D.qs), pts:D.pts, pmax:D.qs.map(q=>DMAX[q.t]||3), src:D.src, at:Date.now()};
   LS.set(DQ_LS+D.key, res); D.result=res; D.phase="done"; renderDaily();
-  if(app.db){ try{ await app.db.doc(`dq3/${D.key}/scores/${safeSeg(me.pid)}`).set({nick:me.nick||"Player", score, max:res.max, pts:D.pts, at:Date.now()}); }catch(e){ if(e&&e.code==="invalid_argument") toast("Your score is saved here, but you can't post to the shared leaderboard"); } }
+  if(app.acct) window.SQ_AUTH.saveProfile({dq:{[D.key]:{score}}}).catch(()=>{});
+  if(app.db && !lbNeedsLogin()){ try{ await app.db.doc(`${DQ_DB}/${D.key}/scores/${myScoreId()}`).set({nick:me.nick||"Player", score, max:res.max, pts:D.pts, at:Date.now()}); res.posted=1; LS.set(DQ_LS+D.key, res); }catch(e){ if(e&&e.code==="invalid_argument") toast("Your score is saved here, but you can't post to the shared leaderboard"); } }
 }
 function safeSeg(s){ return String(s).replace(/[^A-Za-z0-9_\-.~:@+]/g,"_").slice(0,120); }
 function dailyTick(now){
@@ -6902,7 +6940,7 @@ function renderDaily(){
   const prog = D.qs ? `<div class="progress">${D.qs.map((_,i)=>`<i class="${i<D.i||(i===D.i&&D.phase==="fb")?"done":i===D.i&&D.phase==="q"?"cur":""}"></i>`).join("")}</div>` : "";
   let h="";
   if(D.phase==="loading") h=`<div class="intro"><div class="spinner"></div><h2>Loading today's quiz</h2><p>If you're the first player today, Claude is writing the questions. Everyone else gets the same set.</p></div>`;
-  else if(D.phase==="intro") h=`${prog}<div class="intro"><div class="eyebrow">Daily quiz · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}))}</div><div class="ri">${D.qs.length} questions</div><p>Multiple-choice questions start at <b>100 points</b> and count down, so be quick. Maps and guesstimates score up to 100 for how close you get. One go per day.</p>${me.nick?"":`<div class="field" style="max-width:320px"><label for="nick">Your name for the leaderboard</label><input class="input" id="nick" maxlength="18" placeholder="e.g. Sam" autocomplete="nickname"></div>`}<div class="row"><button class="btn spot" data-act="dbegin">Start</button></div></div>`;
+  else if(D.phase==="intro") h=`${prog}<div class="intro"><div class="eyebrow">Daily quiz · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}))}</div><div class="ri">${D.qs.length} questions</div><p>Multiple-choice questions start at <b>100 points</b> and count down, so be quick. Maps and guesstimates score up to 100 for how close you get. One go per day.</p>${acctPromptHTML()}<div class="row"><button class="btn spot" data-act="dbegin">Start</button></div></div>`;
   else if(D.phase==="q"||D.phase==="fb"){
     const q=D.qs[D.i]; const fb=D.phase==="fb";
     h = prog + `<div class="stagehead"><div><div class="eyebrow">${DNAME[q.t]||"Question"}</div><div class="muted num" style="font-size:14px">Question ${D.i+1} of ${D.qs.length}</div></div>${fb?`<span class="pts on" style="font-size:28px">+${D.pts[D.i]}<span class="muted" style="font-size:.45em;display:block;text-align:right">${D.answers[D.i]==null?"no answer":"in "+D.secs[D.i].toFixed(1)+"s"}</span></span>`:`<div class="row" style="gap:12px;flex-wrap:nowrap">${q.t==="gk"?`<span class="pts on num" style="font-size:28px;min-width:2.4em;text-align:right" title="Points available"><span id="dpav">100</span><span class="muted" style="font-size:.4em;display:block">pts left</span></span>`:""}${timerHTML(D.end, DDUR[q.t])}</div>`}</div><div class="qtext">${esc(q.text)}</div>`;
@@ -6918,7 +6956,7 @@ function renderDaily(){
     const M=resMax(r), f=r.score/M;
     if(f>=0.6) setTimeout(()=>confetti(f>=0.8?180:90), 400);
     const txt=shareText(r);
-    h=`<div class="intro"><div class="eyebrow">Today's score</div><div class="scoreline num">${r.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts</span></div><p>${f>=0.8?"Brilliant.":f>=0.53?"Solid effort.":"Tomorrow's another quiz."} ${calcStreak()>1?`You're on a ${calcStreak()}-day streak.`:""} Come back tomorrow for a new set.</p></div><div class="share" id="sharetxt">${esc(txt)}</div><div class="row"><button class="btn" data-act="copyshare">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div>`;
+    h=`<div class="intro"><div class="eyebrow">Today's score</div><div class="scoreline num">${r.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts</span></div><p>${f>=0.8?"Brilliant.":f>=0.53?"Solid effort.":"Tomorrow's another quiz."} ${calcStreak()>1?`You're on a ${calcStreak()}-day streak.`:""} Come back tomorrow for a new set.</p></div>${lbNeedsLogin()?acctCTA("Log in or create an account to put this score on today's leaderboard."):""}<div class="share" id="sharetxt">${esc(txt)}</div><div class="row"><button class="btn" data-act="copyshare">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div>`;
   }
   el.innerHTML=h;
   if((D.phase==="q"||D.phase==="fb") && (D.qs[D.i].t==="pin"||D.qs[D.i].t==="ctry")){
@@ -6930,7 +6968,7 @@ function renderDaily(){
 }
 let lbUnsub=null; const LBS={};
 function stopLBs(){ for(const k in LBS){ try{ LBS[k](); }catch(e){} delete LBS[k]; } lbUnsub=null; }
-function subscribeDailyLB(key, sel, lim){ return subscribeLB(`dq3/${key}/scores`, sel, lim, "Today's leaderboard"); }
+function subscribeDailyLB(key, sel, lim){ return subscribeLB(`${DQ_DB}/${key}/scores`, sel, lim, "Today's leaderboard"); }
 function subscribeLB(col, sel, lim, title){
   if(!app.db) return;
   if(LBS[sel]){ try{ LBS[sel](); }catch(e){} delete LBS[sel]; }
@@ -6940,7 +6978,7 @@ function subscribeLB(col, sel, lim, title){
       if(!snap.metadata.fromCache) clearTimeout(t);
       const el=$(sel); if(!el) return; el.dataset.got="1";
       if(snap.empty){ el.innerHTML=`<p class="muted" style="font-size:13px;margin:0">Nobody has played today yet.</p>`; return; }
-      el.innerHTML=`<div class="eyebrow" style="margin:6px 0">${esc(title)}</div><ol class="lb">${snap.docs.map((d,i)=>{ const x=d.data()||{}; return `<li class="${d.id===safeSeg(me.pid)?"me":""}"><span class="rk">${i+1}</span><span>${esc(String(x.nick||"Player").slice(0,18))}</span><b class="num">${(Number(x.score)||0).toLocaleString("en-GB")}</b></li>`; }).join("")}</ol>`;
+      el.innerHTML=`<div class="eyebrow" style="margin:6px 0">${esc(title)}</div><ol class="lb">${snap.docs.map((d,i)=>{ const x=d.data()||{}; return `<li class="${d.id===myScoreId()?"me":""}"><span class="rk">${i+1}</span><span>${esc(String(x.nick||"Player").slice(0,18))}</span><b class="num">${(Number(x.score)||0).toLocaleString("en-GB")}</b></li>`; }).join("")}</ol>`;
     }, ()=>{ clearTimeout(t); const el=$(sel); if(el) el.innerHTML=""; });
     lbUnsub=stopLBs;
   }catch(e){ clearTimeout(t); }
@@ -6970,7 +7008,8 @@ async function dgFinish(){
   const score=ws.reduce((t,w)=>t+wordPts(w.length),0);
   const res={score, n:ws.length, words:ws.slice(0,60), at:Date.now()};
   LS.set(DG_LS+DG.key, res); DG.result=res; DG.phase="done"; gridPath=[]; renderDGrid();
-  if(app.db){ try{ await app.db.doc(`dg2/${DG.key}/scores/${safeSeg(me.pid)}`).set({nick:me.nick||"Player", score, n:ws.length, best:ws.slice(0,3), at:Date.now()}); }catch(e){ if(e&&e.code==="invalid_argument") toast("Your score is saved here, but you can't post to the shared leaderboard"); } }
+  if(app.acct) window.SQ_AUTH.saveProfile({dg:{[DG.key]:{score, n:ws.length}}}).catch(()=>{});
+  if(app.db && !lbNeedsLogin()){ try{ await app.db.doc(`${DG_DB}/${DG.key}/scores/${myScoreId()}`).set({nick:me.nick||"Player", score, n:ws.length, best:ws.slice(0,3), at:Date.now()}); res.posted=1; LS.set(DG_LS+DG.key, res); }catch(e){ if(e&&e.code==="invalid_argument") toast("Your score is saved here, but you can't post to the shared leaderboard"); } }
 }
 function gridShareText(r){ return `Spotlight Word Grid · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}\n${r.n} word${r.n===1?"":"s"} · ${Number(r.score).toLocaleString("en-GB")} points${r.words&&r.words[0]?`\nLongest: ${r.words[0].length} letters`:""}`; }
 function renderDGrid(){
@@ -6978,7 +7017,7 @@ function renderDGrid(){
   const date=esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}));
   let h="";
   if(DG.phase==="loading") h=`<div class="intro"><div class="spinner"></div><h2>Loading today's grid</h2></div>`;
-  else if(DG.phase==="intro") h=`<div class="intro"><div class="eyebrow">Daily word grid · ${date}</div><div class="ri">60 seconds</div><p>Everyone gets the same grid today. Drag across touching letters, including diagonally, to make words of 3 letters or more. You can also type them. Only real dictionary words count: no names, abbreviations or made-up words.</p><p class="num" style="font-size:15px;margin:0">3 letters <b>10</b> · 4 <b>20</b> · 5 <b>40</b> · 6 <b>100</b> · 7 <b>150</b> · 8 <b>200</b>, then +50 a letter</p><p class="muted" style="font-size:14px;margin:0">${DG.all?`There are ${DG.all.length} words hidden in today's grid.`:""} You get one go per day.</p>${me.nick?"":`<div class="field" style="max-width:320px"><label for="nick">Your name for the leaderboard</label><input class="input" id="nick" maxlength="18" placeholder="e.g. Sam" autocomplete="nickname"></div>`}<div class="row"><button class="btn spot" data-act="dgstart">Start the clock</button></div></div>`;
+  else if(DG.phase==="intro") h=`<div class="intro"><div class="eyebrow">Daily word grid · ${date}</div><div class="ri">60 seconds</div><p>Everyone gets the same grid today. Drag across touching letters, including diagonally, to make words of 3 letters or more. You can also type them. Only real dictionary words count: no names, abbreviations or made-up words.</p><p class="num" style="font-size:15px;margin:0">3 letters <b>10</b> · 4 <b>20</b> · 5 <b>40</b> · 6 <b>100</b> · 7 <b>150</b> · 8 <b>200</b>, then +50 a letter</p><p class="muted" style="font-size:14px;margin:0">${DG.all?`There are ${DG.all.length} words hidden in today's grid.`:""} You get one go per day.</p>${acctPromptHTML()}<div class="row"><button class="btn spot" data-act="dgstart">Start the clock</button></div></div>`;
   else if(DG.phase==="play") h=`<div class="stagehead"><div><div class="eyebrow">Daily word grid</div><div class="muted num" style="font-size:14px">${date}</div></div>${timerHTML(DG.end, DG_SECS)}</div>`+gridAreaHTML({grid:DG.grid}, false);
   else if(DG.phase==="done"){
     const r=DG.result||{score:0,n:0,words:[]}; const mine=new Set(r.words||[]);
@@ -6986,6 +7025,7 @@ function renderDGrid(){
     if(r.score>=600) setTimeout(()=>confetti(r.score>=1200?160:80), 400);
     h=`<div class="intro"><div class="eyebrow">Today's word grid</div><div class="scoreline num">${Number(r.score).toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> points</span></div><p>${r.n} word${r.n===1?"":"s"}${DG.all?` out of ${DG.all.length} in the grid`:""}. Come back tomorrow for a new grid.</p></div>`;
     if(DG.grid) h+=`<div class="wgwrap"><div class="wg" style="max-width:220px">${DG.grid.map(c=>`<div class="tile" style="font-size:22px">${esc(c)}</div>`).join("")}</div><div style="display:grid;gap:10px;min-width:0">${(r.words||[]).length?`<div><div class="eyebrow" style="margin-bottom:6px">Your words</div><div class="words">${r.words.map(w=>`<span class="w">${esc(w.toUpperCase())}<sup>${wordPts(w.length)}</sup></span>`).join("")}</div></div>`:""}${missed.length?`<div><div class="eyebrow" style="margin-bottom:6px">Longest words you missed</div><div class="words">${missed.map(w=>`<span class="w pend">${esc(w.toUpperCase())}<sup>${wordPts(w.length)}</sup></span>`).join("")}</div></div>`:""}</div></div>`;
+    if(lbNeedsLogin()) h+=acctCTA("Log in or create an account to put this score on today's leaderboard.");
     h+=`<div class="share" id="sharetxt">${esc(gridShareText(r))}</div><div class="row"><button class="btn" data-act="copygrid">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div>`;
   }
   el.innerHTML=h;
@@ -6994,7 +7034,88 @@ function renderDGrid(){
 function renderDGridBoard(){
   const el=$("#gboard"); if(!el) return;
   el.innerHTML=`<h3>Daily word grid</h3><p class="muted" style="font-size:13px;margin:0">Same grid for everyone today, 60 seconds each. ${app.db?"":"The shared leaderboard isn't available on this view."}</p><div id="gridlb"></div><div class="row"><button class="btn small ghost" data-act="home">Back home</button></div>`;
-  if(app.db) subscribeLB(`dg2/${todayKey()}/scores`, "#gridlb", 15, "Today's grid leaderboard");
+  if(app.db) subscribeLB(`${DG_DB}/${todayKey()}/scores`, "#gridlb", 15, "Today's grid leaderboard");
+}
+
+/* ---------------- accounts (own-server version only: email + password via Supabase) ---------------- */
+const ACCT={on:false, view:"login", busy:false, msg:"", err:""};
+function myScoreId(){ return app.acct ? app.acct.id : safeSeg(me.pid); }
+function lbNeedsLogin(){ return ACCT.on && !app.acct; }
+function acctCTA(txt){ return `<div class="acct-cta"><span>${esc(txt)}</span><button class="btn small primary" data-act="acct">Log in</button></div>`; }
+function acctPromptHTML(){
+  if(ACCT.on) return app.acct ? "" : acctCTA("Log in to put your score on the leaderboard. You can still play without an account.");
+  return me.nick ? "" : `<div class="field" style="max-width:320px"><label for="nick">Your name for the leaderboard</label><input class="input" id="nick" maxlength="18" placeholder="e.g. Sam" autocomplete="nickname"></div>`;
+}
+function dayKeyBack(i){ const d=new Date(); d.setDate(d.getDate()-i); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+async function acctInit(){
+  const A=window.SQ_AUTH; if(!A) return;
+  try{ ACCT.on=await A.enabled(); }catch(e){ ACCT.on=false; }
+  if(!ACCT.on) return;
+  renderStatus();
+  if(window.SQ_AUTH_ERR) toast(window.SQ_AUTH_ERR.includes("expired")?"That link has expired. Ask for a new one.":window.SQ_AUTH_ERR);
+  if(A.signedIn()){ const p=await A.me(); if(p){ acctApply(p); if(!A.recovery()) toast(`Logged in as ${p.name||p.email}`); } }
+  renderStatus(); acctRefreshView();
+  if(A.recovery()) openAcct("reset");
+}
+function acctRefreshView(){ if(app.view==="home") render(); else if(app.view==="daily") renderDaily(); else if(app.view==="dgrid") renderDGrid(); }
+function acctApply(p){
+  app.acct=p;
+  if(p.name){ me.nick=p.name; LS.set("sq-nick",p.name); const ni=$("#nick"); if(ni) ni.value=p.name; }
+  if(p.av && validAv(p.av) && p.av!==me.av){ me.av=p.av; LS.set("sq-av",p.av); if(isToonAv(p.av)) LS.set("sq-av-custom",p.av); }
+  for(const [d,v] of Object.entries(p.dq||{})) if(!LS.get(DQ_LS+d)) LS.set(DQ_LS+d,{score:v.score, pts:[], posted:1});
+  for(const [d,v] of Object.entries(p.dg||{})) if(!LS.get(DG_LS+d)) LS.set(DG_LS+d,{score:v.score, n:v.n, words:[], posted:1});
+  const up={dq:{},dg:{}}; let any=false; /* results from before logging in, so streaks follow you */
+  for(let i=0;i<60;i++){ const k=dayKeyBack(i); const a=LS.get(DQ_LS+k), g=LS.get(DG_LS+k);
+    if(a && !(p.dq||{})[k]){ up.dq[k]={score:a.score}; any=true; } if(g && !(p.dg||{})[k]){ up.dg[k]={score:g.score, n:g.n}; any=true; } }
+  if(any) window.SQ_AUTH.saveProfile(up).catch(()=>{});
+  if(!p.av && me.av) window.SQ_AUTH.saveProfile({av:me.av}).catch(()=>{});
+  postPending();
+}
+async function postPending(){ /* today's scores played before logging in */
+  if(!app.db || (ACCT.on && !app.acct)) return; const key=todayKey(); let did=false;
+  const a=LS.get(DQ_LS+key); if(a && !a.posted && app.acct){ try{ await app.db.doc(`${DQ_DB}/${key}/scores/${myScoreId()}`).set({nick:me.nick||"Player", score:a.score, max:a.max, pts:a.pts||[], at:a.at||Date.now()}); a.posted=1; LS.set(DQ_LS+key,a); did=true; }catch(e){} }
+  const g=LS.get(DG_LS+key); if(g && !g.posted && app.acct){ try{ await app.db.doc(`${DG_DB}/${key}/scores/${myScoreId()}`).set({nick:me.nick||"Player", score:g.score, n:g.n, best:(g.words||[]).slice(0,3), at:g.at||Date.now()}); g.posted=1; LS.set(DG_LS+key,g); did=true; }catch(e){} }
+  if(did){ toast("Your score is on today's leaderboard"); acctRefreshView(); }
+}
+function openAcct(view){
+  ACCT.view=view||(app.acct?"account":"login"); ACCT.err=""; ACCT.msg=""; ACCT.busy=false;
+  let m=$("#acctmodal");
+  if(!m){ m=document.createElement("div"); m.id="acctmodal"; m.className="mk-modal"; m.setAttribute("role","dialog"); m.setAttribute("aria-modal","true"); m.setAttribute("aria-label","Account"); document.body.appendChild(m); m.addEventListener("click",e=>{ if(e.target===m) closeAcct(); }); }
+  renderAcct();
+}
+function closeAcct(){ const m=$("#acctmodal"); if(m) m.remove(); }
+function renderAcct(){
+  const m=$("#acctmodal"); if(!m) return; const v=ACCT.view;
+  const F=(id,label,type,ph,ac,val,extra)=>`<div class="field"><label for="${id}">${label}</label><input class="input" id="${id}" type="${type}" placeholder="${ph}" autocomplete="${ac}" value="${esc(val||"")}" ${extra||""}></div>`;
+  const T={login:"Log in", signup:"Create an account", forgot:"Reset your password", reset:"Choose a new password", account:"Your account", sent:"Check your inbox"}[v];
+  const err=`<div class="acct-err" id="aerr" role="alert">${esc(ACCT.err)}</div>`, dis=ACCT.busy?"disabled":"";
+  let h=`<div class="acct-sheet"><div class="mk-top"><b>${T}</b><button class="btn small ghost" type="button" data-act="acctclose" aria-label="Close">✕</button></div>`;
+  if(v==="login") h+=`<form class="acct-form" data-form="acct-login">${F("ae","Email","email","you@example.com","email","",'required')}${F("ap","Password","password","","current-password","",'required')}${err}<button class="btn primary" ${dis}>${ACCT.busy?"Logging in…":"Log in"}</button></form><div class="row" style="justify-content:space-between"><button class="linkbtn" type="button" data-act="acctview" data-v="signup">Create an account</button><button class="linkbtn" type="button" data-act="acctview" data-v="forgot">Forgot password?</button></div>`;
+  else if(v==="signup") h+=`<form class="acct-form" data-form="acct-signup">${F("an","Name on the leaderboard","text","e.g. Sam","nickname",me.nick,'maxlength="18" required')}${F("ae","Email","email","you@example.com","email","",'required')}${F("ap","Password","password","At least 8 characters","new-password","",'minlength="8" required')}${err}<button class="btn primary" ${dis}>${ACCT.busy?"Creating…":"Create account"}</button></form><button class="linkbtn" type="button" data-act="acctview" data-v="login">I already have an account</button>`;
+  else if(v==="forgot") h+=`<form class="acct-form" data-form="acct-forgot"><p class="muted" style="margin:0;font-size:14px">We'll email you a link to choose a new password.</p>${F("ae","Email","email","you@example.com","email","",'required')}${err}<button class="btn primary" ${dis}>${ACCT.busy?"Sending…":"Send reset link"}</button></form><button class="linkbtn" type="button" data-act="acctview" data-v="login">Back to log in</button>`;
+  else if(v==="reset") h+=`<form class="acct-form" data-form="acct-reset">${F("ap","New password","password","At least 8 characters","new-password","",'minlength="8" required')}${err}<button class="btn primary" ${dis}>${ACCT.busy?"Saving…":"Save password"}</button></form>`;
+  else if(v==="sent") h+=`<p style="margin:0">${esc(ACCT.msg)}</p><p class="muted" style="margin:0;font-size:13px">Can't see it? Check your spam folder.</p><button class="btn" type="button" data-act="acctview" data-v="login">Back to log in</button>`;
+  else if(v==="account"){ const a=app.acct||{}; h+=`<form class="acct-form" data-form="acct-account">${F("an","Name on the leaderboard","text","e.g. Sam","nickname",a.name,'maxlength="18" required')}<div class="muted" style="font-size:14px">Logged in as <b>${esc(a.email||"")}</b></div>${err}<button class="btn primary" ${dis}>Save</button></form><div class="row" style="justify-content:space-between"><button class="linkbtn" type="button" data-act="acctview" data-v="reset">Change password</button><button class="btn small" type="button" data-act="logout">Log out</button></div>`; }
+  if(v==="login"||v==="signup") h+=`<p class="muted" style="font-size:13px;margin:0">An account puts your daily scores on the leaderboards and keeps your name, avatar and streak on every device. Playing without one is fine too.</p>`;
+  m.innerHTML=h+`</div>`;
+  const first=m.querySelector("input"); if(first && !ACCT.err) setTimeout(()=>first.focus({preventScroll:true}),30);
+}
+async function acctSubmit(kind){
+  const A=window.SQ_AUTH; if(!A || ACCT.busy) return;
+  const val=id=>((($("#"+id)||{}).value)||"").trim(), pw=()=>(($("#ap")||{}).value)||"";
+  const keepVals={ae:val("ae"), an:val("an")};
+  const fail=msg=>{ ACCT.busy=false; ACCT.err=msg||"Something went wrong. Try again."; renderAcct(); for(const k in keepVals){ const i=$("#"+k); if(i && keepVals[k]) i.value=keepVals[k]; } };
+  if((kind==="signup"||kind==="reset") && pw().length<8) return fail("Use a longer password (at least 8 characters).");
+  if(kind==="signup" && !val("an")) return fail("Add a name for the leaderboard.");
+  ACCT.busy=true; ACCT.err=""; const btn=$("#acctmodal .btn.primary"); if(btn){ btn.disabled=true; btn.textContent="One moment…"; }
+  try{
+    if(kind==="login"){ const j=await A.login(val("ae"), pw()); acctApply(j.profile); closeAcct(); toast(`Welcome back${j.profile.name?", "+j.profile.name:""}`); }
+    else if(kind==="signup"){ const j=await A.signup(val("an"), val("ae"), pw(), me.av); if(j.session){ acctApply(j.profile); closeAcct(); toast("Account created. You're logged in."); } else { ACCT.view="sent"; ACCT.msg=`We've emailed a confirmation link to ${val("ae")}. Tap it to finish, and you'll be logged in.`; } }
+    else if(kind==="forgot"){ await A.forgot(val("ae")); ACCT.view="sent"; ACCT.msg="If there's an account with that email, a reset link is on its way. Open it on this device to choose a new password."; }
+    else if(kind==="reset"){ await A.setPassword(pw()); const p=await A.me(); if(p) acctApply(p); closeAcct(); toast("Password saved"); }
+    else if(kind==="account"){ const n=val("an"); if(!n) return fail("Add a name."); const p=await A.saveProfile({name:n}); acctApply(p); closeAcct(); toast("Saved"); }
+    ACCT.busy=false; renderAcct(); renderStatus(); acctRefreshView();
+  }catch(e){ fail(e && e.message); }
 }
 function renderDailyBoard(){
   const el=$("#dboard"); if(!el) return;
@@ -7016,10 +7137,14 @@ document.addEventListener("click", async e=>{
   if(a==="mktab"){ app.mkTab=b.dataset.tab; renderMaker(); const bd=document.getElementById("mkbody"); if(bd) bd.scrollTop=0; return; }
   if(a==="mkrandom"){ mkRandom(); return; }
   if(a==="mkset"){ const v=b.dataset.v, k=b.dataset.k; if(k==="gender" && app.mk.gender!==v){ app.mk=genderSwap(app.mk,v); } app.mk[k]=(k==="freckles"||k==="earrings")?v==="1":v; renderMaker(); return; }
-  if(a==="mksave"){ const id=encodeToon(app.mk); LS.set("sq-av-custom",id); me.av=id; LS.set("sq-av",id); closeMaker(); document.querySelectorAll("#avpick").forEach(pk=>{ const tmp=document.createElement("div"); tmp.innerHTML=avPickerHTML(); pk.replaceWith(...tmp.childNodes); }); if(app.party){ setMyPresence({av:id}); renderBoard(); renderLobbyStage(); } toast("Avatar saved. You're using it now."); return; }
-  if(a==="pickav"){ const v=b.dataset.av; if(!validAv(v)) return; me.av=v; LS.set("sq-av", v); document.querySelectorAll(".avopt").forEach(o=>{ const on=o.dataset.av===v; o.classList.toggle("sel", on); o.setAttribute("aria-pressed", on); }); if(app.party){ setMyPresence({av:v}); renderBoard(); } return; }
+  if(a==="mksave"){ const id=encodeToon(app.mk); LS.set("sq-av-custom",id); if(app.acct) window.SQ_AUTH.saveProfile({av:id}).catch(()=>{}); me.av=id; LS.set("sq-av",id); closeMaker(); document.querySelectorAll("#avpick").forEach(pk=>{ const tmp=document.createElement("div"); tmp.innerHTML=avPickerHTML(); pk.replaceWith(...tmp.childNodes); }); if(app.party){ setMyPresence({av:id}); renderBoard(); renderLobbyStage(); } toast("Avatar saved. You're using it now."); return; }
+  if(a==="pickav"){ const v=b.dataset.av; if(!validAv(v)) return; if(app.acct) window.SQ_AUTH.saveProfile({av:v}).catch(()=>{}); me.av=v; LS.set("sq-av", v); document.querySelectorAll(".avopt").forEach(o=>{ const on=o.dataset.av===v; o.classList.toggle("sel", on); o.setAttribute("aria-pressed", on); }); if(app.party){ setMyPresence({av:v}); renderBoard(); } return; }
   if(a==="daily"||a==="dailyresult"){ startDaily(); return; }
   if(a==="dgrid"){ startDGrid(); return; }
+  if(a==="acct"){ openAcct(); return; }
+  if(a==="acctclose"){ closeAcct(); return; }
+  if(a==="acctview"){ ACCT.view=b.dataset.v; ACCT.err=""; renderAcct(); return; }
+  if(a==="logout"){ window.SQ_AUTH.logout(); app.acct=null; closeAcct(); renderStatus(); toast("Logged out"); if(app.view==="home") render(); else if(app.view==="daily") renderDaily(); else if(app.view==="dgrid") renderDGrid(); return; }
   if(a==="dgstart"){ if($("#nick") && !readNick()) return; dgBegin(); return; }
   if(a==="copygrid"){ const txt=gridShareText(DG.result||{score:0,n:0}); try{ await navigator.clipboard.writeText(txt); toast("Copied"); }catch(err){ toast("Select the text above to copy it"); } return; }
   if(a==="copycode"||a==="copyshare"){ const txt = a==="copycode" ? app.code : shareText(D.result||{score:0,pts:[]}); try{ await navigator.clipboard.writeText(txt); toast("Copied"); }catch(err){ toast(a==="copycode"?"Code: "+txt:"Select the text above to copy it"); const s=$("#sharetxt"); if(s){ const r=document.createRange(); r.selectNodeContents(s); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); } } return; }
@@ -7060,6 +7185,7 @@ document.addEventListener("click", async e=>{
 });
 document.addEventListener("submit", e=>{
   const f=e.target; e.preventDefault();
+  if(f.dataset.form && f.dataset.form.startsWith("acct-")){ acctSubmit(f.dataset.form.slice(5)); return; }
   if(f.dataset.form==="mm"){ submitMM(($("#ansin").value||"").trim()); return; }
   if(f.dataset.form==="word"){ addWord($("#wordin").value); return; }
   if(f.dataset.form==="tp"){ sendTopic(); return; }
@@ -7073,7 +7199,7 @@ document.addEventListener("keydown", e=>{
   if(!e.target.closest("input") && S && S.phase==="q" && (S.q.t==="gk"||S.q.t==="sp") && !myAns && app.view==="party"){ const i="abcd".indexOf(e.key.toLowerCase()); if(i>=0){ submitAnswer(i); } }
 });
 document.addEventListener("change", e=>{ const t=e.target; if(t && t.id==="mkphoto" && t.files && t.files[0]){ avatarFromPhoto(t.files[0]); t.value=""; } else if(t && t.dataset && t.dataset.mk){ app.mk[t.dataset.mk]= t.type==="checkbox"?t.checked:t.value; renderMaker(); } });
-document.addEventListener("keydown", e=>{ if(e.key==="Escape" && document.getElementById("mkmodal")) closeMaker(); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && document.getElementById("mkmodal")) closeMaker(); if(e.key==="Escape" && document.getElementById("acctmodal")) closeAcct(); });
 document.addEventListener("input", e=>{
   const id=e.target.id;
   if(id==="nick"){ me.nick=e.target.value.trim().slice(0,18); }
