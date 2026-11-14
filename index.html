@@ -1,4 +1,75 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Spotlight Quiz: a live party quiz you play together on your phones.">
+<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+<script>/* Stand-in for the Claude runtime when the game runs on its own server. */
+(function(){
+  const NET=(()=>{ let ws=null, id=null, open=false, retry=0; const rooms=new Map(), connFns=new Set();
+    const send=o=>{ if(open && ws.readyState===1) ws.send(JSON.stringify(o)); };
+    function connect(){
+      try{ ws=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host+"/ws"); }catch(e){ setTimeout(connect,3000); return; }
+      ws.onopen=()=>{ open=true; retry=0; for(const [n,r] of rooms) send({t:"join", room:n, pres:r.pres}); connFns.forEach(f=>{ try{ f(); }catch(e){} }); };
+      ws.onmessage=e=>{ let m; try{ m=JSON.parse(e.data); }catch(x){ return; }
+        if(m.t==="hello"){ id=m.id; return; }
+        if(m.t==="peers"){ const r=rooms.get(m.room); if(!r) return;
+          r.peers=m.peers.map(p=>Object.freeze({peer:p.id, by:null, isMe:p.id===id, sameTab:p.id===id, kind:"viewer", guest:true, presence:Object.freeze(p.pres||{}), updatedAt:p.at}));
+          const c={peers:r.peers, joined:[], left:[], updated:r.peers}; r.fns.forEach(f=>{ try{ f(c); }catch(x){ console.error(x); } }); } };
+      ws.onclose=()=>{ const was=open; open=false; if(was) connFns.forEach(f=>{ try{ f(); }catch(e){} }); setTimeout(connect, Math.min(8000, 400*Math.pow(2, retry++))); };
+      ws.onerror=()=>{};
+    }
+    connect();
+    function room(name){
+      if(!rooms.has(name)){ rooms.set(name,{pres:{}, peers:[], fns:new Set()}); send({t:"join", room:name, pres:{}}); }
+      const r=rooms.get(name);
+      return {
+        presence(p){ for(const k in p){ if(p[k]===null) delete r.pres[k]; else r.pres[k]=p[k]; } send({t:"pres", room:name, patch:p}); return Promise.resolve(); },
+        peers(){ return r.peers; },
+        onPeers(f){ r.fns.add(f); if(r.peers.length) queueMicrotask(()=>f({peers:r.peers, joined:r.peers, left:[], updated:[]})); return ()=>r.fns.delete(f); },
+        connected(){ return open; },
+        onConnection(f){ connFns.add(f); return ()=>connFns.delete(f); },
+        leave(){ r.fns.clear(); rooms.delete(name); send({t:"leave", room:name}); return Promise.resolve(); }
+      };
+    }
+    return {room};
+  })();
+
+  const post=(url,body)=>fetch(url,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}).then(async r=>{ const j=await r.json().catch(()=>({})); if(!r.ok){ const e=new Error(j.message||j.error||("HTTP "+r.status)); e.code=j.code||"error"; throw e; } return j; });
+  const blobToData=b=>new Promise((res,rej)=>{ const f=new FileReader(); f.onload=()=>res(f.result); f.onerror=rej; f.readAsDataURL(b); });
+  const parseJSON=t=>{ let s=String(t||"").trim().replace(/^```(?:json)?\s*/i,"").replace(/```\s*$/,""); try{ return JSON.parse(s); }catch(e){}
+    const i=Math.min(...["[","{"].map(c=>{ const k=s.indexOf(c); return k<0?1e9:k; })); const j=Math.max(s.lastIndexOf("]"), s.lastIndexOf("}"));
+    if(i<1e9 && j>i) return JSON.parse(s.slice(i,j+1)); throw Object.assign(new Error("Reply was not JSON"),{code:"bad_json"}); };
+  let aiCfg=null; const ai=()=>aiCfg||(aiCfg=fetch("/api/config").then(r=>r.json()).catch(()=>({ai:false})));
+  async function makeSample(){
+    if(!(await ai()).ai) return null;
+    const sample=async(input,opts)=>{ opts=opts||{}; const images=opts.images?await Promise.all(opts.images.map(blobToData)):[]; const r=await post("/api/sample",{input, images, tier:opts.modelTier}); return {text:r.text, truncated:false}; };
+    sample.json=async(input,opts)=>parseJSON((await sample(input,opts)).text);
+    sample.limits=async()=>({images:true});
+    return sample;
+  }
+
+  function makeDb(){
+    const op=b=>post("/api/db",b);
+    function doc(path){ return {
+      async get(){ const r=await op({op:"get",path}); return {exists:!!r.exists, data:()=>r.data}; },
+      async set(data){ await op({op:"set",path,data}); },
+      async acquire(o){ return op({op:"acquire",path,holder:(o||{}).holder,ttlMs:(o||{}).ttlMs}); } }; }
+    function collection(path){ const q={orderBy:null,dir:"asc",limit:20};
+      const api={ orderBy(f,d){ q.orderBy=f; q.dir=d||"asc"; return api; }, limit(n){ q.limit=n; return api; },
+        onSnapshot(fn,err){ let stop=false; const tick=async()=>{ if(stop) return; try{ const r=await op({op:"query",path,orderBy:q.orderBy,dir:q.dir,limit:q.limit}); if(stop) return;
+            const docs=r.docs.map(d=>({id:d.id, data:()=>d.data})); fn({docs, empty:!docs.length, size:docs.length, metadata:{fromCache:false}}); }catch(e){ if(err) err(e); } if(!stop) setTimeout(tick, 8000); };
+          tick(); return ()=>{ stop=true; }; } };
+      return api; }
+    return {doc, collection};
+  }
+
+  let lobby=null;
+  window.claude={ use(name){
+    if(name==="room") return Promise.resolve(lobby||(lobby=Object.assign(NET.room("lobby"),{ join:n=>Promise.resolve(NET.room("p:"+n)) })));
+    if(name==="sample") return makeSample();
+    if(name==="db") return Promise.resolve(makeDb());
+    return Promise.resolve(null);
+  } };
+})();
+</script></head><body>
 <title>Spotlight Quiz</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap">
@@ -973,6 +1044,7 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 @keyframes spIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @media (max-width:520px){.sumpod{gap:6px}.sp-bar b{font-size:16px}.sd{font-size:11px;padding:1px 6px}}
 @media (prefers-reduced-motion: reduce){.sp-bar,.sp-top{animation:none}}
+.ctry-in{color:#4ADE80;font-weight:700}
 /* Rank It */
 .rk{display:flex;flex-direction:column;gap:10px}
 .rk-end{font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding-left:4px}
@@ -1093,7 +1165,7 @@ function toonTo3D(t){ const n=parseInt(t.skin.slice(1),16), lum=(((n>>16)&255)*.
 function crPath(pts, closed){ const n=pts.length; if(n<2) return ""; const P=i=>pts[closed?((i%n)+n)%n:Math.max(0,Math.min(n-1,i))]; let d=`M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
   const seg=closed?n:n-1; for(let i=0;i<seg;i++){ const p0=P(i-1),p1=P(i),p2=P(i+1),p3=P(i+2); const c1=[p1[0]+(p2[0]-p0[0])/6,p1[1]+(p2[1]-p0[1])/6], c2=[p2[0]-(p3[0]-p1[0])/6,p2[1]-(p3[1]-p1[1])/6]; d+=` C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`; } return d+(closed?" Z":""); }
 function mirror(right){ const L=right.slice(1,-1).reverse().map(([x,y])=>[200-x,y]); return right.concat(L); }
-function toonSVG(t, opts){ opts=opts||{};
+function toonSVG(t, opts){ opts=opts||{}; const FO=!!opts.features; if(FO) opts.headOnly=true; /* features: only eyes, brows, nose, mouth and cheek shading, for painting onto a 3D head */
   const id="t"+Math.random().toString(36).slice(2,7), U=x=>`url(#${id}${x})`;
   const sk=t.skin, hc=t.hairColour, tc=t.topColour, hD=shade(hc,.6), hL=shade(hc,1.5), skS=shade(sk,.7), ink="#2B1810";
   const FS={oval:[52,38,146,13,169],round:[55,44,144,17,166],square:[54,46,150,19,168],heart:[54,35,144,11,168],long:[50,38,153,13,176]}[t.face]||[52,38,146,13,169];
@@ -1109,7 +1181,7 @@ function toonSVG(t, opts){ opts=opts||{};
   <radialGradient id="${id}i" cx=".5" cy=".62" r=".62"><stop offset="0" stop-color="${shade(t.eyeColour,1.75)}"/><stop offset=".55" stop-color="${t.eyeColour}"/><stop offset="1" stop-color="${shade(t.eyeColour,.4)}"/></radialGradient>
   <linearGradient id="${id}j" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="${shade(t.hijabColour,1.25)}"/><stop offset="1" stop-color="${shade(t.hijabColour,.62)}"/></linearGradient>
   <filter id="${id}b" filterUnits="userSpaceOnUse" x="-60" y="-60" width="320" height="340"><feGaussianBlur stdDeviation="5"/></filter><filter id="${id}s" filterUnits="userSpaceOnUse" x="-60" y="-60" width="320" height="340"><feGaussianBlur stdDeviation="2"/></filter>
-  <filter id="${id}d" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#000" flood-opacity=".3"/></filter></defs><g filter="url(#${id}d)">`);
+  <filter id="${id}d" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#000" flood-opacity=".3"/></filter></defs><g ${FO?"":`filter="url(#${id}d)"`}>`);
   const hpB=[], hpF=[], sbuf=[]; let front=false;
   const H=(d,extra)=>{ (front?hpF:hpB).push(d); push(`<path d="${d}" fill="${U("h")}" stroke="${shade(hc,.5)}" stroke-width="1.2" stroke-opacity=".6" ${extra||""}/>`); };
   const strands=(paths,w,op)=>sbuf.push(`<g fill="none" stroke-linecap="round">${paths.map(d=>`<path d="${d}" stroke="${hD}" stroke-width="${w||1.6}" opacity="${op||.4}"/>`).join("")}${paths.slice(0,Math.ceil(paths.length/2)).map(d=>`<path d="${d}" stroke="${hL}" stroke-width="${(w||1.6)*.8}" opacity=".22" transform="translate(2.5 0)"/>`).join("")}</g>`);
@@ -1131,7 +1203,7 @@ function toonSVG(t, opts){ opts=opts||{};
       (rnd()<.35?lt:dk).push([p,.5+rnd()*1.1]); });
     sbuf.push(`<g fill="none" stroke-linecap="round">${dk.map(([p,w])=>`<path d="${p}" stroke="${hD}" stroke-width="${w.toFixed(2)}" opacity="${(.16+rnd()*.2).toFixed(2)}"/>`).join("")}${lt.map(([p,w])=>`<path d="${p}" stroke="${hL}" stroke-width="${(w*.8).toFixed(2)}" opacity="${(.14+rnd()*.16).toFixed(2)}"/>`).join("")}</g>`); };
   const curls=(n,cx0,cy0,rx,ry,r)=>{ let d=""; for(let i=0;i<n;i++){ const a=rnd()*Math.PI*2, k=Math.sqrt(rnd()); const x=cx0+Math.cos(a)*k*rx, y=cy0+Math.sin(a)*k*ry, rr=r*(.7+rnd()*.6), st=rnd()*6.28; d+=`<path d="M${(x+Math.cos(st)*rr).toFixed(1)} ${(y+Math.sin(st)*rr).toFixed(1)} A${rr.toFixed(1)} ${rr.toFixed(1)} 0 1 1 ${(x+Math.cos(st+2.6)*rr).toFixed(1)} ${(y+Math.sin(st+2.6)*rr).toFixed(1)}" stroke="${i%3?hD:hL}" stroke-width="${(1.2+rnd()*1.2).toFixed(1)}" opacity="${i%3?.4:.3}"/>`; } sbuf.push(`<g fill="none" stroke-linecap="round">${d}</g>`); };
-  // ---------- hair behind the head ----------
+  if(!FO){ // ---------- hair behind the head ----------
   const longBack=(len,wav,vol)=>{ const L=[]; const R=[]; for(let i=0;i<=10;i++){ const y=60+i*(len-60)/10; const w=60+vol+(i<5?i*1.5:7.5-(i-5)*.6)+(wav?Math.sin(i*1.4)*wav:0); R.push([100+w,y]); }
     const top=[[100,22-vol*.6]]; const tips=[]; for(let k=0;k<=8;k++){ const x=100+56-k*14; tips.push([x,len+(k%2?-6:6)]); } const pts=top.concat(R,tips,R.slice().reverse().map(([x,y])=>[200-x,y])); return crPath(pts,true); };
   if(["long","wavy","curlylong","locs","longside","longfringe","medium","midwavy"].includes(hair)){ const wav=hair==="wavy"?3:hair==="midwavy"?3:hair==="curlylong"?6:0, vol=hair==="curlylong"?10:(hair==="wavy"||hair==="midwavy")?6:3; H(longBack((hair==="medium"||hair==="midwavy")?176:222,wav,vol)); }
@@ -1142,6 +1214,7 @@ function toonSVG(t, opts){ opts=opts||{};
   if(hair==="braids"){ for(const s of [-1,1]) for(let i=0;i<9;i++){ const x=100+s*(ck+6), y=118+i*12; push(`<ellipse cx="${x}" cy="${y}" rx="8" ry="7.5" fill="${U("h")}" stroke="${hD}" stroke-width="1.2" stroke-opacity=".7"/>`); } }
   if(hair==="locs"){ const ps=[]; for(let i=0;i<12;i++){ const x=48+i*9.5; ps.push(`M${x} 70 C${x-4} 120 ${x+4} 170 ${x+(x<100?-6:6)} 220`); } strands(ps,5,.35); }
   if(hair==="hijab"){ push(`<path d="${crPath(mirror([[100,14],[146,22],[170,60],[172,108],[164,150],[176,190],[196,224],[100,226]]),true)}" fill="${U("j")}" stroke="${shade(t.hijabColour,.5)}" stroke-width="1.2" stroke-opacity=".6"/>`); }
+  }
   if(!opts.headOnly){
   // ---------- neck & shoulders ----------
   push(`<path d="M${100-21} ${jy+4} C${100-20} 178 ${100-22} 188 ${100-26} 196 L${100+26} 196 C${100+22} 188 ${100+20} 178 ${100+21} ${jy+4} Z" fill="${shade(sk,.86)}"/>`);
@@ -1154,24 +1227,24 @@ function toonSVG(t, opts){ opts=opts||{};
   else push(`<path d="M${100-26} 186 Q100 200 ${100+26} 186" stroke="${shade(tc,.7)}" stroke-width="3.5" fill="none"/>`);
   }
   // ---------- ears ----------
-  for(const s of [-1,1]){ const ex=100+s*(ck+1); push(`<path d="M${ex} 96 C${ex+s*12} 92 ${ex+s*14} 110 ${ex+s*10} 122 C${ex+s*7} 130 ${ex} 128 ${ex-s*2} 124 Z" fill="${U("g")}" stroke="${OLc}" stroke-width="1" stroke-opacity=".6"/><path d="M${ex+s*3} 102 C${ex+s*9} 102 ${ex+s*9} 114 ${ex+s*5} 118" stroke="${shade(sk,.62)}" stroke-width="2" fill="none" opacity=".55"/>`);
+  if(!FO) for(const s of [-1,1]){ const ex=100+s*(ck+1); push(`<path d="M${ex} 96 C${ex+s*12} 92 ${ex+s*14} 110 ${ex+s*10} 122 C${ex+s*7} 130 ${ex} 128 ${ex-s*2} 124 Z" fill="${U("g")}" stroke="${OLc}" stroke-width="1" stroke-opacity=".6"/><path d="M${ex+s*3} 102 C${ex+s*9} 102 ${ex+s*9} 114 ${ex+s*5} 118" stroke="${shade(sk,.62)}" stroke-width="2" fill="none" opacity=".55"/>`);
     if(t.earrings) push(`<circle cx="${ex+s*6}" cy="128" r="3.4" fill="#E7B53C" stroke="#A47A1C" stroke-width=".8"/><circle cx="${ex+s*5}" cy="127" r="1.1" fill="#FFF6C8"/>`); }
   // ---------- face ----------
-  push(`<path d="${face}" fill="${U("g")}" stroke="${OLc}" stroke-width="1.1" stroke-opacity=".55"/>`);
+  if(!FO) push(`<path d="${face}" fill="${U("g")}" stroke="${OLc}" stroke-width="1.1" stroke-opacity=".55"/>`);
   push(`<g clip-path="url(#${id}f)">`);
-  push(`<path d="M${100+ck-6} 50 C${100+ck+6} 90 ${100+ck} 130 ${100+jx} ${jy+6}" stroke="${skS}" stroke-width="22" fill="none" opacity=".45" filter="url(#${id}b)"/>`);
-  push(`<ellipse cx="88" cy="58" rx="22" ry="10" fill="#fff" opacity=".2" filter="url(#${id}b)"/>`);
-  if(!["bald","hijab","buzz"].includes(hair)) push(`<path d="M50 52 Q100 30 150 52" stroke="${shade(sk,.5)}" stroke-width="16" fill="none" opacity=".35" filter="url(#${id}b)"/>`);
+  if(!FO) push(`<path d="M${100+ck-6} 50 C${100+ck+6} 90 ${100+ck} 130 ${100+jx} ${jy+6}" stroke="${skS}" stroke-width="22" fill="none" opacity=".45" filter="url(#${id}b)"/>`);
+  if(!FO) push(`<ellipse cx="88" cy="58" rx="22" ry="10" fill="#fff" opacity=".2" filter="url(#${id}b)"/>`);
+  if(!FO && !["bald","hijab","buzz"].includes(hair)) push(`<path d="M50 52 Q100 30 150 52" stroke="${shade(sk,.5)}" stroke-width="16" fill="none" opacity=".35" filter="url(#${id}b)"/>`);
   for(const s of [-1,1]) push(`${fem?`<ellipse cx="${100+s*32}" cy="118" rx="11" ry="6" fill="#E0807A" opacity=".13" filter="url(#${id}b)"/>`:""}<ellipse cx="${100+s*30}" cy="112" rx="8" ry="4" fill="#fff" opacity=".16" filter="url(#${id}s)"/>`);
   if(t.freckles){ let d=""; const pts=[[-34,112],[-28,116],[-38,118],[-24,110],[-31,122],[-20,117],[28,116],[34,112],[38,118],[24,110],[31,122],[20,117],[-7,108],[7,108],[0,112]]; for(const [x,y] of pts) d+=`<circle cx="${100+x}" cy="${y}" r="1.3" fill="${shade(sk,.55)}" opacity=".75"/>`; push(d); }
   // beards
   const beardOuter=[[100+ck+2,96],[100+ck,112],[100+(ck+jx)/2+2,130],[100+jx,jy],[100+cw2+6,chinY-4],[100,chinY+(t.facial==="full"?10:3)]];
   const bo=mirror(beardOuter.slice().reverse().concat([])); 
-  if(["stubble","short","full"].includes(t.facial)){ const inner=[[100+ck-4,98],[100+ck-8,112],[126,134],[112,140],[100,142],[88,140],[74,134],[100-ck+8,112],[100-ck+4,98]];
+  if(FO ? t.facial==="stubble" : ["stubble","short","full"].includes(t.facial)){ const inner=[[100+ck-4,98],[100+ck-8,112],[126,134],[112,140],[100,142],[88,140],[74,134],[100-ck+8,112],[100-ck+4,98]];
     const outerR=beardOuter, outerL=beardOuter.slice(0,-1).reverse().map(([x,y])=>[200-x,y]); const ring=outerR.concat(outerL).concat(inner.slice().reverse());
-    const op=t.facial==="stubble"?.28:1; push(`<path d="${crPath(outerR.concat(outerL),false)} L${inner[8][0]} ${inner[8][1]} ${crPath(inner.slice().reverse(),false).replace(/^M[^C]*/,"")} Z" fill="${U("h")}" opacity="${op}"/>`);
+    const op=t.facial==="stubble"?(FO?.22:.28):1; push(`<path d="${crPath(outerR.concat(outerL),false)} L${inner[8][0]} ${inner[8][1]} ${crPath(inner.slice().reverse(),false).replace(/^M[^C]*/,"")} Z" fill="${U("h")}" opacity="${op}"${FO?` filter="url(#${id}s)"`:""}/>`);
     if(t.facial!=="stubble"){ const ps=[]; for(let i=0;i<14;i++){ const x=62+i*5.6; ps.push(`M${x} ${140+Math.abs(x-100)*.0} q2 8 0 ${12+ (14-Math.abs(i-7))*1.2}`); } strands(ps,1.2,.3); } }
-  if(t.facial==="goatee") push(`<path d="${crPath([[100,146],[114,148],[116,162],[108,chinY+4],[100,chinY+6],[92,chinY+4],[84,162],[86,148]],true)}" fill="${U("h")}"/>`);
+  if(!FO && t.facial==="goatee") push(`<path d="${crPath([[100,146],[114,148],[116,162],[108,chinY+4],[100,chinY+6],[92,chinY+4],[84,162],[86,148]],true)}" fill="${U("h")}"/>`);
   push(`</g>`);
   // ---------- eyes ----------
   const mix=(a,b,f)=>{ const A=parseInt(a.slice(1),16), B=parseInt(b.slice(1),16); return "#"+[16,8,0].map(k=>Math.round(((A>>k)&255)*(1-f)+((B>>k)&255)*f).toString(16).padStart(2,"0")).join(""); };
@@ -1180,12 +1253,15 @@ function toonSVG(t, opts){ opts=opts||{};
     const up=`M${ex-EW} ${EY} C${ex-EW*.55} ${EY-eh*1.08} ${ex+EW*.5} ${EY-eh*1.08} ${ex+EW} ${EY-.5}`;
     const ep=`${up} C${ex+EW*.55} ${EY+eh*.72} ${ex-EW*.5} ${EY+eh*.78} ${ex-EW} ${EY} Z`;
     push(`<ellipse cx="${ex}" cy="${EY-2}" rx="${EW+5}" ry="${eh+6}" fill="${shade(sk,.78)}" opacity=".32" filter="url(#${id}s)"/>`);
+    if(opts.blink){ push(`<g transform="${rot}"><path d="M${ex-EW} ${EY} Q${ex} ${EY+eh*.55} ${ex+EW} ${EY-.5}" stroke="${ink}" stroke-width="${fem?3:2.4}" fill="none" stroke-linecap="round"/>${fem?`<path d="M${ex+s*EW-s*1} ${EY-.5} q${s*4} 0 ${s*6} -2.5" stroke="${ink}" stroke-width="2" fill="none" stroke-linecap="round"/>`:""}</g>`); }
+    else {
     push(`<g transform="${rot}"><path d="${ep}" fill="#FBF7F2"/><clipPath id="${id}e${s}"><path d="${ep}"/></clipPath><g clip-path="url(#${id}e${s})"><circle cx="${ex+s*.5}" cy="${EY+.6}" r="${eh*.86}" fill="${U("i")}"/><circle cx="${ex+s*.5}" cy="${EY+.6}" r="${eh*.86}" fill="none" stroke="${shade(t.eyeColour,.35)}" stroke-width="1.2"/><circle cx="${ex+s*.5}" cy="${EY+.6}" r="${eh*.37}" fill="#0E0805"/><circle cx="${ex+s*.5+eh*.3}" cy="${EY-eh*.25}" r="${eh*.2}" fill="#fff" opacity=".95"/><circle cx="${ex+s*.5-eh*.28}" cy="${EY+eh*.36}" r="${eh*.09}" fill="#fff" opacity=".7"/><ellipse cx="${ex}" cy="${EY-eh*.95}" rx="${EW}" ry="${eh*.55}" fill="#000" opacity=".28" filter="url(#${id}s)"/></g>`);
     push(`<path d="${up}" stroke="${ink}" stroke-width="${fem?2.9:2.2}" fill="none" stroke-linecap="round"/>`);
     if(fem) push(`<path d="M${ex+s*EW-s*1} ${EY-1.2} q${s*4} -1.5 ${s*6} -4.5 q${-s*3} 4 ${-s*7} 5.5 Z" fill="${ink}"/>`);
-    push(`<path d="M${ex-EW+3} ${EY+eh*.74} Q${ex} ${EY+eh*1.02} ${ex+EW-2} ${EY+eh*.66}" stroke="${shade(sk,.62)}" stroke-width="1.1" fill="none" opacity=".45"/><path d="M${ex-EW+2} ${EY-eh-3.5} Q${ex} ${EY-eh-7} ${ex+EW} ${EY-eh-3.2}" stroke="${shade(sk,.58)}" stroke-width="1.3" fill="none" opacity=".5"/></g>`);
+    }
+    if(!opts.blink) push(`<path d="M${ex-EW+3} ${EY+eh*.74} Q${ex} ${EY+eh*1.02} ${ex+EW-2} ${EY+eh*.66}" stroke="${shade(sk,.62)}" stroke-width="1.1" fill="none" opacity=".45"/><path d="M${ex-EW+2} ${EY-eh-3.5} Q${ex} ${EY-eh-7} ${ex+EW} ${EY-eh-3.2}" stroke="${shade(sk,.58)}" stroke-width="1.3" fill="none" opacity=".5"/></g>`);
     // brows: tapered, thick at the inner end
-    const bw={thin:2.6,medium:3.8,thick:5.2}[t.brows]||3.8, bc=shade(["bald","hijab","buzz"].includes(hair)?"#3A2A20":hc,.72), by=EY-eh-(fem?11:9.5), lift=fem?3.5:1.6;
+    const bw={thin:2.6,medium:3.8,thick:5.2}[t.brows]||3.8, bc=shade(["bald","hijab","buzz"].includes(hair)?"#3A2A20":hc,.72), by=EY-eh-(fem?11:9.5)-(opts.browUp||0)*4, lift=(fem?3.5:1.6)+(opts.browUp||0)*1.5;
     const bi=[ex-s*13,by+1.5], bp=[ex+s*5,by-lift], bt=[ex+s*17.5,by+2.5];
     const bpts=[[bi[0],bi[1]-bw*1.05],[bp[0],bp[1]-bw*.55],[bt[0],bt[1]-bw*.12],[bt[0]+s*.6,bt[1]+.4],[bp[0],bp[1]+bw*.5],[bi[0],bi[1]+bw*.85]];
     const bpath=crPath(bpts,true); push(`<path d="${bpath}" fill="${bc}"/><clipPath id="${id}bw${s}"><path d="${bpath}"/></clipPath>`);
@@ -1202,12 +1278,15 @@ function toonSVG(t, opts){ opts=opts||{};
   const mline=`M${100-MW} ${MY-1.4} Q${100-MW*.5} ${MY+1.6} 100 ${MY+.9} Q${100+MW*.5} ${MY+1.6} ${100+MW} ${MY-1.4}`;
   const upL=`M${100-MW} ${MY-1.4} C${100-MW*.62} ${MY-full*.85} ${100-5.5} ${MY-full*1.35} ${100-2.4} ${MY-full*1.1} Q100 ${MY-full*.72} ${100+2.4} ${MY-full*1.1} C${100+5.5} ${MY-full*1.35} ${100+MW*.62} ${MY-full*.85} ${100+MW} ${MY-1.4} Q${100+MW*.5} ${MY+1.6} 100 ${MY+.9} Q${100-MW*.5} ${MY+1.6} ${100-MW} ${MY-1.4} Z`;
   const loL=`M${100-MW+2.5} ${MY-.4} Q${100-MW*.5} ${MY+1.6} 100 ${MY+.9} Q${100+MW*.5} ${MY+1.6} ${100+MW-2.5} ${MY-.4} C${100+MW*.55} ${MY+full*2.1} ${100-MW*.55} ${MY+full*2.1} ${100-MW+2.5} ${MY-.4} Z`;
+  if(opts.mouth==="open"){ const d=11; push(`<path d="M${100-MW} ${MY-2} Q100 ${MY+1} ${100+MW} ${MY-2} Q${100+MW*.8} ${MY+d} 100 ${MY+d+1} Q${100-MW*.8} ${MY+d} ${100-MW} ${MY-2} Z" fill="#4A1717" stroke="${shade(lipC,.8)}" stroke-width="2.4"/><clipPath id="${id}mo"><path d="M${100-MW} ${MY-2} Q100 ${MY+1} ${100+MW} ${MY-2} Q${100+MW*.8} ${MY+d} 100 ${MY+d+1} Q${100-MW*.8} ${MY+d} ${100-MW} ${MY-2} Z"/></clipPath><g clip-path="url(#${id}mo)"><rect x="${100-MW}" y="${MY-4}" width="${MW*2}" height="5" fill="#FBF8F2"/><ellipse cx="100" cy="${MY+d+1}" rx="${MW*.5}" ry="5" fill="#D6646A"/></g>`); }
+  else if(opts.mouth==="o"){ push(`<ellipse cx="100" cy="${MY+2}" rx="6.5" ry="8" fill="#4A1717" stroke="${shade(lipC,.8)}" stroke-width="2.6"/>`); }
+  else {
   push(`<path d="${upL}" fill="${shade(lipC,.86)}"/><path d="${loL}" fill="${lipC}"/><ellipse cx="100" cy="${MY+full*1.05}" rx="${MW*.36}" ry="${full*.38}" fill="#fff" opacity=".22" filter="url(#${id}s)"/>`);
-  push(`<path d="${mline}" stroke="${line}" stroke-width="1.6" fill="none" stroke-linecap="round"/>`);
+  push(`<path d="${mline}" stroke="${line}" stroke-width="1.6" fill="none" stroke-linecap="round"/>`); }
   for(const s of [-1,1]) push(`<path d="M${100+s*(MW+.5)} ${MY-3} q${s*2.6} 1.4 ${s*1.4} 4.6" stroke="${shade(sk,.58)}" stroke-width="1.2" fill="none" opacity=".5" stroke-linecap="round"/>`);
   push(`<ellipse cx="100" cy="${MY+full*2.2+3.5}" rx="8.5" ry="2.6" fill="${shade(sk,.6)}" opacity=".32" filter="url(#${id}s)"/><ellipse cx="100" cy="${chinY-9}" rx="9" ry="4" fill="#fff" opacity=".13" filter="url(#${id}s)"/>`);
-  if(["moustache","goatee","short","full"].includes(t.facial)) push(`<path d="M${100-19} ${MY-1} C${100-14} ${MY-10} ${100-4} ${MY-9} 100 ${MY-6} C${100+4} ${MY-9} ${100+14} ${MY-10} ${100+19} ${MY-1} C${100+11} ${MY-4} ${100+4} ${MY-2} 100 ${MY-3} C${100-4} ${MY-2} ${100-11} ${MY-4} ${100-19} ${MY-1} Z" fill="${U("h")}"/>`);
-  // ---------- hair over the head ----------
+  if(!FO && ["moustache","goatee","short","full"].includes(t.facial)) push(`<path d="M${100-19} ${MY-1} C${100-14} ${MY-10} ${100-4} ${MY-9} 100 ${MY-6} C${100+4} ${MY-9} ${100+14} ${MY-10} ${100+19} ${MY-1} C${100+11} ${MY-4} ${100+4} ${MY-2} 100 ${MY-3} C${100-4} ${MY-2} ${100-11} ${MY-4} ${100-19} ${MY-1} Z" fill="${U("h")}"/>`);
+  if(!FO){ // ---------- hair over the head ----------
   front=true;
   const hl=(y)=>[[100+ck-14,58],[132,y-2],[116,y],[100,y+1],[84,y],[68,y-2],[100-ck+14,58]];
   const S=(ps,w,op)=>strands(ps,w,op);
@@ -1253,6 +1332,8 @@ function toonSVG(t, opts){ opts=opts||{};
   if(sbuf.length){ push(`<mask id="${id}hm" maskUnits="userSpaceOnUse" x="-20" y="-40" width="240" height="280">${hpB.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}<path d="${face}" fill="#000"/>${hpF.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}</mask><g mask="url(#${id}hm)">${sbuf.join("")}</g>`); }
   if(["crop","quiff","sidepart","curlytop","pixie","bob","long","wavy","curlylong","locs","ponytail","bun","puffs","braids","fringe","messy","spiky","slick","curtains","manbun","medium","midwavy","longside","longfringe"].includes(hair)) push(`<path d="M62 46 Q100 18 140 42" stroke="${hL}" stroke-width="9" fill="none" stroke-linecap="round" opacity=".26" filter="url(#${id}b)"/><path d="M72 38 Q100 24 128 36" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".14" filter="url(#${id}s)"/>`);
   // ---------- hats ----------
+  }
+  if(!FO){
   if(t.hat==="beanie"){ const bc=tc; push(`<path d="${crPath([[38,76],[40,40],[66,10],[100,2],[134,10],[160,40],[162,76]],false)} Z" fill="${U("t")}" stroke="${shade(bc,.5)}" stroke-width="1.2"/><rect x="34" y="62" width="132" height="22" rx="11" fill="${shade(bc,.82)}" stroke="${shade(bc,.5)}" stroke-width="1.2"/><circle cx="100" cy="0" r="11" fill="${shade(bc,1.1)}" stroke="${shade(bc,.5)}" stroke-width="1.2"/>`); for(let x=44;x<160;x+=8) push(`<path d="M${x} 64 L${x} 82" stroke="${shade(bc,.65)}" stroke-width="1.4" opacity=".6"/>`); }
   if(t.hat==="cap"){ const bc=tc; push(`<path d="${crPath([[40,64],[44,32],[70,8],[100,2],[130,8],[156,32],[160,64]],false)} Q100 54 40 64 Z" fill="${U("t")}" stroke="${shade(bc,.5)}" stroke-width="1.2"/><path d="M44 60 Q100 46 178 64 Q120 80 44 68 Z" fill="${shade(bc,.75)}" stroke="${shade(bc,.45)}" stroke-width="1.2"/><circle cx="100" cy="4" r="4" fill="${shade(bc,.65)}"/><path d="M100 4 L100 54" stroke="${shade(bc,.65)}" stroke-width="1.2" opacity=".6"/>`); }
   // ---------- glasses ----------
@@ -1263,6 +1344,7 @@ function toonSVG(t, opts){ opts=opts||{};
       else push(`<path d="M${ex-18} ${gy-12} L${ex+18} ${gy-12} Q${ex+18} ${gy+15} ${ex} ${gy+15} Q${ex-18} ${gy+15} ${ex-18} ${gy-12} Z" stroke="${gc}" stroke-width="${g==="aviator"?2.4:3.2}" ${lens}/>`);
       push(`<path d="M${ex-10} ${gy-6} l7 -4" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".5"/>`); }
     push(`<path d="M${100-7} ${EY-2} Q100 ${EY-6} ${100+7} ${EY-2}" stroke="${gc}" stroke-width="3" fill="none"/><path d="M${100-42} ${EY-4} L${100-ck} ${EY-6} M${100+42} ${EY-4} L${100+ck} ${EY-6}" stroke="${gc}" stroke-width="3"/>`); }
+  }
   push(`</g>`);
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${opts.vb||"6 -6 188 204"}">${out.join("")}</svg>`;
 }
@@ -1845,7 +1927,16 @@ function drawFaceHuman(cv, f, P){
   else { const w=18+Math.max(0,sm)*10, c=sm*10, t=f.asym*6; x.strokeStyle=lip; x.lineWidth=f.lipstick?7:5.5; x.beginPath(); x.moveTo(MX-w,MY-c*.4+t); x.quadraticCurveTo(MX,MY+c,MX+w,MY-c*.4-t); x.stroke();
     if(sm>.35){ x.strokeStyle="rgba(120,60,45,.35)"; x.lineWidth=2.5; for(const s of [-1,1]){ x.beginPath(); x.arc(MX+s*(w+3),MY-c*.4,4,s>0?-1.2:Math.PI+1.2-2.4,s>0?.9:Math.PI-.9+2.4); x.stroke(); } } }
 }
+/* the avatar maker's own face (eyes, brows, nose, mouth), painted onto the 3D head: a neutral, a blink and two open-mouth versions */
+const TF_VB="53.3 67.2 93.4 93.4";
+function toonFaceImg(ch,key){ const C=ch.tfImgs||(ch.tfImgs={}); let e=C[key]; if(e) return e.ok?e.img:null;
+  e=C[key]={ok:false,img:new Image()}; const o={features:true, vb:TF_VB, blink:key.includes("b"), mouth:key.includes("O")?"open":key.includes("o")?"o":"", browUp:key.includes("o")?1:0};
+  try{ const svg=toonSVG(ch.toonT,o); e.img.onload=()=>{ e.ok=true; ch.faceKey="?"; }; e.img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg); }catch(x){} return null; }
 function updateFace(gx,ch){ const ex=ch.ex||{}, q=v=>Math.round((v||0)*14)/14;
+  if(ch.toonT){ const op=ch.mouthOp!==undefined?ch.mouthOp:(ex.open||0), key=(ch.blink<.4?"b":"")+(op>.32?((ex.smile||0)>.15?"O":"o"):"");
+    if(key===ch.faceKey) return; let img=toonFaceImg(ch,key), shown=key; if(!img){ img=toonFaceImg(ch,""); shown="~"; } if(!img) return; ch.faceKey=shown===key?key:"~"+key;
+    const x=ch.faceCv.getContext("2d"); x.clearRect(0,0,ch.faceCv.width,ch.faceCv.height); x.drawImage(img,0,0,ch.faceCv.width,ch.faceCv.height);
+    const gl=gx.gl; gl.bindTexture(gl.TEXTURE_2D,ch.faceTex); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,ch.faceCv); gl.generateMipmap(gl.TEXTURE_2D); return; }
   const f={smile:q(ex.smile),open:q(ch.mouthOp!==undefined?ch.mouthOp:ex.open),brow:q(ex.brow),browIn:q(ex.browIn),squint:q(ex.squint),wide:q(ex.wide),asym:q(ex.asym),blink:q(ch.blink),lookX:q(ch.look[0]*2),lookY:q(ch.look[1]*2)};
   const key=JSON.stringify(f); if(key===ch.faceKey) return; ch.faceKey=key; Object.assign(f,ch.faceOpts); drawFaceHuman(ch.faceCv,f,ch.P);
   const gl=gx.gl; gl.bindTexture(gl.TEXTURE_2D,ch.faceTex); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,ch.faceCv); gl.generateMipmap(gl.TEXTURE_2D); }
@@ -1857,7 +1948,8 @@ function makeChar(gx, id, geo){
   for(const s of [1,-1]){ const k=s>0?"L":"R", W=RIG.piv[b["hand"+k]]; ch.parts.push({mesh:gx.upload(geo["hand"+k]), bone:b["hand"+k], rest:M4.ch(M4.T(...W),M4.RZ(ARM_A*s)), c:[1,1,1]}); }
   const S=HUM.sph(gx), add=(mesh,hex,bone,rest,o)=>{ const p=Object.assign({mesh,c:Array.isArray(hex)?hex:lin(hex),bone,rest},o||{}); ch.parts.push(p); return p; };
   // painted face (drawn onto the skin of the head mesh)
-  const fc=document.createElement("canvas"); fc.width=256; fc.height=256; ch.faceCv=fc; ch.faceKey="";
+  try{ ch.toonT=(typeof avToon==="function")?avToon(id):null; }catch(e){ ch.toonT=null; }
+  const fc=document.createElement("canvas"); fc.width=fc.height=ch.toonT?512:256; ch.faceCv=fc; ch.faceKey="?";
   ch.faceTex=gx.texCanvas("face_"+id+"_"+Math.random().toString(36).slice(2),fc);
   // accessories
   const gl2=d.glasses, dark=lin("#141418");
@@ -1952,8 +2044,11 @@ function poseChar(ch, t, dt){
         J.armL.rz=mix(.03,.2); J.armR.rz=mix(-.03,-.2); J.armL.rx=mix(.03,-.35+bb*.4); J.armR.rx=mix(.03,-.35-bb*.4); J.elbL.rx=J.elbR.rx=mix(-.14,-1.5); J.handL.ry=mix(-.1,0); J.handR.ry=mix(.1,0);
         J.kneeL.rx=(.25+Math.max(0,bb)*.35)*W; J.kneeR.rx=(.25+Math.max(0,-bb)*.35)*W; J.legL.rx=-J.kneeL.rx*.5; J.legR.rx=-J.kneeR.rx*.5; J.ankL.rx=-J.kneeL.rx*.5; J.ankR.rx=-J.kneeR.rx*.5; mouthOpen=.45*W; } break;
       case "jump": smile=mix(smile,0.95); brow=mix(brow,0.9); { const ph=Math.max(0,Math.min(1,(p-.35)/.7)); const air=Math.sin(ph*Math.PI); const crouch=p<.35?Math.sin(p/.35*Math.PI/2)*.6:(ph>=1?Math.max(0,1-(p-1.05)/.4)*.5:0);
-        rootY=air*.42-crouch*.12; J.kneeL.rx=J.kneeR.rx=crouch*1.1+air*.5; J.legL.rx=J.legR.rx=-(crouch*.6+air*.3); J.ankL.rx=J.ankR.rx=-crouch*.5; J.spine.rx+=crouch*.3; J.armL.rz=mix(.03,.25+air*2.0); J.armR.rz=mix(-.03,-.25-air*2.0); J.armL.rx=J.armR.rx=mix(0,crouch*.8-air*.25); J.elbL.rz=air*.25*W; J.elbR.rz=-air*.25*W; mouthOpen=air*.8; } break;
-      case "clap": smile=mix(smile,0.9); brow=mix(brow,0.35); { const c=Math.abs(Math.sin(p*9)); J.armL.rx=J.armR.rx=mix(.03,-.55); J.armL.rz=mix(.03,-.32+.22*c); J.armR.rz=mix(-.03,.32-.22*c); J.elbL.rx=J.elbR.rx=mix(-.14,-1.15); J.handL.ry=mix(-.1,0); J.handR.ry=mix(.1,0); J.handL.rz=J.handR.rz=0; J.neck.rx=mix(0,.1); mouthOpen=.35*W; } break;
+        rootY=air*.42-crouch*.12; J.kneeL.rx=J.kneeR.rx=crouch*1.1+air*.5; J.legL.rx=J.legR.rx=-(crouch*.6+air*.3); J.ankL.rx=J.ankR.rx=-crouch*.5; J.spine.rx+=crouch*.3; const up=Math.sqrt(air); J.armL.rz=mix(.03,.2+up*2.25); J.armR.rz=mix(-.03,-.2-up*2.25); J.armL.rx=J.armR.rx=mix(0,crouch*.8-up*.3); J.elbL.rz=air*.25*W; J.elbR.rz=-air*.25*W; mouthOpen=air*.8; } break;
+      case "clap": smile=mix(smile,0.9); brow=mix(brow,0.35); { const f=(p*2.6)%1, c=Math.pow(.5+.5*Math.cos(f*Math.PI*2),3); /* c=1 at contact: snaps shut, mostly open */
+    J.armL.rx=J.armR.rx=mix(.03,-.58+.03*c); J.armL.rz=mix(.03,.12); J.armR.rz=mix(-.03,-.12); J.armL.ry=mix(0,-(.46+.24*c)); J.armR.ry=mix(0,.46+.24*c);
+    J.elbL.rx=J.elbR.rx=mix(-.14,-1.6-.04*c); J.elbL.rz=J.elbR.rz=0; J.handL.ry=mix(-.1,-.9); J.handR.ry=mix(.1,.9); J.handL.rz=J.handR.rz=0; J.handL.rx=J.handR.rx=mix(0,.12*c);
+    J.spine.rx+=.012*c*W; J.neck.rx=mix(0,.06); rootY=-.004*c*W; mouthOpen=.3*W; } break;
       case "spin": smile=mix(smile,0.75); brow=mix(brow,0.5); { const ph=Math.max(0,Math.min(1,(p-.2)/1.4)); const e=ph<.5?2*ph*ph:1-Math.pow(-2*ph+2,2)/2; rootRY=ch.ry+e*Math.PI*2; rootY=Math.sin(ph*Math.PI)*.08; J.armL.rz=mix(.03,1.15); J.armR.rz=mix(-.03,-1.15); J.armL.rx=J.armR.rx=mix(0,-.25); J.elbL.rz=mix(0,.55); J.elbR.rz=mix(0,-.55); J.head.ry=0; mouthOpen=.3*W; } break;
       case "cheer": smile=mix(smile,1); brow=mix(brow,1); { const bb=Math.abs(Math.sin(p*6)); rootY=bb*.12*W; J.kneeL.rx=J.kneeR.rx=(1-bb)*.35*W; J.legL.rx=J.legR.rx=-(1-bb)*.18*W; J.armL.rz=mix(.03,2.25+Math.sin(p*12)*.12); J.armR.rz=mix(-.03,-2.25-Math.sin(p*12)*.12); J.armL.rx=J.armR.rx=mix(0,-.35); J.elbL.rz=mix(0,.25); J.elbR.rz=mix(0,-.25); J.neck.rx=mix(-.02,-.22); mouthOpen=1*W; } break;
       case "dab": smile=mix(smile,0.55); brow=mix(brow,0.1); { J.armL.rz=mix(.03,2.0); J.armL.rx=mix(0,-.15); J.elbL.rz=mix(0,.1); J.armR.rz=mix(-.03,-1.0); J.armR.rx=mix(0,-1.25); J.armR.ry=mix(0,.9); J.elbR.rx=mix(-.14,-2.05); J.chest.rz=mix(0,.12); J.neck.rx=mix(0,.42); J.head.ry=mix(0,-.55); J.head.rz=mix(0,.15); J.hips.rz=mix(0,-.06); J.legL.rz=mix(.015,.18); } break;
@@ -2069,7 +2164,7 @@ function toonTo3D(t){ const n=parseInt(t.skin.slice(1),16), lum=(((n>>16)&255)*.
 function crPath(pts, closed){ const n=pts.length; if(n<2) return ""; const P=i=>pts[closed?((i%n)+n)%n:Math.max(0,Math.min(n-1,i))]; let d=`M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
   const seg=closed?n:n-1; for(let i=0;i<seg;i++){ const p0=P(i-1),p1=P(i),p2=P(i+1),p3=P(i+2); const c1=[p1[0]+(p2[0]-p0[0])/6,p1[1]+(p2[1]-p0[1])/6], c2=[p2[0]-(p3[0]-p1[0])/6,p2[1]-(p3[1]-p1[1])/6]; d+=` C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`; } return d+(closed?" Z":""); }
 function mirror(right){ const L=right.slice(1,-1).reverse().map(([x,y])=>[200-x,y]); return right.concat(L); }
-function toonSVG(t, opts){ opts=opts||{};
+function toonSVG(t, opts){ opts=opts||{}; const FO=!!opts.features; if(FO) opts.headOnly=true; /* features: only eyes, brows, nose, mouth and cheek shading, for painting onto a 3D head */
   const id="t"+Math.random().toString(36).slice(2,7), U=x=>`url(#${id}${x})`;
   const sk=t.skin, hc=t.hairColour, tc=t.topColour, hD=shade(hc,.6), hL=shade(hc,1.5), skS=shade(sk,.7), ink="#2B1810";
   const FS={oval:[52,38,146,13,169],round:[55,44,144,17,166],square:[54,46,150,19,168],heart:[54,35,144,11,168],long:[50,38,153,13,176]}[t.face]||[52,38,146,13,169];
@@ -2085,7 +2180,7 @@ function toonSVG(t, opts){ opts=opts||{};
   <radialGradient id="${id}i" cx=".5" cy=".62" r=".62"><stop offset="0" stop-color="${shade(t.eyeColour,1.75)}"/><stop offset=".55" stop-color="${t.eyeColour}"/><stop offset="1" stop-color="${shade(t.eyeColour,.4)}"/></radialGradient>
   <linearGradient id="${id}j" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="${shade(t.hijabColour,1.25)}"/><stop offset="1" stop-color="${shade(t.hijabColour,.62)}"/></linearGradient>
   <filter id="${id}b" filterUnits="userSpaceOnUse" x="-60" y="-60" width="320" height="340"><feGaussianBlur stdDeviation="5"/></filter><filter id="${id}s" filterUnits="userSpaceOnUse" x="-60" y="-60" width="320" height="340"><feGaussianBlur stdDeviation="2"/></filter>
-  <filter id="${id}d" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#000" flood-opacity=".3"/></filter></defs><g filter="url(#${id}d)">`);
+  <filter id="${id}d" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#000" flood-opacity=".3"/></filter></defs><g ${FO?"":`filter="url(#${id}d)"`}>`);
   const hpB=[], hpF=[], sbuf=[]; let front=false;
   const H=(d,extra)=>{ (front?hpF:hpB).push(d); push(`<path d="${d}" fill="${U("h")}" stroke="${shade(hc,.5)}" stroke-width="1.2" stroke-opacity=".6" ${extra||""}/>`); };
   const strands=(paths,w,op)=>sbuf.push(`<g fill="none" stroke-linecap="round">${paths.map(d=>`<path d="${d}" stroke="${hD}" stroke-width="${w||1.6}" opacity="${op||.4}"/>`).join("")}${paths.slice(0,Math.ceil(paths.length/2)).map(d=>`<path d="${d}" stroke="${hL}" stroke-width="${(w||1.6)*.8}" opacity=".22" transform="translate(2.5 0)"/>`).join("")}</g>`);
@@ -2107,7 +2202,7 @@ function toonSVG(t, opts){ opts=opts||{};
       (rnd()<.35?lt:dk).push([p,.5+rnd()*1.1]); });
     sbuf.push(`<g fill="none" stroke-linecap="round">${dk.map(([p,w])=>`<path d="${p}" stroke="${hD}" stroke-width="${w.toFixed(2)}" opacity="${(.16+rnd()*.2).toFixed(2)}"/>`).join("")}${lt.map(([p,w])=>`<path d="${p}" stroke="${hL}" stroke-width="${(w*.8).toFixed(2)}" opacity="${(.14+rnd()*.16).toFixed(2)}"/>`).join("")}</g>`); };
   const curls=(n,cx0,cy0,rx,ry,r)=>{ let d=""; for(let i=0;i<n;i++){ const a=rnd()*Math.PI*2, k=Math.sqrt(rnd()); const x=cx0+Math.cos(a)*k*rx, y=cy0+Math.sin(a)*k*ry, rr=r*(.7+rnd()*.6), st=rnd()*6.28; d+=`<path d="M${(x+Math.cos(st)*rr).toFixed(1)} ${(y+Math.sin(st)*rr).toFixed(1)} A${rr.toFixed(1)} ${rr.toFixed(1)} 0 1 1 ${(x+Math.cos(st+2.6)*rr).toFixed(1)} ${(y+Math.sin(st+2.6)*rr).toFixed(1)}" stroke="${i%3?hD:hL}" stroke-width="${(1.2+rnd()*1.2).toFixed(1)}" opacity="${i%3?.4:.3}"/>`; } sbuf.push(`<g fill="none" stroke-linecap="round">${d}</g>`); };
-  // ---------- hair behind the head ----------
+  if(!FO){ // ---------- hair behind the head ----------
   const longBack=(len,wav,vol)=>{ const L=[]; const R=[]; for(let i=0;i<=10;i++){ const y=60+i*(len-60)/10; const w=60+vol+(i<5?i*1.5:7.5-(i-5)*.6)+(wav?Math.sin(i*1.4)*wav:0); R.push([100+w,y]); }
     const top=[[100,22-vol*.6]]; const tips=[]; for(let k=0;k<=8;k++){ const x=100+56-k*14; tips.push([x,len+(k%2?-6:6)]); } const pts=top.concat(R,tips,R.slice().reverse().map(([x,y])=>[200-x,y])); return crPath(pts,true); };
   if(["long","wavy","curlylong","locs","longside","longfringe","medium","midwavy"].includes(hair)){ const wav=hair==="wavy"?3:hair==="midwavy"?3:hair==="curlylong"?6:0, vol=hair==="curlylong"?10:(hair==="wavy"||hair==="midwavy")?6:3; H(longBack((hair==="medium"||hair==="midwavy")?176:222,wav,vol)); }
@@ -2118,6 +2213,7 @@ function toonSVG(t, opts){ opts=opts||{};
   if(hair==="braids"){ for(const s of [-1,1]) for(let i=0;i<9;i++){ const x=100+s*(ck+6), y=118+i*12; push(`<ellipse cx="${x}" cy="${y}" rx="8" ry="7.5" fill="${U("h")}" stroke="${hD}" stroke-width="1.2" stroke-opacity=".7"/>`); } }
   if(hair==="locs"){ const ps=[]; for(let i=0;i<12;i++){ const x=48+i*9.5; ps.push(`M${x} 70 C${x-4} 120 ${x+4} 170 ${x+(x<100?-6:6)} 220`); } strands(ps,5,.35); }
   if(hair==="hijab"){ push(`<path d="${crPath(mirror([[100,14],[146,22],[170,60],[172,108],[164,150],[176,190],[196,224],[100,226]]),true)}" fill="${U("j")}" stroke="${shade(t.hijabColour,.5)}" stroke-width="1.2" stroke-opacity=".6"/>`); }
+  }
   if(!opts.headOnly){
   // ---------- neck & shoulders ----------
   push(`<path d="M${100-21} ${jy+4} C${100-20} 178 ${100-22} 188 ${100-26} 196 L${100+26} 196 C${100+22} 188 ${100+20} 178 ${100+21} ${jy+4} Z" fill="${shade(sk,.86)}"/>`);
@@ -2130,24 +2226,24 @@ function toonSVG(t, opts){ opts=opts||{};
   else push(`<path d="M${100-26} 186 Q100 200 ${100+26} 186" stroke="${shade(tc,.7)}" stroke-width="3.5" fill="none"/>`);
   }
   // ---------- ears ----------
-  for(const s of [-1,1]){ const ex=100+s*(ck+1); push(`<path d="M${ex} 96 C${ex+s*12} 92 ${ex+s*14} 110 ${ex+s*10} 122 C${ex+s*7} 130 ${ex} 128 ${ex-s*2} 124 Z" fill="${U("g")}" stroke="${OLc}" stroke-width="1" stroke-opacity=".6"/><path d="M${ex+s*3} 102 C${ex+s*9} 102 ${ex+s*9} 114 ${ex+s*5} 118" stroke="${shade(sk,.62)}" stroke-width="2" fill="none" opacity=".55"/>`);
+  if(!FO) for(const s of [-1,1]){ const ex=100+s*(ck+1); push(`<path d="M${ex} 96 C${ex+s*12} 92 ${ex+s*14} 110 ${ex+s*10} 122 C${ex+s*7} 130 ${ex} 128 ${ex-s*2} 124 Z" fill="${U("g")}" stroke="${OLc}" stroke-width="1" stroke-opacity=".6"/><path d="M${ex+s*3} 102 C${ex+s*9} 102 ${ex+s*9} 114 ${ex+s*5} 118" stroke="${shade(sk,.62)}" stroke-width="2" fill="none" opacity=".55"/>`);
     if(t.earrings) push(`<circle cx="${ex+s*6}" cy="128" r="3.4" fill="#E7B53C" stroke="#A47A1C" stroke-width=".8"/><circle cx="${ex+s*5}" cy="127" r="1.1" fill="#FFF6C8"/>`); }
   // ---------- face ----------
-  push(`<path d="${face}" fill="${U("g")}" stroke="${OLc}" stroke-width="1.1" stroke-opacity=".55"/>`);
+  if(!FO) push(`<path d="${face}" fill="${U("g")}" stroke="${OLc}" stroke-width="1.1" stroke-opacity=".55"/>`);
   push(`<g clip-path="url(#${id}f)">`);
-  push(`<path d="M${100+ck-6} 50 C${100+ck+6} 90 ${100+ck} 130 ${100+jx} ${jy+6}" stroke="${skS}" stroke-width="22" fill="none" opacity=".45" filter="url(#${id}b)"/>`);
-  push(`<ellipse cx="88" cy="58" rx="22" ry="10" fill="#fff" opacity=".2" filter="url(#${id}b)"/>`);
-  if(!["bald","hijab","buzz"].includes(hair)) push(`<path d="M50 52 Q100 30 150 52" stroke="${shade(sk,.5)}" stroke-width="16" fill="none" opacity=".35" filter="url(#${id}b)"/>`);
+  if(!FO) push(`<path d="M${100+ck-6} 50 C${100+ck+6} 90 ${100+ck} 130 ${100+jx} ${jy+6}" stroke="${skS}" stroke-width="22" fill="none" opacity=".45" filter="url(#${id}b)"/>`);
+  if(!FO) push(`<ellipse cx="88" cy="58" rx="22" ry="10" fill="#fff" opacity=".2" filter="url(#${id}b)"/>`);
+  if(!FO && !["bald","hijab","buzz"].includes(hair)) push(`<path d="M50 52 Q100 30 150 52" stroke="${shade(sk,.5)}" stroke-width="16" fill="none" opacity=".35" filter="url(#${id}b)"/>`);
   for(const s of [-1,1]) push(`${fem?`<ellipse cx="${100+s*32}" cy="118" rx="11" ry="6" fill="#E0807A" opacity=".13" filter="url(#${id}b)"/>`:""}<ellipse cx="${100+s*30}" cy="112" rx="8" ry="4" fill="#fff" opacity=".16" filter="url(#${id}s)"/>`);
   if(t.freckles){ let d=""; const pts=[[-34,112],[-28,116],[-38,118],[-24,110],[-31,122],[-20,117],[28,116],[34,112],[38,118],[24,110],[31,122],[20,117],[-7,108],[7,108],[0,112]]; for(const [x,y] of pts) d+=`<circle cx="${100+x}" cy="${y}" r="1.3" fill="${shade(sk,.55)}" opacity=".75"/>`; push(d); }
   // beards
   const beardOuter=[[100+ck+2,96],[100+ck,112],[100+(ck+jx)/2+2,130],[100+jx,jy],[100+cw2+6,chinY-4],[100,chinY+(t.facial==="full"?10:3)]];
   const bo=mirror(beardOuter.slice().reverse().concat([])); 
-  if(["stubble","short","full"].includes(t.facial)){ const inner=[[100+ck-4,98],[100+ck-8,112],[126,134],[112,140],[100,142],[88,140],[74,134],[100-ck+8,112],[100-ck+4,98]];
+  if(FO ? t.facial==="stubble" : ["stubble","short","full"].includes(t.facial)){ const inner=[[100+ck-4,98],[100+ck-8,112],[126,134],[112,140],[100,142],[88,140],[74,134],[100-ck+8,112],[100-ck+4,98]];
     const outerR=beardOuter, outerL=beardOuter.slice(0,-1).reverse().map(([x,y])=>[200-x,y]); const ring=outerR.concat(outerL).concat(inner.slice().reverse());
-    const op=t.facial==="stubble"?.28:1; push(`<path d="${crPath(outerR.concat(outerL),false)} L${inner[8][0]} ${inner[8][1]} ${crPath(inner.slice().reverse(),false).replace(/^M[^C]*/,"")} Z" fill="${U("h")}" opacity="${op}"/>`);
+    const op=t.facial==="stubble"?(FO?.22:.28):1; push(`<path d="${crPath(outerR.concat(outerL),false)} L${inner[8][0]} ${inner[8][1]} ${crPath(inner.slice().reverse(),false).replace(/^M[^C]*/,"")} Z" fill="${U("h")}" opacity="${op}"${FO?` filter="url(#${id}s)"`:""}/>`);
     if(t.facial!=="stubble"){ const ps=[]; for(let i=0;i<14;i++){ const x=62+i*5.6; ps.push(`M${x} ${140+Math.abs(x-100)*.0} q2 8 0 ${12+ (14-Math.abs(i-7))*1.2}`); } strands(ps,1.2,.3); } }
-  if(t.facial==="goatee") push(`<path d="${crPath([[100,146],[114,148],[116,162],[108,chinY+4],[100,chinY+6],[92,chinY+4],[84,162],[86,148]],true)}" fill="${U("h")}"/>`);
+  if(!FO && t.facial==="goatee") push(`<path d="${crPath([[100,146],[114,148],[116,162],[108,chinY+4],[100,chinY+6],[92,chinY+4],[84,162],[86,148]],true)}" fill="${U("h")}"/>`);
   push(`</g>`);
   // ---------- eyes ----------
   const mix=(a,b,f)=>{ const A=parseInt(a.slice(1),16), B=parseInt(b.slice(1),16); return "#"+[16,8,0].map(k=>Math.round(((A>>k)&255)*(1-f)+((B>>k)&255)*f).toString(16).padStart(2,"0")).join(""); };
@@ -2156,12 +2252,15 @@ function toonSVG(t, opts){ opts=opts||{};
     const up=`M${ex-EW} ${EY} C${ex-EW*.55} ${EY-eh*1.08} ${ex+EW*.5} ${EY-eh*1.08} ${ex+EW} ${EY-.5}`;
     const ep=`${up} C${ex+EW*.55} ${EY+eh*.72} ${ex-EW*.5} ${EY+eh*.78} ${ex-EW} ${EY} Z`;
     push(`<ellipse cx="${ex}" cy="${EY-2}" rx="${EW+5}" ry="${eh+6}" fill="${shade(sk,.78)}" opacity=".32" filter="url(#${id}s)"/>`);
+    if(opts.blink){ push(`<g transform="${rot}"><path d="M${ex-EW} ${EY} Q${ex} ${EY+eh*.55} ${ex+EW} ${EY-.5}" stroke="${ink}" stroke-width="${fem?3:2.4}" fill="none" stroke-linecap="round"/>${fem?`<path d="M${ex+s*EW-s*1} ${EY-.5} q${s*4} 0 ${s*6} -2.5" stroke="${ink}" stroke-width="2" fill="none" stroke-linecap="round"/>`:""}</g>`); }
+    else {
     push(`<g transform="${rot}"><path d="${ep}" fill="#FBF7F2"/><clipPath id="${id}e${s}"><path d="${ep}"/></clipPath><g clip-path="url(#${id}e${s})"><circle cx="${ex+s*.5}" cy="${EY+.6}" r="${eh*.86}" fill="${U("i")}"/><circle cx="${ex+s*.5}" cy="${EY+.6}" r="${eh*.86}" fill="none" stroke="${shade(t.eyeColour,.35)}" stroke-width="1.2"/><circle cx="${ex+s*.5}" cy="${EY+.6}" r="${eh*.37}" fill="#0E0805"/><circle cx="${ex+s*.5+eh*.3}" cy="${EY-eh*.25}" r="${eh*.2}" fill="#fff" opacity=".95"/><circle cx="${ex+s*.5-eh*.28}" cy="${EY+eh*.36}" r="${eh*.09}" fill="#fff" opacity=".7"/><ellipse cx="${ex}" cy="${EY-eh*.95}" rx="${EW}" ry="${eh*.55}" fill="#000" opacity=".28" filter="url(#${id}s)"/></g>`);
     push(`<path d="${up}" stroke="${ink}" stroke-width="${fem?2.9:2.2}" fill="none" stroke-linecap="round"/>`);
     if(fem) push(`<path d="M${ex+s*EW-s*1} ${EY-1.2} q${s*4} -1.5 ${s*6} -4.5 q${-s*3} 4 ${-s*7} 5.5 Z" fill="${ink}"/>`);
-    push(`<path d="M${ex-EW+3} ${EY+eh*.74} Q${ex} ${EY+eh*1.02} ${ex+EW-2} ${EY+eh*.66}" stroke="${shade(sk,.62)}" stroke-width="1.1" fill="none" opacity=".45"/><path d="M${ex-EW+2} ${EY-eh-3.5} Q${ex} ${EY-eh-7} ${ex+EW} ${EY-eh-3.2}" stroke="${shade(sk,.58)}" stroke-width="1.3" fill="none" opacity=".5"/></g>`);
+    }
+    if(!opts.blink) push(`<path d="M${ex-EW+3} ${EY+eh*.74} Q${ex} ${EY+eh*1.02} ${ex+EW-2} ${EY+eh*.66}" stroke="${shade(sk,.62)}" stroke-width="1.1" fill="none" opacity=".45"/><path d="M${ex-EW+2} ${EY-eh-3.5} Q${ex} ${EY-eh-7} ${ex+EW} ${EY-eh-3.2}" stroke="${shade(sk,.58)}" stroke-width="1.3" fill="none" opacity=".5"/></g>`);
     // brows: tapered, thick at the inner end
-    const bw={thin:2.6,medium:3.8,thick:5.2}[t.brows]||3.8, bc=shade(["bald","hijab","buzz"].includes(hair)?"#3A2A20":hc,.72), by=EY-eh-(fem?11:9.5), lift=fem?3.5:1.6;
+    const bw={thin:2.6,medium:3.8,thick:5.2}[t.brows]||3.8, bc=shade(["bald","hijab","buzz"].includes(hair)?"#3A2A20":hc,.72), by=EY-eh-(fem?11:9.5)-(opts.browUp||0)*4, lift=(fem?3.5:1.6)+(opts.browUp||0)*1.5;
     const bi=[ex-s*13,by+1.5], bp=[ex+s*5,by-lift], bt=[ex+s*17.5,by+2.5];
     const bpts=[[bi[0],bi[1]-bw*1.05],[bp[0],bp[1]-bw*.55],[bt[0],bt[1]-bw*.12],[bt[0]+s*.6,bt[1]+.4],[bp[0],bp[1]+bw*.5],[bi[0],bi[1]+bw*.85]];
     const bpath=crPath(bpts,true); push(`<path d="${bpath}" fill="${bc}"/><clipPath id="${id}bw${s}"><path d="${bpath}"/></clipPath>`);
@@ -2178,12 +2277,15 @@ function toonSVG(t, opts){ opts=opts||{};
   const mline=`M${100-MW} ${MY-1.4} Q${100-MW*.5} ${MY+1.6} 100 ${MY+.9} Q${100+MW*.5} ${MY+1.6} ${100+MW} ${MY-1.4}`;
   const upL=`M${100-MW} ${MY-1.4} C${100-MW*.62} ${MY-full*.85} ${100-5.5} ${MY-full*1.35} ${100-2.4} ${MY-full*1.1} Q100 ${MY-full*.72} ${100+2.4} ${MY-full*1.1} C${100+5.5} ${MY-full*1.35} ${100+MW*.62} ${MY-full*.85} ${100+MW} ${MY-1.4} Q${100+MW*.5} ${MY+1.6} 100 ${MY+.9} Q${100-MW*.5} ${MY+1.6} ${100-MW} ${MY-1.4} Z`;
   const loL=`M${100-MW+2.5} ${MY-.4} Q${100-MW*.5} ${MY+1.6} 100 ${MY+.9} Q${100+MW*.5} ${MY+1.6} ${100+MW-2.5} ${MY-.4} C${100+MW*.55} ${MY+full*2.1} ${100-MW*.55} ${MY+full*2.1} ${100-MW+2.5} ${MY-.4} Z`;
+  if(opts.mouth==="open"){ const d=11; push(`<path d="M${100-MW} ${MY-2} Q100 ${MY+1} ${100+MW} ${MY-2} Q${100+MW*.8} ${MY+d} 100 ${MY+d+1} Q${100-MW*.8} ${MY+d} ${100-MW} ${MY-2} Z" fill="#4A1717" stroke="${shade(lipC,.8)}" stroke-width="2.4"/><clipPath id="${id}mo"><path d="M${100-MW} ${MY-2} Q100 ${MY+1} ${100+MW} ${MY-2} Q${100+MW*.8} ${MY+d} 100 ${MY+d+1} Q${100-MW*.8} ${MY+d} ${100-MW} ${MY-2} Z"/></clipPath><g clip-path="url(#${id}mo)"><rect x="${100-MW}" y="${MY-4}" width="${MW*2}" height="5" fill="#FBF8F2"/><ellipse cx="100" cy="${MY+d+1}" rx="${MW*.5}" ry="5" fill="#D6646A"/></g>`); }
+  else if(opts.mouth==="o"){ push(`<ellipse cx="100" cy="${MY+2}" rx="6.5" ry="8" fill="#4A1717" stroke="${shade(lipC,.8)}" stroke-width="2.6"/>`); }
+  else {
   push(`<path d="${upL}" fill="${shade(lipC,.86)}"/><path d="${loL}" fill="${lipC}"/><ellipse cx="100" cy="${MY+full*1.05}" rx="${MW*.36}" ry="${full*.38}" fill="#fff" opacity=".22" filter="url(#${id}s)"/>`);
-  push(`<path d="${mline}" stroke="${line}" stroke-width="1.6" fill="none" stroke-linecap="round"/>`);
+  push(`<path d="${mline}" stroke="${line}" stroke-width="1.6" fill="none" stroke-linecap="round"/>`); }
   for(const s of [-1,1]) push(`<path d="M${100+s*(MW+.5)} ${MY-3} q${s*2.6} 1.4 ${s*1.4} 4.6" stroke="${shade(sk,.58)}" stroke-width="1.2" fill="none" opacity=".5" stroke-linecap="round"/>`);
   push(`<ellipse cx="100" cy="${MY+full*2.2+3.5}" rx="8.5" ry="2.6" fill="${shade(sk,.6)}" opacity=".32" filter="url(#${id}s)"/><ellipse cx="100" cy="${chinY-9}" rx="9" ry="4" fill="#fff" opacity=".13" filter="url(#${id}s)"/>`);
-  if(["moustache","goatee","short","full"].includes(t.facial)) push(`<path d="M${100-19} ${MY-1} C${100-14} ${MY-10} ${100-4} ${MY-9} 100 ${MY-6} C${100+4} ${MY-9} ${100+14} ${MY-10} ${100+19} ${MY-1} C${100+11} ${MY-4} ${100+4} ${MY-2} 100 ${MY-3} C${100-4} ${MY-2} ${100-11} ${MY-4} ${100-19} ${MY-1} Z" fill="${U("h")}"/>`);
-  // ---------- hair over the head ----------
+  if(!FO && ["moustache","goatee","short","full"].includes(t.facial)) push(`<path d="M${100-19} ${MY-1} C${100-14} ${MY-10} ${100-4} ${MY-9} 100 ${MY-6} C${100+4} ${MY-9} ${100+14} ${MY-10} ${100+19} ${MY-1} C${100+11} ${MY-4} ${100+4} ${MY-2} 100 ${MY-3} C${100-4} ${MY-2} ${100-11} ${MY-4} ${100-19} ${MY-1} Z" fill="${U("h")}"/>`);
+  if(!FO){ // ---------- hair over the head ----------
   front=true;
   const hl=(y)=>[[100+ck-14,58],[132,y-2],[116,y],[100,y+1],[84,y],[68,y-2],[100-ck+14,58]];
   const S=(ps,w,op)=>strands(ps,w,op);
@@ -2229,6 +2331,8 @@ function toonSVG(t, opts){ opts=opts||{};
   if(sbuf.length){ push(`<mask id="${id}hm" maskUnits="userSpaceOnUse" x="-20" y="-40" width="240" height="280">${hpB.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}<path d="${face}" fill="#000"/>${hpF.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}</mask><g mask="url(#${id}hm)">${sbuf.join("")}</g>`); }
   if(["crop","quiff","sidepart","curlytop","pixie","bob","long","wavy","curlylong","locs","ponytail","bun","puffs","braids","fringe","messy","spiky","slick","curtains","manbun","medium","midwavy","longside","longfringe"].includes(hair)) push(`<path d="M62 46 Q100 18 140 42" stroke="${hL}" stroke-width="9" fill="none" stroke-linecap="round" opacity=".26" filter="url(#${id}b)"/><path d="M72 38 Q100 24 128 36" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".14" filter="url(#${id}s)"/>`);
   // ---------- hats ----------
+  }
+  if(!FO){
   if(t.hat==="beanie"){ const bc=tc; push(`<path d="${crPath([[38,76],[40,40],[66,10],[100,2],[134,10],[160,40],[162,76]],false)} Z" fill="${U("t")}" stroke="${shade(bc,.5)}" stroke-width="1.2"/><rect x="34" y="62" width="132" height="22" rx="11" fill="${shade(bc,.82)}" stroke="${shade(bc,.5)}" stroke-width="1.2"/><circle cx="100" cy="0" r="11" fill="${shade(bc,1.1)}" stroke="${shade(bc,.5)}" stroke-width="1.2"/>`); for(let x=44;x<160;x+=8) push(`<path d="M${x} 64 L${x} 82" stroke="${shade(bc,.65)}" stroke-width="1.4" opacity=".6"/>`); }
   if(t.hat==="cap"){ const bc=tc; push(`<path d="${crPath([[40,64],[44,32],[70,8],[100,2],[130,8],[156,32],[160,64]],false)} Q100 54 40 64 Z" fill="${U("t")}" stroke="${shade(bc,.5)}" stroke-width="1.2"/><path d="M44 60 Q100 46 178 64 Q120 80 44 68 Z" fill="${shade(bc,.75)}" stroke="${shade(bc,.45)}" stroke-width="1.2"/><circle cx="100" cy="4" r="4" fill="${shade(bc,.65)}"/><path d="M100 4 L100 54" stroke="${shade(bc,.65)}" stroke-width="1.2" opacity=".6"/>`); }
   // ---------- glasses ----------
@@ -2239,6 +2343,7 @@ function toonSVG(t, opts){ opts=opts||{};
       else push(`<path d="M${ex-18} ${gy-12} L${ex+18} ${gy-12} Q${ex+18} ${gy+15} ${ex} ${gy+15} Q${ex-18} ${gy+15} ${ex-18} ${gy-12} Z" stroke="${gc}" stroke-width="${g==="aviator"?2.4:3.2}" ${lens}/>`);
       push(`<path d="M${ex-10} ${gy-6} l7 -4" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".5"/>`); }
     push(`<path d="M${100-7} ${EY-2} Q100 ${EY-6} ${100+7} ${EY-2}" stroke="${gc}" stroke-width="3" fill="none"/><path d="M${100-42} ${EY-4} L${100-ck} ${EY-6} M${100+42} ${EY-4} L${100+ck} ${EY-6}" stroke="${gc}" stroke-width="3"/>`); }
+  }
   push(`</g>`);
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${opts.vb||"6 -6 188 204"}">${out.join("")}</svg>`;
 }
@@ -2325,6 +2430,11 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -2844,7 +2954,16 @@ function drawFaceHuman(cv, f, P){
   else { const w=18+Math.max(0,sm)*10, c=sm*10, t=f.asym*6; x.strokeStyle=lip; x.lineWidth=f.lipstick?7:5.5; x.beginPath(); x.moveTo(MX-w,MY-c*.4+t); x.quadraticCurveTo(MX,MY+c,MX+w,MY-c*.4-t); x.stroke();
     if(sm>.35){ x.strokeStyle="rgba(120,60,45,.35)"; x.lineWidth=2.5; for(const s of [-1,1]){ x.beginPath(); x.arc(MX+s*(w+3),MY-c*.4,4,s>0?-1.2:Math.PI+1.2-2.4,s>0?.9:Math.PI-.9+2.4); x.stroke(); } } }
 }
+/* the avatar maker's own face (eyes, brows, nose, mouth), painted onto the 3D head: a neutral, a blink and two open-mouth versions */
+const TF_VB="53.3 67.2 93.4 93.4";
+function toonFaceImg(ch,key){ const C=ch.tfImgs||(ch.tfImgs={}); let e=C[key]; if(e) return e.ok?e.img:null;
+  e=C[key]={ok:false,img:new Image()}; const o={features:true, vb:TF_VB, blink:key.includes("b"), mouth:key.includes("O")?"open":key.includes("o")?"o":"", browUp:key.includes("o")?1:0};
+  try{ const svg=toonSVG(ch.toonT,o); e.img.onload=()=>{ e.ok=true; ch.faceKey="?"; }; e.img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg); }catch(x){} return null; }
 function updateFace(gx,ch){ const ex=ch.ex||{}, q=v=>Math.round((v||0)*14)/14;
+  if(ch.toonT){ const op=ch.mouthOp!==undefined?ch.mouthOp:(ex.open||0), key=(ch.blink<.4?"b":"")+(op>.32?((ex.smile||0)>.15?"O":"o"):"");
+    if(key===ch.faceKey) return; let img=toonFaceImg(ch,key), shown=key; if(!img){ img=toonFaceImg(ch,""); shown="~"; } if(!img) return; ch.faceKey=shown===key?key:"~"+key;
+    const x=ch.faceCv.getContext("2d"); x.clearRect(0,0,ch.faceCv.width,ch.faceCv.height); x.drawImage(img,0,0,ch.faceCv.width,ch.faceCv.height);
+    const gl=gx.gl; gl.bindTexture(gl.TEXTURE_2D,ch.faceTex); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,ch.faceCv); gl.generateMipmap(gl.TEXTURE_2D); return; }
   const f={smile:q(ex.smile),open:q(ch.mouthOp!==undefined?ch.mouthOp:ex.open),brow:q(ex.brow),browIn:q(ex.browIn),squint:q(ex.squint),wide:q(ex.wide),asym:q(ex.asym),blink:q(ch.blink),lookX:q(ch.look[0]*2),lookY:q(ch.look[1]*2)};
   const key=JSON.stringify(f); if(key===ch.faceKey) return; ch.faceKey=key; Object.assign(f,ch.faceOpts); drawFaceHuman(ch.faceCv,f,ch.P);
   const gl=gx.gl; gl.bindTexture(gl.TEXTURE_2D,ch.faceTex); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,ch.faceCv); gl.generateMipmap(gl.TEXTURE_2D); }
@@ -2856,7 +2975,8 @@ function makeChar(gx, id, geo){
   for(const s of [1,-1]){ const k=s>0?"L":"R", W=RIG.piv[b["hand"+k]]; ch.parts.push({mesh:gx.upload(geo["hand"+k]), bone:b["hand"+k], rest:M4.ch(M4.T(...W),M4.RZ(ARM_A*s)), c:[1,1,1]}); }
   const S=HUM.sph(gx), add=(mesh,hex,bone,rest,o)=>{ const p=Object.assign({mesh,c:Array.isArray(hex)?hex:lin(hex),bone,rest},o||{}); ch.parts.push(p); return p; };
   // painted face (drawn onto the skin of the head mesh)
-  const fc=document.createElement("canvas"); fc.width=256; fc.height=256; ch.faceCv=fc; ch.faceKey="";
+  try{ ch.toonT=(typeof avToon==="function")?avToon(id):null; }catch(e){ ch.toonT=null; }
+  const fc=document.createElement("canvas"); fc.width=fc.height=ch.toonT?512:256; ch.faceCv=fc; ch.faceKey="?";
   ch.faceTex=gx.texCanvas("face_"+id+"_"+Math.random().toString(36).slice(2),fc);
   // accessories
   const gl2=d.glasses, dark=lin("#141418");
@@ -2951,8 +3071,11 @@ function poseChar(ch, t, dt){
         J.armL.rz=mix(.03,.2); J.armR.rz=mix(-.03,-.2); J.armL.rx=mix(.03,-.35+bb*.4); J.armR.rx=mix(.03,-.35-bb*.4); J.elbL.rx=J.elbR.rx=mix(-.14,-1.5); J.handL.ry=mix(-.1,0); J.handR.ry=mix(.1,0);
         J.kneeL.rx=(.25+Math.max(0,bb)*.35)*W; J.kneeR.rx=(.25+Math.max(0,-bb)*.35)*W; J.legL.rx=-J.kneeL.rx*.5; J.legR.rx=-J.kneeR.rx*.5; J.ankL.rx=-J.kneeL.rx*.5; J.ankR.rx=-J.kneeR.rx*.5; mouthOpen=.45*W; } break;
       case "jump": smile=mix(smile,0.95); brow=mix(brow,0.9); { const ph=Math.max(0,Math.min(1,(p-.35)/.7)); const air=Math.sin(ph*Math.PI); const crouch=p<.35?Math.sin(p/.35*Math.PI/2)*.6:(ph>=1?Math.max(0,1-(p-1.05)/.4)*.5:0);
-        rootY=air*.42-crouch*.12; J.kneeL.rx=J.kneeR.rx=crouch*1.1+air*.5; J.legL.rx=J.legR.rx=-(crouch*.6+air*.3); J.ankL.rx=J.ankR.rx=-crouch*.5; J.spine.rx+=crouch*.3; J.armL.rz=mix(.03,.25+air*2.0); J.armR.rz=mix(-.03,-.25-air*2.0); J.armL.rx=J.armR.rx=mix(0,crouch*.8-air*.25); J.elbL.rz=air*.25*W; J.elbR.rz=-air*.25*W; mouthOpen=air*.8; } break;
-      case "clap": smile=mix(smile,0.9); brow=mix(brow,0.35); { const c=Math.abs(Math.sin(p*9)); J.armL.rx=J.armR.rx=mix(.03,-.55); J.armL.rz=mix(.03,-.32+.22*c); J.armR.rz=mix(-.03,.32-.22*c); J.elbL.rx=J.elbR.rx=mix(-.14,-1.15); J.handL.ry=mix(-.1,0); J.handR.ry=mix(.1,0); J.handL.rz=J.handR.rz=0; J.neck.rx=mix(0,.1); mouthOpen=.35*W; } break;
+        rootY=air*.42-crouch*.12; J.kneeL.rx=J.kneeR.rx=crouch*1.1+air*.5; J.legL.rx=J.legR.rx=-(crouch*.6+air*.3); J.ankL.rx=J.ankR.rx=-crouch*.5; J.spine.rx+=crouch*.3; const up=Math.sqrt(air); J.armL.rz=mix(.03,.2+up*2.25); J.armR.rz=mix(-.03,-.2-up*2.25); J.armL.rx=J.armR.rx=mix(0,crouch*.8-up*.3); J.elbL.rz=air*.25*W; J.elbR.rz=-air*.25*W; mouthOpen=air*.8; } break;
+      case "clap": smile=mix(smile,0.9); brow=mix(brow,0.35); { const f=(p*2.6)%1, c=Math.pow(.5+.5*Math.cos(f*Math.PI*2),3); /* c=1 at contact: snaps shut, mostly open */
+    J.armL.rx=J.armR.rx=mix(.03,-.58+.03*c); J.armL.rz=mix(.03,.12); J.armR.rz=mix(-.03,-.12); J.armL.ry=mix(0,-(.46+.24*c)); J.armR.ry=mix(0,.46+.24*c);
+    J.elbL.rx=J.elbR.rx=mix(-.14,-1.6-.04*c); J.elbL.rz=J.elbR.rz=0; J.handL.ry=mix(-.1,-.9); J.handR.ry=mix(.1,.9); J.handL.rz=J.handR.rz=0; J.handL.rx=J.handR.rx=mix(0,.12*c);
+    J.spine.rx+=.012*c*W; J.neck.rx=mix(0,.06); rootY=-.004*c*W; mouthOpen=.3*W; } break;
       case "spin": smile=mix(smile,0.75); brow=mix(brow,0.5); { const ph=Math.max(0,Math.min(1,(p-.2)/1.4)); const e=ph<.5?2*ph*ph:1-Math.pow(-2*ph+2,2)/2; rootRY=ch.ry+e*Math.PI*2; rootY=Math.sin(ph*Math.PI)*.08; J.armL.rz=mix(.03,1.15); J.armR.rz=mix(-.03,-1.15); J.armL.rx=J.armR.rx=mix(0,-.25); J.elbL.rz=mix(0,.55); J.elbR.rz=mix(0,-.55); J.head.ry=0; mouthOpen=.3*W; } break;
       case "cheer": smile=mix(smile,1); brow=mix(brow,1); { const bb=Math.abs(Math.sin(p*6)); rootY=bb*.12*W; J.kneeL.rx=J.kneeR.rx=(1-bb)*.35*W; J.legL.rx=J.legR.rx=-(1-bb)*.18*W; J.armL.rz=mix(.03,2.25+Math.sin(p*12)*.12); J.armR.rz=mix(-.03,-2.25-Math.sin(p*12)*.12); J.armL.rx=J.armR.rx=mix(0,-.35); J.elbL.rz=mix(0,.25); J.elbR.rz=mix(0,-.25); J.neck.rx=mix(-.02,-.22); mouthOpen=1*W; } break;
       case "dab": smile=mix(smile,0.55); brow=mix(brow,0.1); { J.armL.rz=mix(.03,2.0); J.armL.rx=mix(0,-.15); J.elbL.rz=mix(0,.1); J.armR.rz=mix(-.03,-1.0); J.armR.rx=mix(0,-1.25); J.armR.ry=mix(0,.9); J.elbR.rx=mix(-.14,-2.05); J.chest.rz=mix(0,.12); J.neck.rx=mix(0,.42); J.head.ry=mix(0,-.55); J.head.rz=mix(0,.15); J.hips.rz=mix(0,-.06); J.legL.rz=mix(.015,.18); } break;
@@ -3069,14 +3192,22 @@ const Room={
     list.forEach((p,i)=>{ keep.add(p.pid); const w=this.want[p.pid]||(this.want[p.pid]={}); Object.assign(w,{label:p.label,me:p.me,color:p.color,slot:i});
       const c=this.chars[p.pid];
       if((!c || c.av!==p.av) && w.av!==p.av){ w.av=p.av; const av=p.av;
-        CF.get(av,true).then(g=>{ if(!this.want[p.pid] || this.want[p.pid].av!==av) return; const old=this.chars[p.pid]; const ch=makeChar(this.gx,av,g); ch.av=av; this.loadSprite(ch,av); if(old){ ch.enter=1; ch.x=old.x; ch.z=old.z; if(old.tag) old.tag.remove(); freeChar(this.gx,old); } this.chars[p.pid]=ch; Object.assign(ch,{label:w.label,me:w.me,color:w.color}); if(w.emote){ ch.emote={e:w.emote,t0:this.time||0}; w.emote=null; } this.layout(); }).catch(e=>console.warn(e)); }
+        CF.get(av,true).then(g=>{ if(!this.want[p.pid] || this.want[p.pid].av!==av) return; const old=this.chars[p.pid]; const ch=makeChar(this.gx,av,g); ch.av=av; if(old){ ch.enter=1; ch.x=old.x; ch.z=old.z; if(old.tag) old.tag.remove(); freeChar(this.gx,old); } this.chars[p.pid]=ch; Object.assign(ch,{label:w.label,me:w.me,color:w.color}); if(w.emote){ ch.emote={e:w.emote,t0:this.time||0}; w.emote=null; } this.layout(); }).catch(e=>console.warn(e)); }
       if(c){ c.label=w.label; c.me=w.me; c.color=w.color; } });
     for(const pid in this.want) if(!keep.has(pid)) delete this.want[pid];
     for(const pid in this.chars) if(!keep.has(pid)){ const c=this.chars[pid]; if(c.tag) c.tag.remove(); freeChar(this.gx,c); delete this.chars[pid]; }
     this.order=list.map(p=>p.pid); this.layout();
   },
   loadSprite(ch,av){ try{ const tt=(typeof avToon==="function")&&avToon(av); if(!tt) return; const svg=toonSVG(tt,{headOnly:true,vb:"-10 -20 220 220"}); const img=new Image();
-      img.onload=()=>{ try{ const cv=document.createElement("canvas"); cv.width=cv.height=512; const x=cv.getContext("2d"); x.drawImage(img,0,0,512,512); ch.spriteTex=this.gx.texCanvas("spr_"+Math.random().toString(36).slice(2),cv); }catch(e){ ch.spriteTex=null; } };
+      img.onload=()=>{ try{ const cv=document.createElement("canvas"); cv.width=cv.height=512; const x=cv.getContext("2d"); x.drawImage(img,0,0,512,512); ch.spriteTex=this.gx.texCanvas("spr_"+Math.random().toString(36).slice(2),cv);
+        try{ const bc=document.createElement("canvas"); bc.width=bc.height=512; const y=bc.getContext("2d"); y.translate(512,0); y.scale(-1,1); y.drawImage(img,0,0,512,512); y.setTransform(1,0,0,1,0,0);
+          const hr=tt.hair, base=hr==="hijab"?(tt.hijabColour||"#7B61FF"):(hr==="bald"?tt.skin:(hr==="buzz"?shade(tt.hairColour,.85):tt.hairColour));
+          y.globalCompositeOperation="source-in"; y.fillStyle=base; y.fillRect(0,0,512,512); y.globalCompositeOperation="source-atop";
+          const g=y.createRadialGradient(230,150,20,256,250,300); g.addColorStop(0,"rgba(255,255,255,.22)"); g.addColorStop(.55,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(0,0,0,.4)"); y.fillStyle=g; y.fillRect(0,0,512,512);
+          if(hr!=="bald"){ y.strokeStyle="rgba(0,0,0,.16)"; y.lineWidth=3; for(let i=0;i<11;i++){ const dx=(i-5); y.beginPath(); y.moveTo(256+dx*6,110); y.quadraticCurveTo(256+dx*26,240,256+dx*40,430); y.stroke(); } }
+          if(tt.hat==="beanie"||tt.hat==="cap"){ const hy=tt.hat==="beanie"?223:196; y.fillStyle=tt.topColour||"#444"; y.fillRect(0,0,512,hy); const hg=y.createLinearGradient(0,0,0,hy); hg.addColorStop(0,"rgba(255,255,255,.18)"); hg.addColorStop(1,"rgba(0,0,0,.25)"); y.fillStyle=hg; y.fillRect(0,0,512,hy); y.fillStyle="rgba(0,0,0,.3)"; y.fillRect(0,hy-10,512,10);
+            if(tt.hat==="beanie"){ y.strokeStyle="rgba(0,0,0,.15)"; y.lineWidth=4; for(let x=40;x<512;x+=22){ y.beginPath(); y.moveTo(x,hy-50); y.lineTo(x,hy-12); y.stroke(); } } }
+          ch.spriteBack=this.gx.texCanvas("sprb_"+Math.random().toString(36).slice(2),bc); }catch(e){}  }catch(e){ ch.spriteTex=null; } };
       img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg); }catch(e){} },
   /* final podium: each player's pillar rises to their share of the top score */
   setPodium(sc){ if(!sc){ this.pod=null; for(const pid in this.chars) this.chars[pid].lift=0; return; }
@@ -3098,7 +3229,7 @@ const Room={
     const acc=ACC.lin; this.flash=Math.max(0,this.flash-dt*1.8);
     const items=[], refl=[], tags=[], sprites=[]; let waiting=0; const camR=[V[0],V[4],V[8]], camU=[V[1],V[5],V[9]], camF=[V[2],V[6],V[10]];
     const pod=this.pod, beams=[];
-    if(pod && !pod.started){ const miss=this.order.some(p=>!this.chars[p]||!this.chars[p].spriteTex); if(!miss || t-pod.made>6){ pod.started=true; pod.t0=t; } }
+    if(pod && !pod.started){ const miss=this.order.some(p=>!this.chars[p]); if(!miss || t-pod.made>6){ pod.started=true; pod.t0=t; } }
     for(const pid of this.order){ const c=this.chars[pid]; if(!c){ waiting++; continue; }
       if(pod){ const s=pod.sc[pid]||0, H=.16+1.05*Math.max(0,s)/pod.max, k=pod.started?Math.max(0,Math.min(1,(t-pod.t0-(pod.del[pid]||0))/1.7)):0, e=k<1?1-Math.pow(1-k,3):1;
         c.lift=H*e; c.podH=H; c.podK=k; c.disp=`${c.label} · ${Math.round(Math.max(0,s)*e)}`;
@@ -3109,8 +3240,12 @@ const Room={
       if(c.spriteTex){ const hw=c.J.head.world, sc=c.J.head.sc||1, k=sc/1.85, ux=hw[4],uy=hw[5],uz=hw[6], ul=Math.hypot(ux,uy,uz)||1; const up=.11*HEAD_S*sc*(c.scale||1)+.08*k;
         const P=[hw[12]+ux/ul*up, hw[13]+uy/ul*up, hw[14]+uz/ul*up], s=.95*k*(c.scale||1), b=c.bob?c.bob.z*.8:0, cb=Math.cos(b), sb=Math.sin(b);
         const R=[camR[0]*cb+camU[0]*sb, camR[1]*cb+camU[1]*sb, camR[2]*cb+camU[2]*sb], Uu=[-camR[0]*sb+camU[0]*cb, -camR[1]*sb+camU[1]*cb, -camR[2]*sb+camU[2]*cb];
-        const m=new Float32Array([R[0]*s,R[1]*s,R[2]*s,0, Uu[0]*s,Uu[1]*s,Uu[2]*s,0, camF[0],camF[1],camF[2],0, P[0]+camF[0]*.06,P[1]+camF[1]*.06,P[2]+camF[2]*.06,1]);
-        sprites.push({mesh:this.quad,m,c:[1,1,1],tex:c.spriteTex,flat:true,blend:true,noCast:true,noRecv:true}); }
+        // which way the head faces, relative to the camera: turn the picture with it (paper-cutout style) and show the back of the head when it faces away
+        const fz=[hw[8],hw[9],hw[10]], fl=Math.hypot(fz[0],fz[1],fz[2])||1, fwd=(fz[0]*camF[0]+fz[1]*camF[1]+fz[2]*camF[2])/fl, side=(fz[0]*camR[0]+fz[1]*camR[1]+fz[2]*camR[2])/fl, upd=(fz[0]*camU[0]+fz[1]*camU[1]+fz[2]*camU[2])/fl;
+        const yaw=Math.atan2(side, fwd), cy=Math.cos(yaw), back=cy<0 && c.spriteBack, sx=s*Math.max(.16, Math.abs(cy)), sy=s*Math.max(.62, Math.sqrt(Math.max(0,1-upd*upd))), shx=Math.sin(yaw)*s*.06, dn=upd<0?upd*s*.18:0;
+        const Px=[P[0]+R[0]*shx+Uu[0]*dn, P[1]+R[1]*shx+Uu[1]*dn, P[2]+R[2]*shx+Uu[2]*dn];
+        const m=new Float32Array([R[0]*sx,R[1]*sx,R[2]*sx,0, Uu[0]*sy,Uu[1]*sy,Uu[2]*sy,0, camF[0],camF[1],camF[2],0, Px[0]+camF[0]*.06,Px[1]+camF[1]*.06,Px[2]+camF[2]*.06,1]);
+        sprites.push({mesh:this.quad,m,c:[1,1,1],tex:back?c.spriteBack:c.spriteTex,flat:true,blend:true,noCast:true,noRecv:true}); }
       const lf=c.lift||0;
       if(pod && lf>.001){ const ri=pod.rank.indexOf(pid), col=ri===0?[.78,.55,.12]:ri===1?[.55,.58,.64]:ri===2?[.5,.27,.12]:[.16,.16,.18];
         const pm=M4.ch(M4.T(c.J.root.off[0],lf/2,c.J.root.off[2]),M4.S(.72,lf,.72)); items.push({mesh:this.boxM,m:pm,c:col,spec:ri<3?1.6:.5,gloss:ri<3?70:30}); refl.push({mesh:this.boxM,m:M4.mul(M4.S(1,-1,1),pm),c:col,noCast:true});
@@ -3173,6 +3308,7 @@ const ICON = {
   est:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M7 8v8M12 6v12M17 9v6"/></svg>',
   uniq:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M3 20c.8-3 2.8-4.5 5-4.5s4.2 1.5 5 4.5m-1.5-3c.9-1 2.1-1.5 3.5-1.5 2.2 0 4.2 1.5 5 4.5"/></svg>',
   mf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="9.5" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="9.5" width="5" height="5" rx="1"/><circle cx="12" cy="12" r="2.6"/><path d="M12 8.6v-.8M15.4 12h.8"/><rect x="16" y="9.5" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><rect x="9.5" y="16" width="5" height="5" rx="1"/><rect x="16" y="16" width="5" height="5" rx="1"/></svg>',
+  ctry:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.8 3.9 5.8 3.9 9s-1.3 6.2-3.9 9c-2.6-2.8-3.9-5.8-3.9-9S9.4 5.8 12 3z"/></svg>',
   pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
   sp:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>',
   grid:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>'
@@ -3183,12 +3319,13 @@ const RT = {
   rank:{name:"Rank It", desc:"Put five things in the right order, like smallest to largest or oldest to newest. 15 points for each one in the right place, and the full 100 for a perfect order, plus 50 for the fastest perfect order.", def:5, min:3, max:10, dur:30},
   est: {name:"Guesstimate", desc:"Slide your marker along a scale, then see where everyone landed. Closest scores 100, second closest 50.", def:5, min:3, max:10, dur:30},
   uniq:{name:"Great Minds", desc:"Give a valid answer nobody else gives for 100 points. If someone matches you, neither of you scores. Needs 3+ players.", def:5, min:3, max:10, dur:40, minPlayers:3},
+  ctry:{name:"Find the Country", desc:"A country's name appears and you tap where it is on a map with no names. 100 if your tap lands inside it, fewer points the closer you get, plus 50 for the fastest tap inside.", def:5, min:3, max:10, dur:20},
   pin: {name:"Pin Drop", desc:"Drop a pin on the world map, then watch everyone's pins land. Closest scores 100, second closest 50.", def:5, min:3, max:10, dur:30},
   grid:{name:"Word Grid", desc:"30 seconds to find words by joining touching letters. 3 letters score 10, 4 letters 20, 5 letters 40, then big points for long words: 6 letters 100, 7 letters 150, 8 letters 200 and 50 more for each extra letter.", def:1, min:1, max:3, dur:30}
 };
 RT.sp={name:"Speed Round", desc:"The grand finale. Four topics, three quick-fire questions each. Scores are hidden until the end. A right answer scores up to 100, and the faster you are the more you get. A wrong answer loses 50, so don't guess wildly.", def:12, min:12, max:12, dur:10, last:true};
 RT.mf={name:"Minefield", desc:"Take turns picking from a grid of 12 answers. Most fit the category but some are traps. Right picks score 100, traps lose 50.", def:3, min:1, max:5, dur:15};
-const ROUND_ORDER = ["gk","est","rank","pin","mf","grid","uniq","sp"]; /* Specialist Subject ("mm") switched off for now */
+const ROUND_ORDER = ["gk","est","rank","pin","ctry","mf","grid","uniq","sp"]; /* Specialist Subject ("mm") switched off for now */
 
 /* ---------------- built-in question bank ---------------- */
 const BANK = {
@@ -4695,6 +4832,68 @@ BANK.mf.push(
 ["Film","Films starring Tom Hanks",["Forrest Gump","Toy Story","Cast Away","Big","Saving Private Ryan","The Green Mile","Apollo 13"],["Top Gun","Titanic","Gladiator","The Matrix","Jaws"]]
 );
 
+/* ---------------- Find the Country: [name, lat, lng, tier (1 easy · 2 medium · 3 hard), other names the map data may use] ---------------- */
+const CTRY=[
+["United States",39.5,-98.5,1,"United States of America|USA"],["Canada",58,-100,1,""],["Mexico",23.6,-102.5,1,""],["Brazil",-10.5,-52.9,1,""],
+["Argentina",-35.4,-65.2,1,""],["Chile",-33.5,-70.8,1,""],["Peru",-9.2,-75,1,""],["Colombia",4.1,-73.1,1,""],
+["United Kingdom",53.5,-2.2,1,"UK|Great Britain"],["France",46.6,2.4,1,""],["Spain",40.2,-3.6,1,""],["Italy",42.8,12.6,1,""],
+["Germany",51.1,10.4,1,""],["Russia",61.5,98,1,"Russian Federation"],["China",35,103.8,1,""],["India",22.9,79.6,1,""],
+["Japan",36.5,138.3,1,""],["Australia",-25.7,134.5,1,""],["Egypt",26.6,30,1,""],["South Africa",-29,25,1,""],
+["Nigeria",9.6,8.1,1,""],["Kenya",0.5,37.9,1,""],["Saudi Arabia",24,45,1,""],["Turkey",39,35.2,1,"Türkiye|Turkiye"],
+["Iran",32.6,54.3,1,"Iran, Islamic Republic of"],["Ireland",53.2,-8.2,1,"Republic of Ireland"],["Portugal",39.6,-8,1,""],["Greece",39.3,22,1,""],
+["Norway",61.5,9,1,""],["Sweden",62.8,16.7,1,""],["Indonesia",-2.5,117.5,1,""],["Thailand",15.1,101,1,""],
+["New Zealand",-41.8,172.8,1,""],["Morocco",31.9,-6.9,1,""],["Madagascar",-19.4,46.7,1,""],["Mongolia",46.8,103,1,""],
+["Kazakhstan",48.2,67.3,1,""],["Poland",52.1,19.4,1,""],["Ukraine",49,31.4,1,""],["Pakistan",29.9,69.4,1,""],
+["Iceland",64.9,-18.6,1,""],["Ethiopia",8.6,39.6,1,""],["Algeria",28.2,2.6,1,""],["Libya",27,17.2,1,""],
+["Venezuela",7.1,-66.2,1,"Venezuela, Bolivarian Republic of"],["Bolivia",-16.7,-64.7,1,"Bolivia, Plurinational State of"],["Cuba",21.6,-79,1,""],["Philippines",12.2,122.9,1,""],
+["Vietnam",15.9,106.3,1,"Viet Nam"],["South Korea",36.4,127.8,1,"Korea, Republic of|Republic of Korea|Korea"],["Finland",64.5,26.3,1,""],
+["Ecuador",-1.4,-78.4,2,""],["Paraguay",-23.2,-58.4,2,""],["Uruguay",-32.8,-56,2,""],["Guatemala",15.7,-90.4,2,""],
+["Honduras",14.8,-86.6,2,""],["Nicaragua",12.9,-85,2,""],["Costa Rica",9.9,-84.2,2,""],["Panama",8.5,-80.1,2,""],
+["Jamaica",18.1,-77.3,2,""],["Netherlands",52.2,5.5,2,"The Netherlands|Holland"],["Belgium",50.6,4.6,2,""],["Switzerland",46.8,8.2,2,""],
+["Austria",47.6,14.1,2,""],["Czechia",49.8,15.3,2,"Czech Republic|Czech Rep."],["Hungary",47.2,19.4,2,""],["Romania",45.9,24.9,2,""],
+["Bulgaria",42.7,25.3,2,""],["Croatia",45.2,15.5,2,""],["Serbia",44.2,20.8,2,""],["Denmark",56,9.3,2,""],
+["Belarus",53.7,28,2,""],["Iraq",33.2,43.7,2,""],["Syria",35,38.5,2,"Syrian Arab Republic"],["Jordan",31.2,36.5,2,""],
+["Israel",31.4,35,2,""],["Afghanistan",33.9,67.7,2,""],["Bangladesh",23.8,90.3,2,""],["Nepal",28.4,84.1,2,""],
+["Sri Lanka",7.9,80.7,2,""],["Myanmar",21.2,96,2,"Burma"],["Malaysia",4.2,102,2,""],["Cambodia",12.6,104.9,2,""],
+["Laos",19.9,102.5,2,"Lao PDR|Lao People's Democratic Republic"],["North Korea",40.2,127.5,2,"Korea, Democratic People's Republic of|Dem. Rep. Korea|DPRK"],["Uzbekistan",41.4,64.6,2,""],["Ghana",7.9,-1,2,""],
+["Ivory Coast",7.6,-5.5,2,"Côte d'Ivoire|Cote d'Ivoire|Côte d’Ivoire"],["Senegal",14.5,-14.5,2,""],["Mali",17.6,-4,2,""],["Niger",17.6,8.1,2,""],
+["Chad",15.5,18.7,2,""],["Sudan",15.6,30.2,2,""],["Somalia",5.2,46.2,2,""],["Tanzania",-6.4,34.9,2,"United Republic of Tanzania|Tanzania, United Republic of"],
+["Uganda",1.4,32.3,2,""],["Angola",-12.3,17.5,2,""],["Zambia",-13.1,27.8,2,""],["Zimbabwe",-19,29.2,2,""],
+["Mozambique",-18.7,35.5,2,""],["Namibia",-22.6,17.1,2,""],["Botswana",-22.3,24.7,2,""],["DR Congo",-2.9,23.7,2,"Democratic Republic of the Congo|Democratic Republic of Congo|Dem. Rep. Congo|Congo, The Democratic Republic of the|Congo (Kinshasa)"],
+["Cameroon",5.7,12.4,2,""],["Tunisia",34,9.5,2,""],["Yemen",15.6,48,2,""],["Oman",21,57,2,""],
+["Papua New Guinea",-6.5,145,2,""],
+["Slovakia",48.7,19.7,3,""],["Slovenia",46.1,14.8,3,""],["Bosnia and Herzegovina",44.2,17.8,3,"Bosnia and Herz.|Bosnia-Herzegovina|Bosnia"],["North Macedonia",41.6,21.7,3,"Macedonia|Macedonia, the former Yugoslav Republic of"],
+["Albania",41.1,20.1,3,""],["Montenegro",42.8,19.3,3,""],["Moldova",47.2,28.5,3,"Moldova, Republic of|Republic of Moldova"],["Lithuania",55.3,23.9,3,""],
+["Latvia",56.9,24.6,3,""],["Estonia",58.6,25,3,""],["Georgia",42.2,43.5,3,""],["Armenia",40.1,45,3,""],
+["Azerbaijan",40.3,47.7,3,""],["Kyrgyzstan",41.5,74.6,3,"Kyrgyz Republic"],["Tajikistan",38.9,71.2,3,""],["Turkmenistan",39.1,59.4,3,""],
+["Bhutan",27.4,90.4,3,""],["Lebanon",33.9,35.9,3,""],["Kuwait",29.3,47.6,3,""],["Qatar",25.3,51.2,3,""],
+["United Arab Emirates",23.9,54.3,3,"UAE"],["Burkina Faso",12.2,-1.6,3,""],["Guinea",10.4,-10.9,3,""],["Sierra Leone",8.6,-11.8,3,""],
+["Liberia",6.5,-9.3,3,""],["Togo",8.5,0.9,3,""],["Benin",9.6,2.3,3,""],["Gabon",-0.6,11.6,3,""],
+["Republic of the Congo",-0.7,15.2,3,"Congo|Republic of Congo|Congo (Brazzaville)|Rep. Congo"],["Central African Republic",6.6,20.9,3,"Central African Rep."],["South Sudan",7.3,30.3,3,"S. Sudan"],["Eritrea",15.4,39,3,""],
+["Malawi",-13.2,34.3,3,""],["Rwanda",-2,29.9,3,""],["Burundi",-3.4,29.9,3,""],["Lesotho",-29.6,28.2,3,""],
+["Eswatini",-26.5,31.5,3,"Swaziland"],["Mauritania",20.3,-10.3,3,""],["Belize",17.2,-88.7,3,""],["El Salvador",13.7,-88.9,3,""],
+["Haiti",19,-72.7,3,""],["Dominican Republic",18.9,-70.5,3,"Dominican Rep."],["Guyana",4.9,-58.9,3,""],["Suriname",4.1,-55.9,3,""],
+["Luxembourg",49.8,6.1,3,""],["Taiwan",23.7,121,3,""]
+];
+const ctryNorm=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+const CTRY_FEAT=new Map();
+function ctryFeature(name){
+  if(!GeoData.list) return null;
+  const key=name+"|"+GeoData.list.length; if(CTRY_FEAT.has(key)) return CTRY_FEAT.get(key);
+  const row=CTRY.find(c=>c[0]===name); const names=[name, ...((row&&row[4])||"").split("|").filter(Boolean)].map(ctryNorm);
+  const f=GeoData.list.find(f=>names.includes(ctryNorm(f.n)))||null; CTRY_FEAT.set(key,f); return f;
+}
+function inRings(f, p){ let ins=false; for(const r of f.rings){ for(let i=0,j=r.length-1;i<r.length;j=i++){ const xi=r[i][0], yi=r[i][1], xj=r[j][0], yj=r[j][1]; if(((yi>p.lat)!==(yj>p.lat)) && (p.lng < (xj-xi)*(p.lat-yi)/(yj-yi)+xi)) ins=!ins; } } return ins; }
+function kmToFeature(f, p){ let best=1e9; for(const r of f.rings) for(let i=0;i<r.length;i++){ const d=km(p,{lat:r[i][1],lng:r[i][0]}); if(d<best) best=d; }
+  for(const r of f.rings) for(let i=0,j=r.length-1;i<r.length;j=i++){ const a={lat:r[j][1],lng:r[j][0]}, b={lat:r[i][1],lng:r[i][0]}; for(const t of [.25,.5,.75]){ const d=km(p,{lat:a.lat+(b.lat-a.lat)*t, lng:a.lng+(b.lng-a.lng)*t}); if(d<best) best=d; } }
+  return best; }
+function ctryPick(n){
+  const hard=G && G.diff==="hard", pool=CTRY.filter(c=>hard ? c[3]>=2 : c[3]<=2);
+  const k=c=>"ctry:"+c[0], fresh=shuffle(pool.filter(c=>!seenAt[k(c)])), old=pool.filter(c=>seenAt[k(c)]).sort((a,b)=>seenAt[k(a)]-seenAt[k(b)]);
+  const pick=fresh.concat(old).slice(0,n); pick.forEach(c=>{ seenAt[k(c)]=Date.now(); }); saveSeen();
+  return pick.map(c=>({text:"Where is "+c[0]+"?", place:c[0], lat:c[1], lng:c[2]}));
+}
+
 const qKey=(type,x)=>type+":"+(hashStr(String(x[0]))%1e9).toString(36);
 const seenAt = (()=>{ const o=LS.get("sq-seen2"); if(o && typeof o==="object" && !Array.isArray(o)) return o; const m={}; (LS.get("sq-used")||[]).forEach((k,i)=>m[k]=i+1); return m; })();
 const used = { has:k=>!!seenAt[k], add:k=>{ seenAt[k]=Date.now(); }, delete:k=>{} };
@@ -5031,7 +5230,7 @@ async function loadHomeDaily(){
   const key=todayKey(); const mine=LS.get("sq-daily-"+key);
   const streak=calcStreak();
   let h = "";
-  if(mine){ h += `<div class="row"><div class="scoreline num">${mine.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em">/${resMax(mine).toLocaleString("en-GB")}</span></div><div class="muted">You've played today.${streak>1?` ${streak}-day streak.`:""}</div></div><div class="row"><button class="btn" data-act="dailyresult">See results</button></div>`; }
+  if(mine){ h += `<div class="row"><div class="scoreline num">${mine.score}<span class="muted" style="font-size:.4em">/30</span></div><div class="muted">You've played today.${streak>1?` ${streak}-day streak.`:""}</div></div><div class="row"><button class="btn" data-act="dailyresult">See results</button></div>`; }
   else h += `<div class="row"><button class="btn spot" data-act="daily">Play today's quiz</button>${streak?`<span class="muted">${streak}-day streak</span>`:""}</div>`;
   h += `<div id="homelb"></div>`;
   el.innerHTML = h;
@@ -5155,6 +5354,7 @@ async function buildRound(r, ps){
   if(r.t==="mf") return {t:"mf", qs:Array.from({length:r.n}, ()=>({board:true}))};
   if(r.t==="grid") return {t:"grid", qs:Array.from({length:r.n}, ()=>({grid:makeGrid()}))};
   if(r.t==="sp") return {t:"sp", qs:await buildSpeed()};
+  if(r.t==="ctry"){ GeoData.load(); return {t:"ctry", qs:ctryPick(r.n)}; }
   let qs=[];
   if(aiOn()){ try{ qs=cleanQs(r.t, await ask(promptFor(r.t, r.n+3))).filter(q=>{ const k=r.t+":ai:"+(hashStr(norm(q.text))%1e9).toString(36); if(seenAt[k]) return false; seenAt[k]=Date.now(); noteText(r.t,q.text); return true; }).slice(0, r.n); saveSeen(); }catch(e){ qs=[]; } }
   if(qs.length<r.n){ const need=r.n-qs.length; if(BANK[r.t+"_pop"]){ const np=Math.round(need*(r.t==="pin"?0.5:0.65)); qs=qs.concat(shuffle(bankPick(r.t+"_pop",np).concat(bankPick(r.t,need-np)))); } else qs=qs.concat(bankPick(r.t,need)); }
@@ -5536,7 +5736,7 @@ async function closeQuestion(){
   if(R.t==="sp"){ G.sp=G.sp||{}; for(const r of rev.rows){ if(r.pts) G.sp[r.p]=(G.sp[r.p]||0)+r.pts; } }
   else for(const r of rev.rows){ if(r.pts){ G.scores[r.p]=(G.scores[r.p]||0)+r.pts; G.rs[r.p]=(G.rs[r.p]||0)+r.pts; } }
   try{ updStats(R.t, Q, A, rev); }catch(e){ console.warn("stats", e); }
-  G.rev=rev; G.phase="reveal"; G.adv = R.t==="pin" ? 14 : R.t==="sp" ? 4 : 10; hostAdvAt=Date.now()+G.adv*1000;
+  G.rev=rev; G.phase="reveal"; G.adv = (R.t==="pin"||R.t==="ctry") ? 14 : R.t==="sp" ? 4 : 10; hostAdvAt=Date.now()+G.adv*1000;
   pushState();
 }
 async function scoreQuestion(t, Q, A){
@@ -5578,6 +5778,16 @@ async function scoreQuestion(t, Q, A){
     const ds=[...new Set(rows.filter(r=>isFinite(r.d)).map(r=>r.d))];
     rows.forEach(r=>{ r.pts = !isFinite(r.d)?0 : r.d===ds[0]?100 : (r.d===ds[1] && rows.length>2)?50 : 0; if(!isFinite(r.d)) r.d=null; });
     return {t, ans:Q.ans, unit:Q.unit, rows};
+  }
+  if(t==="ctry"){
+    let f=null; try{ await Promise.race([GeoData.load(), new Promise(r=>setTimeout(r,6000))]); f=ctryFeature(Q.place); }catch(e){}
+    const rows=ps.map(pid=>{ const v=A[pid].v||{}; const ok=isFinite(v.lat)&&isFinite(v.lng); if(!ok) return {p:pid, lat:null, lng:null, km:null, in:false, ms:A[pid].t};
+      const pt={lat:+v.lat, lng:+v.lng}, inside = f ? inRings(f, pt) : km(pt, Q)<200, d = inside ? 0 : Math.round(f ? kmToFeature(f, pt) : Math.max(0, km(pt, Q)-200));
+      return {p:pid, lat:+pt.lat.toFixed(3), lng:+pt.lng.toFixed(3), km:d, in:inside, ms:A[pid].t}; });
+    rows.forEach(r=>{ r.pts = r.km==null?0 : r.in?100 : r.km<=150?70 : r.km<=400?50 : r.km<=800?30 : r.km<=1500?10 : 0; });
+    const hits=rows.filter(r=>r.in).sort((a,b)=>a.ms-b.ms); if(hits.length && ps.length>1){ hits[0].pts+=50; hits[0].fast=true; }
+    rows.forEach(r=>delete r.ms); rows.sort((a,b)=>b.pts-a.pts || (a.km??1e9)-(b.km??1e9));
+    return {t, place:Q.place, lat:Q.lat, lng:Q.lng, rows};
   }
   if(t==="pin"){
     const rows=ps.map(pid=>{ const v=A[pid].v||{}; const ok=isFinite(v.lat)&&isFinite(v.lng); return {p:pid, lat:ok?+(+v.lat).toFixed(3):null, lng:ok?+(+v.lng).toFixed(3):null, km: ok?Math.round(km(v, Q)):null}; }).sort((a,b)=>(a.km??1e9)-(b.km??1e9));
@@ -5800,6 +6010,7 @@ function renderStage(){
     h = `<div class="intro"><div class="eyebrow">Round ${S.ri+1} of ${S.active.length}</div><div class="row" style="gap:14px"><span style="width:44px;height:44px;color:var(--accent);display:block">${ICON[t]}</span><div class="ri">${RT[t].name}</div></div><p>${esc(RT[t].desc)}</p>`;
     if(t==="mm") h += `<p class="muted" style="font-size:15px">First everyone types a subject. Then you all answer your own questions at the same time, ${Math.round(RT.mm.dur*(S.diff==="hard"?1:1.5))} seconds each.</p>`;
     else if(t==="grid") h += `<p class="muted" style="font-size:15px">${I.n} grid${I.n>1?"s":""} · ${RT.grid.dur} seconds each</p><p class="num" style="font-size:15px;margin:0">3 letters <b>10</b> · 4 <b>20</b> · 5 <b>40</b> · 6 <b>100</b> · 7 <b>150</b> · 8+ <b>200+</b></p>`;
+    else if(t==="ctry") h += `<p class="muted" style="font-size:15px">${S.diff==="hard"?"Hard mode: smaller and trickier countries":"Easy mode: bigger, better-known countries"} · no names on the map · ${durFor("ctry")} seconds each</p>`;
     else if(t==="sp") h += `<p class="muted" style="font-size:15px">4 topics · 3 questions each · ${S.diff==="hard"?8:12} seconds a question · wrong answers lose 50 · scores hidden</p>`;
     else if(t==="mf") h += `<p class="muted" style="font-size:15px">${I.n} board${I.n>1?"s":""} · players take turns · ${Math.round(RT.mf.dur*(S.diff==="hard"?1:1.5))} seconds a pick</p>`;
     else h += `<p class="muted" style="font-size:15px">${I.n} questions · ${Math.round(RT[t].dur*(S.diff==="hard"?1:1.5))} seconds each · ${S.diff==="hard"?"Hard":"Easy"} mode</p>`;
@@ -5875,7 +6086,7 @@ function lobbyHTML(){
   } else h+=`<div class="hostbar"><span class="grow"></span><button class="btn ghost small" data-act="leave">Leave party</button></div>`;
   return h;
 }
-const LEN={short:{gk:5,est:3,rank:3,pin:3,uniq:3,mm:5,grid:1,mf:2,sp:12},medium:{gk:8,est:5,rank:4,pin:5,uniq:5,mm:8,grid:1,mf:3,sp:12},long:{gk:12,est:8,rank:6,pin:8,uniq:8,mm:10,grid:2,mf:4,sp:12}};
+const LEN={short:{gk:5,est:3,rank:3,pin:3,ctry:3,uniq:3,mm:5,grid:1,mf:2,sp:12},medium:{gk:8,est:5,rank:4,pin:5,ctry:5,uniq:5,mm:8,grid:1,mf:3,sp:12},long:{gk:12,est:8,rank:6,pin:8,ctry:8,uniq:8,mm:10,grid:2,mf:4,sp:12}};
 function lenOf(rounds){ for(const k in LEN){ if(rounds.every(r=>r.n===Math.max(RT[r.t].min,Math.min(RT[r.t].max,LEN[k][r.t])))) return k; } return "custom"; }
 function estMinutes(rounds, np){ let sec=0; for(const r of rounds){ if(!r.on) continue; const T=RT[r.t]; if(r.t==="mf") sec+=r.n*110; else if(r.t==="grid") sec+=r.n*50; else sec+=r.n*((T.dur||20)*.7+9); sec+=20; } return Math.max(1,Math.round(sec/60)); }
 function diffPickHTML(){ const cur=S.diff==="hard"?"hard":"easy", lab={easy:"Easy",hard:"Hard"}, note=cur==="hard"?"No country names on the map, shorter timers, tougher questions":"Country names on the map, more time, friendlier questions";
@@ -5955,7 +6166,7 @@ function answerAreaHTML(q){
   if(t==="rank") return rankAreaHTML(q, done, late);
   if(t==="gk"||t==="sp") return `<div class="opts${t==="sp"?" sp":""}">${q.opts.map((o,i)=>`<button class="opt ${myAns&&Number(myAns.v)===i?"sel":""}" data-act="opt" data-i="${i}" ${done||late?"disabled":""}><span class="k">${"ABCD"[i]}</span><span>${esc(o)}</span></button>`).join("")}</div>${done?`<div class="locked">Locked in. Waiting for everyone else.</div>`:""}`;
   if(t==="mm" && q.chair!==me.pid) return `<div class="locked">${esc(nameOf(q.chair))} is answering. Watch the timer.</div>`;
-  if(t==="pin") return `<div class="map" id="map"></div><div class="row"><span class="maphint grow">${done?"Pin locked in.":"Tap the map to drop your pin. Drag to move the map, and pinch or use + and − to zoom."}</span>${done?"":`<button class="btn primary" data-act="lockpin" id="lockpin" disabled>Lock in pin</button>`}</div>`;
+  if(t==="pin"||t==="ctry") return `<div class="map" id="map"></div><div class="row"><span class="maphint grow">${done?"Pin locked in.":t==="ctry"?"Tap anywhere inside the country. Drag to move the map, and pinch or use + and − to zoom.":"Tap the map to drop your pin. Drag to move the map, and pinch or use + and − to zoom."}</span>${done?"":`<button class="btn primary" data-act="lockpin" id="lockpin" disabled>Lock in pin</button>`}</div>`;
   if(done) return `<div class="locked">Locked in: <b>${esc(t==="est"?fmtNum(parseNum(myAns.v)??0, q.unit):myAns.v)}</b>${t==="est"&&q.unit?" "+esc(q.unit):""}</div>`;
   const ph = t==="est" ? "Your number"+(q.unit?" ("+q.unit+")":"") : t==="uniq" ? "An answer you think nobody else will give" : "Your answer";
   return `<form class="answer-row" data-form="ans"><input class="input" id="ansin" autocomplete="off" ${t==="est"?'inputmode="decimal"':""} placeholder="${esc(ph)}" maxlength="40" ${late?"disabled":""}><button class="btn primary" ${late?"disabled":""}>Lock in</button></form>`;
@@ -5987,6 +6198,9 @@ function revealHTML(q, rev){
     h += scaleRevealHTML(q.min, q.max, rev.unit, rev.ans, rev.rows.map(r=>({v:r.a, color:pcol(r.p), label:nameOf(r.p), e:avOf(r.p)})));
     h += `<div class="bigans"><div class="eyebrow">Answer</div><b class="num">${esc(fmtNum(rev.ans, rev.unit))}</b> <span>${esc(rev.unit&&rev.unit!=="year"?rev.unit:"")}</span></div>`;
     h += `<div class="res">${rev.rows.map(r=>row(r, r.a==null?'<span class="muted">no valid number</span>':`<span class="num">${esc(fmtNum(r.a, rev.unit))}</span>`, r.d==null?"":`${r.d===0?"Spot on":"Off by "+fmtNum(r.d, rev.unit==="year"?"":rev.unit)}`)).join("")}${rev.rows.length?"":'<p class="muted">Nobody answered.</p>'}</div>`;
+  } else if(rev.t==="ctry"){
+    h += `<div class="bigans"><div class="eyebrow">The country</div><b>${esc(rev.place)}</b></div><div class="map" id="map"></div>`;
+    h += `<div class="res">${rev.rows.map(r=>row(r, r.km==null?'<span class="muted">no pin</span>':r.in?`<span class="num ctry-in">Inside${r.fast?", fastest":""}</span>`:`<span class="num">${r.km.toLocaleString("en-GB")} km off</span>`)).join("")}${rev.rows.length?"":'<p class="muted">Nobody dropped a pin.</p>'}</div>`;
   } else if(rev.t==="pin"){
     h += `<div class="bigans"><div class="eyebrow">Answer</div><b>${esc(rev.place)}</b></div><div class="map" id="map"></div>`;
     h += `<div class="res">${rev.rows.map(r=>row(r, r.km==null?'<span class="muted">no pin</span>':`<span class="num">${r.km.toLocaleString("en-GB")} km away</span>`)).join("")}${rev.rows.length?"":'<p class="muted">Nobody dropped a pin.</p>'}</div>`;
@@ -6007,7 +6221,7 @@ function roundSummaryHTML(t){
   const st=S.st||{c:{}, at:{}, n:0}, aw=[];
   const lead=o=>{ let top=0, who=[]; for(const p in o){ if(o[p]>top){ top=o[p]; who=[p]; } else if(o[p]===top && top>0) who.push(p); } return {top, who}; };
   const rw=lead(S.rs||{}); if(rw.top>0) aw.push({p:rw.who[0], tie:rw.who.length-1, t:"Round winner", v:`+${rw.top} points`});
-  const mcl={rank:"Most in place", mf:"Most right picks", gk:"Most correct", mm:"Most correct", uniq:"Most unique answers", est:"Most wins", pin:"Most wins", grid:"Most words"}[t];
+  const mcl={ctry:"Most found", rank:"Most in place", mf:"Most right picks", gk:"Most correct", mm:"Most correct", uniq:"Most unique answers", est:"Most wins", pin:"Most wins", grid:"Most words"}[t];
   const mc=lead(st.c||{}); if(mc.top>0) aw.push({p:mc.who[0], tie:mc.who.length-1, t:mcl, v: t==="grid" ? `${mc.top} words` : `${mc.top} of ${st.n}`});
   if(st.f) aw.push({p:st.f.p, t:"Fastest answer", v:`${(st.f.ms/1000).toFixed(1)} seconds`});
   if(st.pin) aw.push({p:st.pin.p, t:"Closest pin", v:`${st.pin.km.toLocaleString("en-GB")} km away`});
@@ -6205,10 +6419,15 @@ function mmRevealHTML(rev){
 function afterStage(){
   const hc=document.querySelector(".hostcfg"); if(hc){ if(app.cfgOpen!==false) hc.open=true; hc.addEventListener("toggle", ()=>{ app.cfgOpen=hc.open; }); }
   renderLobbyStage();
-  if(S.phase==="q" && S.q.t==="pin" && !myAns){
-    mapView = new MapView($("#map"), {labels:S.diff!=="hard", pick:(ll)=>{ draft=ll; mapView.setPins([{...ll, color:pcol(me.pid), label:"You", av:me.av}]); const b=$("#lockpin"); if(b) b.disabled=false; }});
+  if(S.phase==="q" && (S.q.t==="pin"||S.q.t==="ctry") && !myAns){
+    mapView = new MapView($("#map"), {labels:S.q.t==="ctry"?false:S.diff!=="hard", pick:(ll)=>{ draft=ll; mapView.setPins([{...ll, color:pcol(me.pid), label:"You", av:me.av}]); const b=$("#lockpin"); if(b) b.disabled=false; }});
   }
-  if(S.phase==="q" && S.q.t==="pin" && myAns){ const m=$("#map"); if(m){ mapView=new MapView(m,{labels:S.diff!=="hard"}); mapView.setPins([{...myAns.v, color:pcol(me.pid), label:"You", av:me.av}]); } }
+  if(S.phase==="q" && (S.q.t==="pin"||S.q.t==="ctry") && myAns){ const m=$("#map"); if(m){ mapView=new MapView(m,{labels:S.q.t==="ctry"?false:S.diff!=="hard"}); mapView.setPins([{...myAns.v, color:pcol(me.pid), label:"You", av:me.av}]); } }
+  if(S.phase==="reveal" && S.rev && S.rev.t==="ctry"){
+    const r=S.rev; mapView=new MapView($("#map"),{labels:false, hl:r.place});
+    const pins=r.rows.filter(x=>x.lat!=null).map(x=>({lat:x.lat,lng:x.lng,color:pcol(x.p),label:nameOf(x.p)+(x.in?" · inside":" · "+x.km.toLocaleString("en-GB")+" km"), av:avOf(x.p)}));
+    mapView.reveal(pins, {lat:r.lat,lng:r.lng,label:r.place});
+  }
   if(S.phase==="reveal" && S.rev && S.rev.t==="pin"){
     const r=S.rev; mapView=new MapView($("#map"),{labels:S.diff!=="hard"});
     const pins=r.rows.filter(x=>x.lat!=null).map(x=>({lat:x.lat,lng:x.lng,color:pcol(x.p),label:nameOf(x.p)+" · "+x.km.toLocaleString("en-GB")+" km", av:avOf(x.p)}));
@@ -6322,7 +6541,7 @@ function submitAnswer(v){
   myAns={k:S.q.k, v, t:Date.now()-qShownAt};
   setMyPresence({ans:myAns});
   if(app.isHost) hostCollect();
-  const a=$("#ansarea"); if(a){ if(S.q.t==="pin"){ const b=$("#lockpin"); if(b) b.remove(); const hint=$(".maphint"); if(hint) hint.textContent="Pin locked in."; if(mapView) mapView.lock(); } else a.innerHTML=answerAreaHTML(S.q); }
+  const a=$("#ansarea"); if(a){ if(S.q.t==="pin"||S.q.t==="ctry"){ const b=$("#lockpin"); if(b) b.remove(); const hint=$(".maphint"); if(hint) hint.textContent="Pin locked in."; if(mapView) mapView.lock(); } else a.innerHTML=answerAreaHTML(S.q); }
   renderBoard(); updateLive();
 }
 let tuK=null;
@@ -6333,9 +6552,9 @@ function autoSubmit(){
   if(t==="grid"){ submitAnswer(gridWords.map(x=>x.w)); return; }
   if(t==="est"){ if(draft!=null) submitAnswer(draft); }
   else if(t==="rank"){ if(rkMoved===S.q.k && Array.isArray(draft) && draft.length===S.q.items.length) submitAnswer(draft.join(",")); }
-  else if(t==="pin"){ if(draft) submitAnswer(draft); }
-  else if(t!=="gk" && t!=="sp" && t!=="rank"){ const i=$("#ansin"); if(i && i.value.trim()) submitAnswer(i.value.trim()); }
-  const a=$("#ansarea"); if(a && !myAns && t!=="pin") a.innerHTML = answerAreaHTML(S.q) + `<div class="locked">Time's up.</div>`;
+  else if(t==="pin"||t==="ctry"){ if(draft) submitAnswer(draft); }
+  else if(t!=="gk" && t!=="sp" && t!=="rank" && t!=="ctry"){ const i=$("#ansin"); if(i && i.value.trim()) submitAnswer(i.value.trim()); }
+  const a=$("#ansarea"); if(a && !myAns && t!=="pin" && t!=="ctry") a.innerHTML = answerAreaHTML(S.q) + `<div class="locked">Time's up.</div>`;
 }
 
 /* ---------------- timers ---------------- */
@@ -6513,6 +6732,7 @@ class MapView{
       G.forEach(geoPrep); const vis=G.filter(f=>!(f.pbb[2]<vx0||f.pbb[0]>vx1||f.pbb[3]<vy0||f.pbb[1]>vy1));
       c.beginPath(); for(const f of vis) f.pr.forEach(trace); c.fillStyle=land; c.fill("evenodd");
       c.lineJoin="round"; c.strokeStyle=edge; c.lineWidth=zr>6?1.4:zr>2.5?1.1:.8; c.stroke();
+      if(this.opts.hl){ const hf=ctryFeature(this.opts.hl); if(hf){ geoPrep(hf); c.beginPath(); hf.pr.forEach(trace); c.globalAlpha=.55; c.fillStyle=cssv("--spot")||"#F5B83D"; c.fill("evenodd"); c.globalAlpha=1; c.lineWidth=2; c.strokeStyle=cssv("--spot")||"#F5B83D"; c.stroke(); } }
       if(this.opts.labels!==false && zr>1.3){ c.font=`600 ${Math.round(Math.min(15,10+Math.log2(zr)*1.4))}px Inter, system-ui, sans-serif`; c.textAlign="center"; c.textBaseline="middle"; const ink=cssv("--ink")||"#111", placed=[];
         for(const f of vis){ if(!f.n) continue; const tw=c.measureText(f.n).width, pw=f.lw*v.z; if(pw<tw*.9) continue; const x=w/2+(f.lx-v.cx)*v.z, y=h/2-(f.ply-v.cy)*v.z; if(x<tw/2||x>w-tw/2||y<10||y>h-10) continue;
           if(placed.some(q=>Math.abs(q[0]-x)<(q[2]+tw)/2+4 && Math.abs(q[1]-y)<14)) continue; placed.push([x,y,tw]); c.lineWidth=3; c.strokeStyle=edge; c.globalAlpha=.85; c.strokeText(f.n,x,y); c.globalAlpha=1; c.fillStyle=ink; c.fillText(f.n,x,y); } } }
@@ -6530,7 +6750,7 @@ class MapView{
   lock(){ this.locked=true; }
   reveal(pins, target){
     let i=0; this.pins=[]; this.target=null; this.draw();
-    const step=()=>{ if(this.dead) return; if(i<pins.length){ i++; this.pins=pins.slice(0,i); this.draw(); setTimeout(step, 600); } else { this.target=target; this.draw(); setTimeout(()=>this.fit([...pins, target]), 450); } };
+    const step=()=>{ if(this.dead) return; if(i<pins.length){ i++; this.pins=pins.slice(0,i); this.draw(); setTimeout(step, 600); } else { this.target=target; this.draw(); const hf=this.opts.hl?ctryFeature(this.opts.hl):null; const ex=hf?[{lat:hf.bb[1],lng:hf.bb[0]},{lat:hf.bb[3],lng:hf.bb[2]}]:[]; setTimeout(()=>this.fit([...pins, target, ...ex]), 450); } };
     setTimeout(step, 400);
   }
   fit(pts){
@@ -6582,7 +6802,7 @@ async function getDaily(key){
     let lease=null; try{ lease=await ref.acquire({holder:me.pid, ttlMs:120000}); }catch(e){}
     if(lease && lease.acquired){
       try{
-        const arr=await ask(`Write today's daily quiz: exactly 6 general knowledge multiple-choice questions, 2 guesstimate questions and 2 "where in the world" pin-drop questions. Mix easy and hard: of the 6 general knowledge questions make 3 easy (most adults would know them) and 3 genuinely hard (a keen quizzer might get them); make one guesstimate easy and one hard; make one pin an instantly recognisable landmark or city and the other a harder, less famous place that is still findable on a map. Order the general knowledge questions easy, hard, easy, hard, easy, hard. Guesstimates need min and max ends for a slider, round numbers, with the answer between 15% and 85% of the way along. ${AI_RULES}\nDate code: ${key}\nReply with only JSON: {"gk":[{"q":"...","options":["a","b","c","d"],"answer":0}],"est":[{"q":"How tall is the Eiffel Tower to its tip, in metres?","answer":330,"unit":"m","min":0,"max":600}],"pin":[{"q":"Where is Machu Picchu?","place":"Machu Picchu, Peru","lat":-13.1631,"lng":-72.545}]}`, "default", 100000);
+        const arr=await ask(`Write today's daily quiz: exactly 6 general knowledge multiple-choice questions, 2 guesstimate questions and 2 "where in the world" pin-drop questions about famous places. Guesstimates need min and max ends for a slider, round numbers, with the answer between 15% and 85% of the way along. ${AI_RULES}\nDate code: ${key}\nReply with only JSON: {"gk":[{"q":"...","options":["a","b","c","d"],"answer":0}],"est":[{"q":"How tall is the Eiffel Tower to its tip, in metres?","answer":330,"unit":"m","min":0,"max":600}],"pin":[{"q":"Where is Machu Picchu?","place":"Machu Picchu, Peru","lat":-13.1631,"lng":-72.545}]}`, "default", 100000);
         const gk=cleanQs("gk", arr&&arr.gk).slice(0,6), est=cleanQs("est", arr&&arr.est).slice(0,2), pin=cleanQs("pin", arr&&arr.pin).slice(0,2);
         if(gk.length===6 && est.length===2 && pin.length===2){
           const T=x=>t=>({t:x, ...t});
@@ -6610,16 +6830,12 @@ async function startDaily(){
 }
 function dailyScore(q, v){
   if(v==null) return 0;
-  if(q.t==="gk") return Number(v)===q.ans ? 100 : 0;
-  if(q.t==="est"){ const n=typeof v==="number"?v:parseNum(v); if(n==null) return 0; const r=Math.abs(n-q.ans)/Math.max(1e-9,(q.max-q.min)); return r<=0.01?100:Math.max(0, Math.round(100*(1-(r-0.01)/0.24))); }
-  if(q.t==="pin"){ if(!v||!isFinite(v.lat)) return 0; const d=km(v,q); return d<=10?500:Math.max(0, Math.round(500*Math.exp(-(d-10)/1500))); }
+  if(q.t==="gk") return Number(v)===q.ans ? 3 : 0;
+  if(q.t==="est"){ const n=typeof v==="number"?v:parseNum(v); if(n==null) return 0; const r=Math.abs(n-q.ans)/Math.max(1e-9,(q.max-q.min)); return r<=0.02?3:r<=0.06?2:r<=0.12?1:0; }
+  if(q.t==="pin"){ if(!v||!isFinite(v.lat)) return 0; const d=km(v,q); return d<=150?3:d<=600?2:d<=1500?1:0; }
   return 0;
 }
 const DDUR={gk:20, est:30, pin:30};
-const DMAX={gk:100, est:100, pin:500};
-function dailyMax(qs){ return (qs||[]).reduce((a,q)=>a+(DMAX[q.t]||0),0)||30; }
-function resMax(r){ return (r&&r.max)||30; }
-function tier(p,m){ const f=m?p/m:0; return f>=0.85?3:f>=0.5?2:f>0?1:0; }
 function dailyBegin(){ D.phase="q"; D.end=Date.now()+DDUR[D.qs[D.i].t]*1000; D.start=Date.now(); D.draft=null; renderDaily(); }
 function dailyAnswer(v){
   if(D.phase!=="q") return;
@@ -6628,38 +6844,37 @@ function dailyAnswer(v){
 function dailyNext(){ D.i++; if(D.i>=D.qs.length) return dailyFinish(); dailyBegin(); }
 async function dailyFinish(){
   const score=D.pts.reduce((a,b)=>a+b,0);
-  const res={score, max:dailyMax(D.qs), pts:D.pts, pmax:D.qs.map(q=>DMAX[q.t]||3), src:D.src, at:Date.now()};
+  const res={score, pts:D.pts, src:D.src, at:Date.now()};
   LS.set("sq-daily-"+D.key, res); D.result=res; D.phase="done"; renderDaily();
-  if(app.db){ try{ await app.db.doc(`daily/${D.key}/scores/${safeSeg(me.pid)}`).set({nick:me.nick||"Player", score, max:res.max, pts:D.pts, at:Date.now()}); }catch(e){ if(e&&e.code==="invalid_argument") toast("Your score is saved here, but you can't post to the shared leaderboard"); } }
+  if(app.db){ try{ await app.db.doc(`daily/${D.key}/scores/${safeSeg(me.pid)}`).set({nick:me.nick||"Player", score, pts:D.pts, at:Date.now()}); }catch(e){ if(e&&e.code==="invalid_argument") toast("Your score is saved here, but you can't post to the shared leaderboard"); } }
 }
 function safeSeg(s){ return String(s).replace(/[^A-Za-z0-9_\-.~:@+]/g,"_").slice(0,120); }
 function dailyTick(now){
   if(D.phase!=="q") return;
   if(now>D.end){ const q=D.qs[D.i]; let v=null; if(q.t==="pin") v=D.draft; else if(q.t==="est") v=D.draft; dailyAnswer(v); }
 }
-function shareText(res){ const sq=(res.pts||[]).map((p,i)=>["⬜","🟧","🟨","🟩"][res.pmax?tier(p,res.pmax[i]):p]||"⬜").join(""); return `Spotlight Quiz · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}\n${sq}\n${res.score.toLocaleString("en-GB")}/${resMax(res).toLocaleString("en-GB")}`; }
+function shareText(res){ const sq=(res.pts||[]).map(p=>["⬜","🟧","🟨","🟩"][p]||"⬜").join(""); return `Spotlight Quiz · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}\n${sq}\n${res.score}/30`; }
 function renderDaily(){
   const el=$("#dstage"); if(!el) return;
   if(mapView){ mapView.destroy(); mapView=null; }
   const prog = D.qs ? `<div class="progress">${D.qs.map((_,i)=>`<i class="${i<D.i||(i===D.i&&D.phase==="fb")?"done":i===D.i&&D.phase==="q"?"cur":""}"></i>`).join("")}</div>` : "";
   let h="";
   if(D.phase==="loading") h=`<div class="intro"><div class="spinner"></div><h2>Loading today's quiz</h2><p>If you're the first player today, Claude is writing the questions. Everyone else gets the same set.</p></div>`;
-  else if(D.phase==="intro") h=`${prog}<div class="intro"><div class="eyebrow">Daily quiz · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}))}</div><div class="ri">10 questions · ${dailyMax(D.qs).toLocaleString("en-GB")} points</div><p>A mix of easy and hard questions. Each correct general knowledge answer scores 100. Guesstimates score up to 100, more the closer your marker lands. Pin drops score up to 500: the closer your pin, the closer you get to 500. You get one go per day.</p><div class="row"><button class="btn spot" data-act="dbegin">Start</button><span class="muted" style="font-size:13px">${D.src==="ai"?"Today's questions were written by Claude.":"Today's questions come from the built-in bank."}</span></div></div>`;
+  else if(D.phase==="intro") h=`${prog}<div class="intro"><div class="eyebrow">Daily quiz · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}))}</div><div class="ri">10 questions</div><p>General knowledge answers score 3. Guesstimates score up to 3 depending on how close your marker lands to the answer. Pins score 3 within 150 km, 2 within 600 km and 1 within 1,500 km. You get one go per day.</p><div class="row"><button class="btn spot" data-act="dbegin">Start</button><span class="muted" style="font-size:13px">${D.src==="ai"?"Today's questions were written by Claude.":"Today's questions come from the built-in bank."}</span></div></div>`;
   else if(D.phase==="q"||D.phase==="fb"){
     const q=D.qs[D.i]; const fb=D.phase==="fb";
-    h = prog + `<div class="stagehead"><div><div class="eyebrow">${q.t==="gk"?"General knowledge":q.t==="est"?"Guesstimate":"Pin drop"}</div><div class="muted num" style="font-size:14px">Question ${D.i+1} of ${D.qs.length}</div></div>${fb?`<span class="pts on" style="font-size:28px">+${D.pts[D.i]}${q.t!=="gk"?`<span class="muted" style="font-size:.5em">/${DMAX[q.t]}</span>`:""}</span>`:timerHTML(D.end, DDUR[q.t])}</div><div class="qtext">${esc(q.text)}</div>`;
+    h = prog + `<div class="stagehead"><div><div class="eyebrow">${q.t==="gk"?"General knowledge":q.t==="est"?"Guesstimate":"Pin drop"}</div><div class="muted num" style="font-size:14px">Question ${D.i+1} of ${D.qs.length}</div></div>${fb?`<span class="pts on" style="font-size:28px">+${D.pts[D.i]}</span>`:timerHTML(D.end, DDUR[q.t])}</div><div class="qtext">${esc(q.text)}</div>`;
     if(q.t==="gk") h += `<div class="opts">${q.opts.map((o,i)=>`<button class="opt ${fb?(i===q.ans?"right":(Number(D.answers[D.i])===i?"wrong mine":"")):""}" data-act="dopt" data-i="${i}" ${fb?"disabled":""}><span class="k">${"ABCD"[i]}</span><span>${esc(o)}</span></button>`).join("")}</div>`;
     else if(q.t==="est") h += fb ? scaleRevealHTML(q.min, q.max, q.unit, q.ans, D.answers[D.i]==null?[]:[{v:D.answers[D.i], color:pcol(me.pid), label:"You", e:me.av}]) + `<div class="bigans"><div class="eyebrow">Answer</div><b class="num">${esc(fmtNum(q.ans,q.unit))}</b>${esc(unitTxt(q.unit))}</div>` : scaleInputHTML("destr", q) + `<div class="row"><span class="maphint grow">Drag the marker along the scale, then lock it in.</span><button class="btn primary" data-act="dlockest" id="dlockest" disabled>Lock in</button></div>`;
     else if(q.t==="pin") h += (fb?`<div class="bigans"><div class="eyebrow">Answer</div><b>${esc(q.place)}</b> ${D.answers[D.i]?`<span class="num">· ${Math.round(km(D.answers[D.i],q)).toLocaleString("en-GB")} km from your pin</span>`:""}</div>`:"") + `<div class="map" id="map"></div>` + (fb?"":`<div class="row"><span class="maphint grow">Tap the map to drop your pin. Drag to move the map, and pinch or use + and − to zoom.</span><button class="btn primary" data-act="dlockpin" id="dlockpin" disabled>Lock in pin</button></div>`);
-    if(fb && tier(D.pts[D.i], DMAX[q.t])>=3) setTimeout(()=>confetti(50), 300);
+    if(fb && D.pts[D.i]>=3) setTimeout(()=>confetti(50), 300);
     if(fb) h += `<div class="hostbar"><button class="btn primary" data-act="dnext">${D.i+1<D.qs.length?"Next question":"See my score"}</button></div>`;
   }
   else if(D.phase==="done"){
     const r=D.result||{score:0,pts:[]};
-    const M=resMax(r), f=r.score/M;
-    if(f>=0.6) setTimeout(()=>confetti(f>=0.8?180:90), 400);
+    if(r.score>=18) setTimeout(()=>confetti(r.score>=24?180:90), 400);
     const txt=shareText(r);
-    h=`<div class="intro"><div class="eyebrow">Today's score</div><div class="scoreline num">${r.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em">/${M.toLocaleString("en-GB")}</span></div><p>${f>=0.8?"Brilliant.":f>=0.53?"Solid effort.":"Tomorrow's another quiz."} ${calcStreak()>1?`You're on a ${calcStreak()}-day streak.`:""} Come back tomorrow for a new set.</p></div><div class="share" id="sharetxt">${esc(txt)}</div><div class="row"><button class="btn" data-act="copyshare">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div>`;
+    h=`<div class="intro"><div class="eyebrow">Today's score</div><div class="scoreline num">${r.score}<span class="muted" style="font-size:.4em">/30</span></div><p>${r.score>=24?"Brilliant.":r.score>=16?"Solid effort.":"Tomorrow's another quiz."} ${calcStreak()>1?`You're on a ${calcStreak()}-day streak.`:""} Come back tomorrow for a new set.</p></div><div class="share" id="sharetxt">${esc(txt)}</div><div class="row"><button class="btn" data-act="copyshare">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div>`;
   }
   el.innerHTML=h;
   if((D.phase==="q"||D.phase==="fb") && D.qs[D.i].t==="pin"){
