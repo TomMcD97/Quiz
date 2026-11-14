@@ -2497,6 +2497,7 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -5299,7 +5300,7 @@ function localParty(){
     peers(){ return cur; }, onPeers(f){ fns.add(f); queueMicrotask(()=>f({peers:cur, joined:cur, left:[], updated:[]})); return ()=>fns.delete(f); },
     connected(){ return true; }, leave(){ fns.clear(); return Promise.resolve(); } };
 }
-function readNick(){ const ni=$("#nick"); const v=(ni?ni.value:me.nick).trim().slice(0,18); if(!v){ toast("Add your name first"); ni && ni.focus(); return false; } me.nick=v; LS.set("sq-nick", v); if(app.acct && v!==app.acct.name){ app.acct.name=v; window.SQ_AUTH.saveProfile({name:v}).catch(()=>{}); renderStatus(); } return true; }
+function readNick(){ const ni=$("#nick"); const v=(ni?ni.value:me.nick).trim().slice(0,18); if(!v){ toast("Add your name first"); ni && ni.focus(); return false; } me.nick=v; LS.set("sq-nick", v); if(app.acct && v!==app.acct.name){ const old=app.acct.name; window.SQ_AUTH.saveProfile({name:v}).then(p=>{ if(p){ app.acct.name=p.name; renderStatus(); } }).catch(e=>{ toast((e&&e.message)||"Couldn't change your name"); me.nick=old; LS.set("sq-nick", old); const n=$("#nick"); if(n) n.value=old; }); } return true; }
 
 async function openParty(code, host){
   await Promise.race([userReady, new Promise(r=>setTimeout(r,3000))]);
@@ -6413,7 +6414,7 @@ function addWord(raw){
   gridWords.push({w, pend:iw!==true});
   say(iw===true ? `${W} +${wordPts(w.length)}` : `${W} added. It gets checked at the end.`);
   gridPath=[]; paintTiles(); const inp=$("#wordin"); if(inp) inp.value="";
-  renderWordList(); if(daily){ flashWord(w); return; } setMyPresence({wc:{k:S.q.k, n:gridWords.length}}); renderBoard();
+  renderWordList(); if(daily){ flashWord(w); const cur=LS.get(DG_LS+DG.key); if(cur && cur.inProgress){ cur.words=gridWords.filter(x=>!x.pend).map(x=>x.w); LS.set(DG_LS+DG.key, cur); } return; } setMyPresence({wc:{k:S.q.k, n:gridWords.length}}); renderBoard();
 }
 function mmKey(i){ return `${S.q.k}-${me.pid}-${i}`; }
 function mmSimHTML(){
@@ -6886,9 +6887,11 @@ Reply with only JSON: {"gk":[{"q":"...","options":["a","b","c","d"],"answer":0}]
 }
 async function startDaily(){
   await Promise.race([userReady, new Promise(r=>setTimeout(r,3000))]);
-  D.key=todayKey(); const prev=LS.get(DQ_LS+D.key);
-  app.view="daily"; D.phase = prev ? "done" : "loading"; D.result=prev; render();
-  if(prev) return;
+  D.key=todayKey(); app.view="daily"; D.phase="loading"; D.result=null; render();
+  await acctRecheck();
+  let prev=LS.get(DQ_LS+D.key);
+  if(prev && prev.inProgress) prev=await dailyFinishStale(prev);
+  if(prev){ D.phase="done"; D.result=prev; renderDaily(); return; }
   GeoData.load();
   const r=await getDaily(D.key);
   if(app.view!=="daily") return;
@@ -6913,19 +6916,41 @@ const DNAME={gk:"Question", est:"Guesstimate", pin:"Pin drop", ctry:"Find the co
 function dailyMax(qs){ return (qs||[]).reduce((a,q)=>a+(DMAX[q.t]||0),0)||30; }
 function resMax(r){ return (r&&r.max)||30; }
 function tier(p,m){ const f=m?p/m:0; return f>=0.75?3:f>=0.4?2:f>0?1:0; }
-function dailyBegin(){ D.phase="q"; D.end=Date.now()+DDUR[D.qs[D.i].t]*1000; D.start=Date.now(); D.draft=null; renderDaily(); }
+function playFlags(){ return {acct:app.acct?app.acct.id:null, guest:ACCT.on&&!app.acct?1:0}; }
+function dailyBegin(){
+  if(D.i===0 && !LS.get(DQ_LS+D.key)){ /* counts as your go from the first question: refreshing doesn't give a fresh start */
+    LS.set(DQ_LS+D.key, {inProgress:1, score:0, pts:[], at:Date.now(), ...playFlags()});
+    if(app.acct) window.SQ_AUTH.saveProfile({dq:{[D.key]:{score:0}}}).catch(()=>{}); }
+  D.phase="q"; D.end=Date.now()+DDUR[D.qs[D.i].t]*1000; D.start=Date.now(); D.draft=null; renderDaily(); }
 function dailyGeoTag(q){ return q.t==="pin"?"Where in the world":q.t==="ctry"?"No names on the map":""; }
 function dailyAnswer(v){
   if(D.phase!=="q") return;
-  const q=D.qs[D.i], ms=Math.min(Date.now()-D.start, DDUR[q.t]*1000); D.answers[D.i]=v; D.secs[D.i]=ms/1000; D.pts[D.i]=dailyScore(q,v,ms); D.phase="fb"; renderDaily();
+  const q=D.qs[D.i], ms=Math.min(Date.now()-D.start, DDUR[q.t]*1000); D.answers[D.i]=v; D.secs[D.i]=ms/1000; D.pts[D.i]=dailyScore(q,v,ms); D.phase="fb";
+  const cur=LS.get(DQ_LS+D.key); if(cur && cur.inProgress){ cur.pts=D.pts.slice(); cur.score=D.pts.reduce((a,b)=>a+(b||0),0); LS.set(DQ_LS+D.key, cur); }
+  renderDaily();
+}
+async function dailyFinishStale(prev){ /* left part-way through: it ends with the points scored so far */
+  const pts=(prev.pts||[]).map(x=>x||0), score=pts.reduce((a,b)=>a+b,0);
+  const res={score, pts, at:prev.at||Date.now(), acct:prev.acct||null, guest:prev.guest||0, unfinished:1};
+  LS.set(DQ_LS+D.key, res);
+  if(app.acct && res.acct===app.acct.id){ window.SQ_AUTH.saveProfile({dq:{[D.key]:{score}}}).catch(()=>{}); await postScore("dq", D.key, res); }
+  return res;
+}
+async function postScore(kind, key, res){
+  if(!app.db || res.posted || res.guest || (ACCT.on && (!app.acct || res.acct!==app.acct.id))) return;
+  const path=`${kind==="dq"?DQ_DB:DG_DB}/${key}/scores/${myScoreId()}`;
+  const data = kind==="dq" ? {nick:me.nick||"Player", score:res.score, max:res.max||null, pts:res.pts||[], at:res.at||Date.now()} : {nick:me.nick||"Player", score:res.score, n:res.n||0, best:(res.words||[]).slice(0,3), at:res.at||Date.now()};
+  try{ await app.db.doc(path).set(data); res.posted=1; LS.set((kind==="dq"?DQ_LS:DG_LS)+key, res); }
+  catch(e){ if(e && e.code==="already_played"){ res.posted=1; LS.set((kind==="dq"?DQ_LS:DG_LS)+key, res); } else if(e&&e.code==="invalid_argument") toast("Your score is saved here, but you can't post to the shared leaderboard"); }
 }
 function dailyNext(){ D.i++; if(D.i>=D.qs.length) return dailyFinish(); dailyBegin(); }
 async function dailyFinish(){
   const score=D.pts.reduce((a,b)=>a+b,0);
-  const res={score, max:dailyMax(D.qs), pts:D.pts, pmax:D.qs.map(q=>DMAX[q.t]||3), src:D.src, at:Date.now()};
+  const st=LS.get(DQ_LS+D.key)||{}, fl=st.inProgress?{acct:st.acct||null, guest:st.guest||0}:playFlags();
+  const res={score, max:dailyMax(D.qs), pts:D.pts, pmax:D.qs.map(q=>DMAX[q.t]||3), src:D.src, at:Date.now(), ...fl};
   LS.set(DQ_LS+D.key, res); D.result=res; D.phase="done"; renderDaily();
   if(app.acct) window.SQ_AUTH.saveProfile({dq:{[D.key]:{score}}}).catch(()=>{});
-  if(app.db && !lbNeedsLogin()){ try{ await app.db.doc(`${DQ_DB}/${D.key}/scores/${myScoreId()}`).set({nick:me.nick||"Player", score, max:res.max, pts:D.pts, at:Date.now()}); res.posted=1; LS.set(DQ_LS+D.key, res); }catch(e){ if(e&&e.code==="invalid_argument") toast("Your score is saved here, but you can't post to the shared leaderboard"); } }
+  await postScore("dq", D.key, res); return;
 }
 function safeSeg(s){ return String(s).replace(/[^A-Za-z0-9_\-.~:@+]/g,"_").slice(0,120); }
 function dailyTick(now){
@@ -6956,7 +6981,7 @@ function renderDaily(){
     const M=resMax(r), f=r.score/M;
     if(f>=0.6) setTimeout(()=>confetti(f>=0.8?180:90), 400);
     const txt=shareText(r);
-    h=`<div class="intro"><div class="eyebrow">Today's score</div><div class="scoreline num">${r.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts</span></div><p>${f>=0.8?"Brilliant.":f>=0.53?"Solid effort.":"Tomorrow's another quiz."} ${calcStreak()>1?`You're on a ${calcStreak()}-day streak.`:""} Come back tomorrow for a new set.</p></div>${lbNeedsLogin()?acctCTA("Log in or create an account to put this score on today's leaderboard."):""}<div class="share" id="sharetxt">${esc(txt)}</div><div class="row"><button class="btn" data-act="copyshare">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div>`;
+    h=`<div class="intro"><div class="eyebrow">Today's score</div><div class="scoreline num">${r.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts</span></div><p>${f>=0.8?"Brilliant.":f>=0.53?"Solid effort.":"Tomorrow's another quiz."} ${calcStreak()>1?`You're on a ${calcStreak()}-day streak.`:""} Come back tomorrow for a new set.</p></div>${guestDone(r)?acctCTA("Guest scores don't go on the leaderboard. Log in before tomorrow's quiz to get ranked."):""}<div class="share" id="sharetxt">${esc(txt)}</div><div class="row"><button class="btn" data-act="copyshare">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div>`;
   }
   el.innerHTML=h;
   if((D.phase==="q"||D.phase==="fb") && (D.qs[D.i].t==="pin"||D.qs[D.i].t==="ctry")){
@@ -6995,21 +7020,29 @@ function dailyGridFor(key){
 }
 async function startDGrid(){
   await Promise.race([userReady, new Promise(r=>setTimeout(r,3000))]);
-  DG.key=todayKey(); DG.result=LS.get(DG_LS+DG.key); DG.phase=DG.result?"done":"loading"; app.view="dgrid"; render();
-  await loadDict(); if(app.view!=="dgrid") return;
+  DG.key=todayKey(); DG.result=null; DG.phase="loading"; app.view="dgrid"; render();
+  await acctRecheck(); await loadDict(); if(app.view!=="dgrid") return;
+  DG.result=LS.get(DG_LS+DG.key);
+  if(DG.result && DG.result.inProgress){ const r=DG.result, ws=(r.words||[]).slice().sort((a,b)=>b.length-a.length||a.localeCompare(b)), score=ws.reduce((t,w)=>t+wordPts(w.length),0);
+    DG.result={score, n:ws.length, words:ws, at:r.at||Date.now(), acct:r.acct||null, guest:r.guest||0, unfinished:1}; LS.set(DG_LS+DG.key, DG.result);
+    if(app.acct && DG.result.acct===app.acct.id){ window.SQ_AUTH.saveProfile({dg:{[DG.key]:{score, n:ws.length}}}).catch(()=>{}); await postScore("dg", DG.key, DG.result); } }
+  if(DG.result) DG.phase="done";
   DG.grid=dailyGridFor(DG.key); DG.all=solveGrid(DG.grid).sort((a,b)=>b.length-a.length||a.localeCompare(b));
   if(!DG.result) DG.phase="intro"; renderDGrid();
 }
-function dgBegin(){ if(DG.phase!=="intro") return; gridWords=[]; gridPath=[]; DG.phase="play"; DG.end=Date.now()+DG_SECS*1000; renderDGrid(); const i=$("#wordin"); if(i && !matchMedia("(pointer:coarse)").matches) i.focus({preventScroll:true}); }
+function dgBegin(){ if(DG.phase!=="intro") return; if(LS.get(DG_LS+DG.key)){ startDGrid(); return; } gridWords=[]; gridPath=[];
+  LS.set(DG_LS+DG.key, {inProgress:1, score:0, n:0, words:[], at:Date.now(), ...playFlags()});
+  if(app.acct) window.SQ_AUTH.saveProfile({dg:{[DG.key]:{score:0}}}).catch(()=>{}); DG.phase="play"; DG.end=Date.now()+DG_SECS*1000; renderDGrid(); const i=$("#wordin"); if(i && !matchMedia("(pointer:coarse)").matches) i.focus({preventScroll:true}); }
 function flashWord(w){ const m=$("#wmsg"); if(m) m.innerHTML=`<b style="color:var(--ink);font-size:18px">${esc(w.toUpperCase())}</b> <span class="num" style="color:var(--accent)">+${wordPts(w.length)}</span>`; }
 async function dgFinish(){
   if(DG.phase!=="play") return;
   const ws=gridWords.filter(x=>!x.pend).map(x=>x.w).sort((a,b)=>b.length-a.length||a.localeCompare(b));
   const score=ws.reduce((t,w)=>t+wordPts(w.length),0);
-  const res={score, n:ws.length, words:ws.slice(0,60), at:Date.now()};
+  const st=LS.get(DG_LS+DG.key)||{}, fl=st.inProgress?{acct:st.acct||null, guest:st.guest||0}:playFlags();
+  const res={score, n:ws.length, words:ws.slice(0,60), at:Date.now(), ...fl};
   LS.set(DG_LS+DG.key, res); DG.result=res; DG.phase="done"; gridPath=[]; renderDGrid();
   if(app.acct) window.SQ_AUTH.saveProfile({dg:{[DG.key]:{score, n:ws.length}}}).catch(()=>{});
-  if(app.db && !lbNeedsLogin()){ try{ await app.db.doc(`${DG_DB}/${DG.key}/scores/${myScoreId()}`).set({nick:me.nick||"Player", score, n:ws.length, best:ws.slice(0,3), at:Date.now()}); res.posted=1; LS.set(DG_LS+DG.key, res); }catch(e){ if(e&&e.code==="invalid_argument") toast("Your score is saved here, but you can't post to the shared leaderboard"); } }
+  await postScore("dg", DG.key, res);
 }
 function gridShareText(r){ return `Spotlight Word Grid · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}\n${r.n} word${r.n===1?"":"s"} · ${Number(r.score).toLocaleString("en-GB")} points${r.words&&r.words[0]?`\nLongest: ${r.words[0].length} letters`:""}`; }
 function renderDGrid(){
@@ -7025,7 +7058,7 @@ function renderDGrid(){
     if(r.score>=600) setTimeout(()=>confetti(r.score>=1200?160:80), 400);
     h=`<div class="intro"><div class="eyebrow">Today's word grid</div><div class="scoreline num">${Number(r.score).toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> points</span></div><p>${r.n} word${r.n===1?"":"s"}${DG.all?` out of ${DG.all.length} in the grid`:""}. Come back tomorrow for a new grid.</p></div>`;
     if(DG.grid) h+=`<div class="wgwrap"><div class="wg" style="max-width:220px">${DG.grid.map(c=>`<div class="tile" style="font-size:22px">${esc(c)}</div>`).join("")}</div><div style="display:grid;gap:10px;min-width:0">${(r.words||[]).length?`<div><div class="eyebrow" style="margin-bottom:6px">Your words</div><div class="words">${r.words.map(w=>`<span class="w">${esc(w.toUpperCase())}<sup>${wordPts(w.length)}</sup></span>`).join("")}</div></div>`:""}${missed.length?`<div><div class="eyebrow" style="margin-bottom:6px">Longest words you missed</div><div class="words">${missed.map(w=>`<span class="w pend">${esc(w.toUpperCase())}<sup>${wordPts(w.length)}</sup></span>`).join("")}</div></div>`:""}</div></div>`;
-    if(lbNeedsLogin()) h+=acctCTA("Log in or create an account to put this score on today's leaderboard.");
+    if(guestDone(r)) h+=acctCTA("Guest scores don't go on the leaderboard. Log in before tomorrow's grid to get ranked.");
     h+=`<div class="share" id="sharetxt">${esc(gridShareText(r))}</div><div class="row"><button class="btn" data-act="copygrid">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div>`;
   }
   el.innerHTML=h;
@@ -7041,11 +7074,14 @@ function renderDGridBoard(){
 const ACCT={on:false, view:"login", busy:false, msg:"", err:""};
 function myScoreId(){ return app.acct ? app.acct.id : safeSeg(me.pid); }
 function lbNeedsLogin(){ return ACCT.on && !app.acct; }
+function guestDone(r){ return ACCT.on && r && (r.guest || (!app.acct && !r.posted)); }
 function acctCTA(txt){ return `<div class="acct-cta"><span>${esc(txt)}</span><button class="btn small primary" data-act="acct">Log in</button></div>`; }
 function acctPromptHTML(){
-  if(ACCT.on) return app.acct ? "" : acctCTA("Log in to put your score on the leaderboard. You can still play without an account.");
+  if(ACCT.on) return app.acct ? "" : acctCTA("Log in before you start to get on the leaderboard. You can still play as a guest, but guest scores aren't ranked.");
   return me.nick ? "" : `<div class="field" style="max-width:320px"><label for="nick">Your name for the leaderboard</label><input class="input" id="nick" maxlength="18" placeholder="e.g. Sam" autocomplete="nickname"></div>`;
 }
+async function acctRecheck(){ /* played on another device? fetch the account's days before starting */
+  if(!ACCT.on || !app.acct || !window.SQ_AUTH) return; try{ const p=await window.SQ_AUTH.me(); if(p) acctApply(p, true); }catch(e){} }
 function dayKeyBack(i){ const d=new Date(); d.setDate(d.getDate()-i); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 async function acctInit(){
   const A=window.SQ_AUTH; if(!A) return;
@@ -7058,24 +7094,24 @@ async function acctInit(){
   if(A.recovery()) openAcct("reset");
 }
 function acctRefreshView(){ if(app.view==="home") render(); else if(app.view==="daily") renderDaily(); else if(app.view==="dgrid") renderDGrid(); }
-function acctApply(p){
+function acctApply(p, quiet){
   app.acct=p;
   if(p.name){ me.nick=p.name; LS.set("sq-nick",p.name); const ni=$("#nick"); if(ni) ni.value=p.name; }
   if(p.av && validAv(p.av) && p.av!==me.av){ me.av=p.av; LS.set("sq-av",p.av); if(isToonAv(p.av)) LS.set("sq-av-custom",p.av); }
-  for(const [d,v] of Object.entries(p.dq||{})) if(!LS.get(DQ_LS+d)) LS.set(DQ_LS+d,{score:v.score, pts:[], posted:1});
-  for(const [d,v] of Object.entries(p.dg||{})) if(!LS.get(DG_LS+d)) LS.set(DG_LS+d,{score:v.score, n:v.n, words:[], posted:1});
+  for(const [d,v] of Object.entries(p.dq||{})) if(!LS.get(DQ_LS+d)) LS.set(DQ_LS+d,{score:v.score, pts:[], posted:1, acct:p.id, guest:v.guest||0});
+  for(const [d,v] of Object.entries(p.dg||{})) if(!LS.get(DG_LS+d)) LS.set(DG_LS+d,{score:v.score, n:v.n, words:[], posted:1, acct:p.id, guest:v.guest||0});
   const up={dq:{},dg:{}}; let any=false; /* results from before logging in, so streaks follow you */
   for(let i=0;i<60;i++){ const k=dayKeyBack(i); const a=LS.get(DQ_LS+k), g=LS.get(DG_LS+k);
-    if(a && !(p.dq||{})[k]){ up.dq[k]={score:a.score}; any=true; } if(g && !(p.dg||{})[k]){ up.dg[k]={score:g.score, n:g.n}; any=true; } }
+    if(a && !(p.dq||{})[k]){ up.dq[k]={score:a.score, guest:a.acct===p.id?0:1}; any=true; } if(g && !(p.dg||{})[k]){ up.dg[k]={score:g.score, n:g.n, guest:g.acct===p.id?0:1}; any=true; } }
   if(any) window.SQ_AUTH.saveProfile(up).catch(()=>{});
   if(!p.av && me.av) window.SQ_AUTH.saveProfile({av:me.av}).catch(()=>{});
-  postPending();
+  if(!quiet) postPending();
 }
-async function postPending(){ /* today's scores played before logging in */
-  if(!app.db || (ACCT.on && !app.acct)) return; const key=todayKey(); let did=false;
-  const a=LS.get(DQ_LS+key); if(a && !a.posted && app.acct){ try{ await app.db.doc(`${DQ_DB}/${key}/scores/${myScoreId()}`).set({nick:me.nick||"Player", score:a.score, max:a.max, pts:a.pts||[], at:a.at||Date.now()}); a.posted=1; LS.set(DQ_LS+key,a); did=true; }catch(e){} }
-  const g=LS.get(DG_LS+key); if(g && !g.posted && app.acct){ try{ await app.db.doc(`${DG_DB}/${key}/scores/${myScoreId()}`).set({nick:me.nick||"Player", score:g.score, n:g.n, best:(g.words||[]).slice(0,3), at:g.at||Date.now()}); g.posted=1; LS.set(DG_LS+key,g); did=true; }catch(e){} }
-  if(did){ toast("Your score is on today's leaderboard"); acctRefreshView(); }
+async function postPending(){ /* retry a score that was played logged in but didn't reach the server */
+  if(!app.db || (ACCT.on && !app.acct)) return; const key=todayKey();
+  const a=LS.get(DQ_LS+key), g=LS.get(DG_LS+key);
+  if(a && !a.inProgress && !a.posted) await postScore("dq", key, a);
+  if(g && !g.inProgress && !g.posted) await postScore("dg", key, g);
 }
 function openAcct(view){
   ACCT.view=view||(app.acct?"account":"login"); ACCT.err=""; ACCT.msg=""; ACCT.busy=false;
@@ -7103,7 +7139,7 @@ function renderAcct(){
 async function acctSubmit(kind){
   const A=window.SQ_AUTH; if(!A || ACCT.busy) return;
   const val=id=>((($("#"+id)||{}).value)||"").trim(), pw=()=>(($("#ap")||{}).value)||"";
-  const keepVals={ae:val("ae"), an:val("an")};
+  const keepVals={ae:val("ae"), an:val("an"), ap:pw()};
   const fail=msg=>{ ACCT.busy=false; ACCT.err=msg||"Something went wrong. Try again."; renderAcct(); for(const k in keepVals){ const i=$("#"+k); if(i && keepVals[k]) i.value=keepVals[k]; } };
   if((kind==="signup"||kind==="reset") && pw().length<8) return fail("Use a longer password (at least 8 characters).");
   if(kind==="signup" && !val("an")) return fail("Add a name for the leaderboard.");

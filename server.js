@@ -78,6 +78,10 @@ function dbOp(b, user) {
       if (!user) return { error: "login_required", code: "login_required" };
       if (m[2] !== user.id) return { error: "not_allowed" };
       const prof = store["users/" + user.id] || {};
+      // one go per day: the first score stands, and a game played as a guest before logging in doesn't count
+      if (store[p]) return { error: "You've already played this one today.", code: "already_played" };
+      const day = p.split("/")[1], kind = /^dg/.test(p) ? "dg" : "dq", ent = (prof[kind] || {})[day];
+      if (ent && ent.guest) return { error: "Games played before logging in don't go on the leaderboard.", code: "already_played" };
       b.data = Object.assign({}, b.data || {}, { nick: String(prof.name || user.name || "Player").slice(0, 18), uid: user.id });
     }
   }
@@ -111,7 +115,14 @@ async function userOf(req) {
     if (tokCache.size > 5000) tokCache.clear(); tokCache.set(tok, { user, until: Date.now() + 5 * 60000 }); return user; }
   catch (e) { tokCache.set(tok, { user: null, until: Date.now() + 30000 }); return null; }
 }
-const cleanName = n => String(n || "").replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, 18);
+const cleanName = n => String(n || "").replace(/[\u0000-\u001f<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 18);
+const nameKey = n => cleanName(n).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g, "");
+function nameTaken(n, exceptId) { // leaderboard names are unique, ignoring case, spaces and punctuation
+  const k = nameKey(n); if (!k) return false;
+  for (const key in store) if (key.startsWith("users/") && key !== "users/" + exceptId && nameKey((store[key] || {}).name) === k) return true;
+  return false;
+}
+const TAKEN = "That name's already taken. Try another.";
 function profileOut(user) { const p = store["users/" + user.id] || {}; return { id: user.id, email: user.email, name: p.name || user.name || "", av: p.av || null, dq: p.dq || {}, dg: p.dg || {} }; }
 function sessOut(j) { return { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: j.expires_at || (Math.floor(Date.now() / 1000) + (j.expires_in || 3600)) }; }
 const authTries = new Map();
@@ -134,7 +145,8 @@ async function authRoute(req, res, url) {
   const email = String(b.email || "").trim().toLowerCase().slice(0, 200), password = String(b.password || "").slice(0, 200);
   try {
     if (act === "signup") {
-      const name = cleanName(b.name); if (!name) return json(res, 400, { error: "Add a name for the leaderboard." });
+      const name = cleanName(b.name); if (!name || !nameKey(name)) return json(res, 400, { error: "Add a name for the leaderboard." });
+      if (nameTaken(name, "")) return json(res, 400, { error: TAKEN, code: "name_taken" });
       if (password.length < 8) return json(res, 400, { error: "Use a longer password (at least 8 characters)." });
       const j = await sbFetch("/auth/v1/signup?redirect_to=" + encodeURIComponent(origin), { method: "POST", headers: { apikey: SB_ANON, "content-type": "application/json" }, body: JSON.stringify({ email, password, data: { name } }) });
       const u = (j && (j.user || (j.id ? j : null))) || null;
@@ -163,11 +175,15 @@ async function authRoute(req, res, url) {
     }
     if (act === "profile") {
       const k = "users/" + user.id, p = Object.assign({}, store[k] || {});
-      if (b.name !== undefined) { const n = cleanName(b.name); if (n) p.name = n; }
+      if (b.name !== undefined) { const n = cleanName(b.name); if (n && nameKey(n)) { if (nameTaken(n, user.id)) return json(res, 400, { error: TAKEN, code: "name_taken" }); p.name = n; } }
       if (typeof b.av === "string" && b.av.length < 600) p.av = b.av;
       for (const f of ["dq", "dg"]) if (b[f] && typeof b[f] === "object") { // daily results by date, for streaks on every device
         p[f] = Object.assign({}, p[f] || {});
-        for (const [d, v] of Object.entries(b[f])) if (/^\d{4}-\d{2}-\d{2}$/.test(d) && v && typeof v === "object") p[f][d] = { score: +v.score || 0, n: +v.n || 0 };
+        for (const [d, v] of Object.entries(b[f])) if (/^\d{4}-\d{2}-\d{2}$/.test(d) && v && typeof v === "object") {
+          const old = p[f][d] || {}; // once a day is marked as started or played, it stays that way
+          p[f][d] = { score: Math.max(+old.score || 0, +v.score || 0), n: Math.max(+old.n || 0, +v.n || 0), started: 1, guest: old.guest || (v.guest ? 1 : 0) || undefined };
+          if (!p[f][d].guest) delete p[f][d].guest;
+        }
         const ks = Object.keys(p[f]).sort(); ks.slice(0, Math.max(0, ks.length - 120)).forEach(d => delete p[f][d]);
       }
       p.at = Date.now(); store[k] = p; save(k);
