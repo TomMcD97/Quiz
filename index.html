@@ -5215,7 +5215,7 @@ function homeHTML(){
     <section class="panel daily-card" id="dailycard">
       <div class="eyebrow">02 — Daily</div>
       <div class="date">${new Date().toLocaleDateString("en-GB",{weekday:"long", day:"numeric", month:"long"})}</div>
-      <p class="muted" style="margin:0">Eleven questions, the same for everyone today: sport, pop culture, the news, guesstimates, pin drops and a find-the-country. Every question starts at 100 points and counts down, so answer fast.</p>
+      <p class="muted" style="margin:0">Ten questions, the same for everyone. Each starts at 100 points and counts down, so be quick.</p>
       <div id="dailyinfo"></div>
       <div class="dgsep"></div>
       <div class="eyebrow">Daily word grid</div>
@@ -5240,7 +5240,7 @@ async function loadHomeDaily(){
   const key=todayKey(); const mine=LS.get(DQ_LS+key);
   const streak=calcStreak();
   let h = "";
-  if(mine){ h += `<div class="row"><div class="scoreline num">${mine.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em">/${resMax(mine).toLocaleString("en-GB")}</span></div><div class="muted">You've played today.${streak>1?` ${streak}-day streak.`:""}</div></div><div class="row"><button class="btn" data-act="dailyresult">See results</button></div>`; }
+  if(mine){ h += `<div class="row"><div class="scoreline num">${mine.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts</span></div><div class="muted">You've played today.${streak>1?` ${streak}-day streak.`:""}</div></div><div class="row"><button class="btn" data-act="dailyresult">See results</button></div>`; }
   else h += `<div class="row"><button class="btn spot" data-act="daily">Play today's quiz</button>${streak?`<span class="muted">${streak}-day streak</span>`:""}</div>`;
   h += `<div id="homelb"></div>`;
   el.innerHTML = h;
@@ -6806,7 +6806,7 @@ const Pong={mount(){}, board(){}};
 
 /* ---------------- daily quiz ---------------- */
 const D = { key:null, qs:null, src:null, i:0, phase:"intro", answers:[], pts:[], end:0, start:0, draft:null, loading:false, lbUnsub:null };
-const DORDER=["gk","gk","est","pin","gk","ctry","gk","est","gk","pin","gk"];
+const DORDER=["gk","gk","est","pin","gk","ctry","gk","est","gk","pin"];
 function dailyCtry(key){ const rnd=mulberry(hashStr("ctry-"+key)); const pool=CTRY.filter(c=>c[3]<=2); const c=pool[Math.floor(rnd()*pool.length)]; return {t:"ctry", text:"Find "+c[0]+" on the map", place:c[0], lat:c[1], lng:c[2]}; }
 function dailyAssemble(gk, est, pin, key){ const q={gk:gk.slice(), est:est.slice(), pin:pin.slice(), ctry:[dailyCtry(key)]}; return DORDER.map(t=>q[t].shift()); }
 function bankDaily(key){
@@ -6826,15 +6826,15 @@ async function getDaily(key){
     if(lease && lease.acquired){
       try{
         const web=!!window.SQ_STANDALONE;
-        const arr=await ask(`Write today's daily quiz for a British audience who love sport and pop culture. Write exactly 6 multiple-choice questions, 2 guesstimate questions and 2 "where in the world" pin-drop questions.
-The 6 multiple-choice questions, in this order: 1 sport, 1 pop culture, 1 recent news, 1 sport, 1 pop culture, 1 sport or pop culture. Sport means football, cricket, rugby, tennis, F1, golf, darts, boxing, the Olympics and so on. Pop culture means music, film, TV, celebrities, video games and viral moments. The news question is about a story from ${web?"the last week or two: search the web for this week's biggest news first":"the last few months that you are sure about"}, and must have a clear, settled answer. Make half easy (most adults would know) and half genuinely hard.
+        const arr=await ask(`Write today's daily quiz for a British audience who love sport and pop culture. Write exactly 5 multiple-choice questions, 2 guesstimate questions and 2 "where in the world" pin-drop questions.
+The 5 multiple-choice questions, in this order: 1 sport, 1 pop culture, 1 recent news, 1 sport, 1 pop culture. Sport means football, cricket, rugby, tennis, F1, golf, darts, boxing, the Olympics and so on. Pop culture means music, film, TV, celebrities, video games and viral moments. The news question is about a story from ${web?"the last week or two: search the web for this week's biggest news first":"the last few months that you are sure about"}, and must have a clear, settled answer. Make half easy (most adults would know) and half genuinely hard.
 Both guesstimates are about sport or pop culture, such as stadium capacities, transfer fees, box office takings, chart records or career totals. Guesstimates need min and max ends for a slider, round numbers, with the answer between 15% and 85% of the way along.
 Pins: one instantly recognisable stadium, landmark or city, and one harder place that is still findable on a map; famous sports venues and film or TV locations are ideal.
 Facts must be accurate. News questions must be about something that has already happened, so the answer won't change. Keep questions under 140 characters. British English.
 Date code: ${key}
 Reply with only JSON: {"gk":[{"q":"...","options":["a","b","c","d"],"answer":0}],"est":[{"q":"How tall is the Eiffel Tower to its tip, in metres?","answer":330,"unit":"m","min":0,"max":600}],"pin":[{"q":"Where is Machu Picchu?","place":"Machu Picchu, Peru","lat":-13.1631,"lng":-72.545}]}`, "default", web?180000:100000, {web});
-        const gk=cleanQs("gk", arr&&arr.gk).slice(0,6), est=cleanQs("est", arr&&arr.est).slice(0,2), pin=cleanQs("pin", arr&&arr.pin).slice(0,2);
-        if(gk.length===6 && est.length===2 && pin.length===2){
+        const gk=cleanQs("gk", arr&&arr.gk).slice(0,5), est=cleanQs("est", arr&&arr.est).slice(0,2), pin=cleanQs("pin", arr&&arr.pin).slice(0,2);
+        if(gk.length===5 && est.length===2 && pin.length===2){
           const T=x=>t=>({t:x, ...t});
           const qs=dailyAssemble(gk.map(T("gk")), est.map(T("est")), pin.map(T("pin")), key);
           await ref.set({qs, src:"ai", at:Date.now()});
@@ -6855,7 +6855,7 @@ async function startDaily(){
   GeoData.load();
   const r=await getDaily(D.key);
   if(app.view!=="daily") return;
-  D.qs=r.qs; D.src=r.src;
+  D.qs=r.qs.slice(0,10); D.src=r.src;
   D.qs.forEach(q=>{ if(q.t==="est" && !(q.max>q.min)) Object.assign(q, estRange(q.ans, q.unit, mulberry(hashStr(D.key+q.text)))); }); D.i=0; D.pts=[]; D.answers=[]; D.secs=[]; D.phase="intro"; renderDaily();
   if(D.qs.some(q=>q.t==="pin"||q.t==="ctry")) loadMap();
 }
@@ -6895,14 +6895,14 @@ function dailyTick(now){
   const pa=$("#dpav"); if(pa){ const q=D.qs[D.i]; pa.textContent=dailyAvail(q, now-D.start); }
   if(now>D.end){ const q=D.qs[D.i]; let v=null; if(q.t==="pin"||q.t==="ctry"||q.t==="est") v=D.draft; dailyAnswer(v); }
 }
-function shareText(res){ const sq=(res.pts||[]).map((p,i)=>["⬜","🟧","🟨","🟩"][res.pmax?tier(p,res.pmax[i]):p]||"⬜").join(""); return `Spotlight Quiz · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}\n${sq}\n${res.score.toLocaleString("en-GB")}/${resMax(res).toLocaleString("en-GB")}`; }
+function shareText(res){ const sq=(res.pts||[]).map((p,i)=>["⬜","🟧","🟨","🟩"][res.pmax?tier(p,res.pmax[i]):p]||"⬜").join(""); return `Spotlight Quiz · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}\n${sq}\n${res.score.toLocaleString("en-GB")} points`; }
 function renderDaily(){
   const el=$("#dstage"); if(!el) return;
   if(mapView){ mapView.destroy(); mapView=null; }
   const prog = D.qs ? `<div class="progress">${D.qs.map((_,i)=>`<i class="${i<D.i||(i===D.i&&D.phase==="fb")?"done":i===D.i&&D.phase==="q"?"cur":""}"></i>`).join("")}</div>` : "";
   let h="";
   if(D.phase==="loading") h=`<div class="intro"><div class="spinner"></div><h2>Loading today's quiz</h2><p>If you're the first player today, Claude is writing the questions. Everyone else gets the same set.</p></div>`;
-  else if(D.phase==="intro") h=`${prog}<div class="intro"><div class="eyebrow">Daily quiz · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}))}</div><div class="ri">${D.qs.length} questions · up to ${dailyMax(D.qs).toLocaleString("en-GB")} points</div><p>Sport, pop culture, the news, guesstimates, pin drops and a find-the-country with no names on the map. Every question starts at <b>100 points</b> and counts down while the clock runs, so the quicker you answer, the more you score. A wrong answer scores nothing; guesstimates, pins and the country score more the closer you get. You get one go per day.</p><div class="row"><button class="btn spot" data-act="dbegin">Start</button><span class="muted" style="font-size:13px">${D.src==="ai"?"Today's questions were written by Claude.":"Today's questions come from the built-in bank."}</span></div></div>`;
+  else if(D.phase==="intro") h=`${prog}<div class="intro"><div class="eyebrow">Daily quiz · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}))}</div><div class="ri">${D.qs.length} questions</div><p>Every question starts at <b>100 points</b> and counts down with the clock. Closer guesses score more. One go per day.</p><div class="row"><button class="btn spot" data-act="dbegin">Start</button><span class="muted" style="font-size:13px">${D.src==="ai"?"Today's questions were written by Claude.":"Today's questions come from the built-in bank."}</span></div></div>`;
   else if(D.phase==="q"||D.phase==="fb"){
     const q=D.qs[D.i]; const fb=D.phase==="fb";
     h = prog + `<div class="stagehead"><div><div class="eyebrow">${DNAME[q.t]||"Question"}</div><div class="muted num" style="font-size:14px">Question ${D.i+1} of ${D.qs.length}</div></div>${fb?`<span class="pts on" style="font-size:28px">+${D.pts[D.i]}<span class="muted" style="font-size:.45em;display:block;text-align:right">${D.answers[D.i]==null?"no answer":"in "+D.secs[D.i].toFixed(1)+"s"}</span></span>`:`<div class="row" style="gap:12px;flex-wrap:nowrap"><span class="pts on num" style="font-size:28px;min-width:2.4em;text-align:right" title="Points available"><span id="dpav">100</span><span class="muted" style="font-size:.4em;display:block">pts left</span></span>${timerHTML(D.end, DDUR[q.t])}</div>`}</div><div class="qtext">${esc(q.text)}</div>`;
@@ -6918,7 +6918,7 @@ function renderDaily(){
     const M=resMax(r), f=r.score/M;
     if(f>=0.6) setTimeout(()=>confetti(f>=0.8?180:90), 400);
     const txt=shareText(r);
-    h=`<div class="intro"><div class="eyebrow">Today's score</div><div class="scoreline num">${r.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em">/${M.toLocaleString("en-GB")}</span></div><p>${f>=0.8?"Brilliant.":f>=0.53?"Solid effort.":"Tomorrow's another quiz."} ${calcStreak()>1?`You're on a ${calcStreak()}-day streak.`:""} Come back tomorrow for a new set.</p></div><div class="share" id="sharetxt">${esc(txt)}</div><div class="row"><button class="btn" data-act="copyshare">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div>`;
+    h=`<div class="intro"><div class="eyebrow">Today's score</div><div class="scoreline num">${r.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts</span></div><p>${f>=0.8?"Brilliant.":f>=0.53?"Solid effort.":"Tomorrow's another quiz."} ${calcStreak()>1?`You're on a ${calcStreak()}-day streak.`:""} Come back tomorrow for a new set.</p></div><div class="share" id="sharetxt">${esc(txt)}</div><div class="row"><button class="btn" data-act="copyshare">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div>`;
   }
   el.innerHTML=h;
   if((D.phase==="q"||D.phase==="fb") && (D.qs[D.i].t==="pin"||D.qs[D.i].t==="ctry")){
