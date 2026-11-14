@@ -4965,16 +4965,24 @@ function mmBank(topic){
 
 /* ---------------- guesstimate scale ---------------- */
 function estRange(ans, unit, rnd=Math.random){
-  if(unit==="year"){ const w=[100,200,300,400][Math.floor(rnd()*4)]; const pos=0.15+rnd()*0.7; let min=Math.round((ans-pos*w)/10)*10; let max=min+w; const yr=new Date().getFullYear(); if(max>yr){ max=Math.ceil(yr/10)*10; min=max-w; } return {min, max}; }
-  const pos=0.15+rnd()*0.7; let max=ans/pos; const mag=Math.pow(10, Math.floor(Math.log10(Math.abs(max)||1))); max=Math.ceil(max/mag*2)/2*mag; if(max<=ans*1.08) max=ans*1.25; return {min:0, max:+max.toPrecision(6)};
+  /* a wide scale with round tick marks; whole-number answers get a whole-number scale */
+  if(unit==="year"){ const w=[160,200,240,320,400,480][Math.floor(rnd()*6)]; const pos=0.15+rnd()*0.7; let min=Math.round((ans-pos*w)/10)*10; let max=min+w; const yr=new Date().getFullYear(); if(max>yr){ max=Math.ceil(yr/10)*10; min=max-w; } return {min, max, int:true}; }
+  const int=Number.isInteger(ans), a=Math.abs(ans)||1;
+  const pos=0.15+rnd()*0.6; /* the answer sits 15%-75% along: the top end is about 1.3x to 6.5x the answer */
+  const want=a/pos/4; const e=Math.floor(Math.log10(want)), m=want/Math.pow(10,e);
+  const steps=(int && e<=0) ? [1,2,5,10] : [1,2,2.5,5,10];
+  let tick=steps.find(x=>x>=m-1e-9)*Math.pow(10,e); if(int) tick=Math.max(1, Math.round(tick));
+  let max=+(tick*4).toPrecision(6); if(a/max<0.12) max=+(Math.ceil(a/0.5/ (tick))*tick).toPrecision(6);
+  if(/%|percent/i.test(unit||"") && ans<=100 && max>100) max=100;
+  return {min:0, max, int};
 }
-function scaleStep(min, max, unit){ if(unit==="year") return 1; const r=max-min; return Math.pow(10, Math.floor(Math.log10(r||1))-2); }
-function snap(v, min, max, unit){ const st=scaleStep(min,max,unit); return +(Math.round(v/st)*st).toPrecision(12); }
+function scaleStep(min, max, unit, int){ if(unit==="year") return 1; const r=max-min; const st=Math.pow(10, Math.floor(Math.log10(r||1))-2); return int ? Math.max(1, st) : st; }
+function snap(v, min, max, unit, int){ const st=scaleStep(min,max,unit,int); return +(Math.round(v/st)*st).toPrecision(12); }
 function fmtShort(n, unit){ if(unit==="year") return String(Math.round(n)); const a=Math.abs(n); if(a>=1e9) return +(n/1e9).toFixed(1)+"bn"; if(a>=1e6) return +(n/1e6).toFixed(1)+"m"; if(a>=1e4) return Math.round(n/1e3)+"k"; return fmtNum(+n.toPrecision(4)); }
 function unitTxt(u){ return u && u!=="year" ? " "+u : ""; }
 function scaleTicks(min, max, unit){ return [0,.25,.5,.75,1].map(f=>`<span>${esc(fmtShort(min+(max-min)*f, unit))}</span>`).join(""); }
 function scaleInputHTML(id, q){
-  return `<div class="readout" id="${id}-ro">Drag the marker</div><div class="scale"><div class="track"></div><input type="range" id="${id}" min="${q.min}" max="${q.max}" step="${scaleStep(q.min,q.max,q.unit)}" value="${snap((q.min+q.max)/2,q.min,q.max,q.unit)}" aria-label="Your guess"><div class="ticks">${scaleTicks(q.min,q.max,q.unit)}</div></div>`;
+  return `<div class="readout" id="${id}-ro">Drag the marker</div><div class="scale"><div class="track"></div><input type="range" id="${id}" min="${q.min}" max="${q.max}" step="${scaleStep(q.min,q.max,q.unit,q.int)}" value="${snap((q.min+q.max)/2,q.min,q.max,q.unit,q.int)}" aria-label="Your guess"><div class="ticks">${scaleTicks(q.min,q.max,q.unit)}</div></div>`;
 }
 function scaleRevealHTML(min, max, unit, ans, marks){
   const pct=v=>Math.max(0, Math.min(100, (v-min)/(max-min)*100));
@@ -5287,8 +5295,8 @@ async function loadHomeDaily(){
     gi.innerHTML = (g ? `<div class="row"><div class="scoreline num">${Number(g.score||0).toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts · ${g.n} word${g.n===1?"":"s"}</span></div></div><div class="row"><button class="btn" data-act="dgrid">See results</button></div>` : `<div class="row"><button class="btn spot" data-act="dgrid">Play today's grid</button></div>`) + `<div id="homegridlb"></div>`;
     if(app.db) subscribeLB(`${DG_DB}/${key}/scores`, "#homegridlb", 5, "Today's grid leaderboard"); }
 }
-const DQ_LS="sq-dq3-", DG_LS="sq-grid2-", DQ_DB="dq3", DG_DB="dg2"; /* fresh keys: the daily quiz and grid were reset on 14 Nov 2026 */
-function calcStreak(){ let n=0; const d=new Date(); for(let i=0;i<400;i++){ const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); if(LS.get(DQ_LS+k)||LS.get("sq-dq2-"+k)||LS.get("sq-daily-"+k)) n++; else if(i>0) break; d.setDate(d.getDate()-1); } return n; }
+const DQ_LS="sq-dq4-", DG_LS="sq-grid2-", DQ_DB="dq4", DG_DB="dg2", DQ_RESET_DAY="2026-11-14"; /* daily questions replaced on 14 Nov 2026 */ /* fresh keys: the daily quiz and grid were reset on 14 Nov 2026 */
+function calcStreak(){ let n=0; const d=new Date(); for(let i=0;i<400;i++){ const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); if(LS.get(DQ_LS+k)||LS.get("sq-dq3-"+k)||LS.get("sq-dq2-"+k)||LS.get("sq-daily-"+k)) n++; else if(i>0) break; d.setDate(d.getDate()-1); } return n; }
 
 /* ---------------- party join / host ---------------- */
 function localParty(){
@@ -5734,7 +5742,7 @@ function cleanQs(t, arr){
   for(const o of arr){ if(!o || typeof o!=="object") continue;
     if(t==="gk"){ const opts=Array.isArray(o.options)?o.options.map(x=>s(x,80)).filter(Boolean):[]; const a=Number(o.answer); if(opts.length!==4 || !(a>=0&&a<4) || !o.q) continue; const right=opts[a]; const sh=shuffle(opts); out.push({text:s(o.q), opts:sh, ans:sh.indexOf(right)}); }
     else if(t==="mm"){ if(!o.q||!o.a) continue; out.push({text:s(o.q), ans:s(o.a,60), alt:Array.isArray(o.alt)?o.alt.map(x=>s(x,60)).filter(Boolean).slice(0,6):[]}); }
-    else if(t==="est"){ const v=Number(o.answer); if(!o.q||!isFinite(v)) continue; const unit=s(o.unit,16); let mn=Number(o.min), mx=Number(o.max); const f=(v-mn)/(mx-mn); if(!(isFinite(mn)&&isFinite(mx)&&mx>mn&&f>=0.08&&f<=0.92)){ const r=estRange(v,unit); mn=r.min; mx=r.max; } out.push({text:s(o.q), ans:v, unit, min:mn, max:mx}); }
+    else if(t==="est"){ const v=Number(o.answer); if(!o.q||!isFinite(v)) continue; const unit=s(o.unit,16); const r=estRange(v,unit); out.push({text:s(o.q), ans:v, unit, min:r.min, max:r.max, int:r.int}); }
     else if(t==="rank"){ const it=Array.isArray(o.items)?o.items.map(x=>s(x,40)).filter(Boolean):[], va=Array.isArray(o.values)?o.values.map(x=>s(x,30)):[]; if(!o.q||it.length!==5||new Set(it.map(norm)).size!==5) continue; out.push(fromBank("rank",[s(o.q),it,it.map((_,i)=>va[i]||""),s(o.first,20)||"First",s(o.last,20)||"Last"])); }
     else if(t==="uniq"){ const v=Array.isArray(o.valid)?o.valid.map(x=>s(x,80)).filter(Boolean):[]; if(!o.q||v.length<4) continue; out.push({text:s(o.q), valid:v.slice(0,60)}); }
     else if(t==="pin"){ const la=Number(o.lat), lo=Number(o.lng); if(!o.q||!isFinite(la)||!isFinite(lo)||Math.abs(la)>90||Math.abs(lo)>180) continue; out.push({text:s(o.q), place:s(o.place||o.q,80), lat:la, lng:lo}); }
@@ -6848,7 +6856,7 @@ const DORDER=["gk","gk","est","pin","gk","ctry","gk","est","gk","pin"];
 function dailyCtry(key){ const rnd=mulberry(hashStr("ctry-"+key)); const pool=CTRY.filter(c=>c[3]<=2); const c=pool[Math.floor(rnd()*pool.length)]; return {t:"ctry", text:"Find "+c[0]+" on the map", place:c[0], lat:c[1], lng:c[2]}; }
 function dailyAssemble(gk, est, pin, key){ const q={gk:gk.slice(), est:est.slice(), pin:pin.slice(), ctry:[dailyCtry(key)]}; return DORDER.map(t=>q[t].shift()); }
 function bankDaily(key){
-  const rnd=mulberry(hashStr("spotlight-"+key));
+  const rnd=mulberry(hashStr("spotlight-v4-"+key));
   const pick=(type,n)=>{ const B=BANK[type]; const base=type.replace(/_pop$/,""); return shuffle(B.map((x,i)=>i), rnd).slice(0,n).map(i=>({t:base, ...fromBank(base, B[i], rnd)})); };
   const pop=BANK.gk_pop?pick("gk_pop",4):[], gk=pick("gk",6-pop.length);
   const gks=[pop[0],gk[0],pop[1],gk[1],pop[2],pop[3]].filter(Boolean).concat(gk.slice(2)).slice(0,6);
@@ -6866,7 +6874,7 @@ async function getDaily(key){
         const web=!!window.SQ_STANDALONE;
         const arr=await ask(`Write today's daily quiz for a British audience who love sport and pop culture. Write exactly 5 multiple-choice questions, 2 guesstimate questions and 2 "where in the world" pin-drop questions.
 The 5 multiple-choice questions, in this order: 1 sport, 1 pop culture, 1 recent news, 1 sport, 1 pop culture. Sport means football, cricket, rugby, tennis, F1, golf, darts, boxing, the Olympics and so on. Pop culture means music, film, TV, celebrities, video games and viral moments. The news question is about a story from ${web?"the last week or two: search the web for this week's biggest news first":"the last few months that you are sure about"}, and must have a clear, settled answer. Make half easy (most adults would know) and half genuinely hard.
-Both guesstimates are about sport or pop culture, such as stadium capacities, transfer fees, box office takings, chart records or career totals. Guesstimates need min and max ends for a slider, round numbers, with the answer between 15% and 85% of the way along.
+Both guesstimates are about sport or pop culture, such as stadium capacities, transfer fees, box office takings, chart records or career totals. Each guesstimate answer is a single number; min and max can be any rough range, the game sets its own scale.
 Pins: one instantly recognisable stadium, landmark or city, and one harder place that is still findable on a map; famous sports venues and film or TV locations are ideal.
 Facts must be accurate. News questions must be about something that has already happened, so the answer won't change. Keep questions under 140 characters. British English.
 Date code: ${key}
@@ -6896,7 +6904,7 @@ async function startDaily(){
   const r=await getDaily(D.key);
   if(app.view!=="daily") return;
   D.qs=r.qs.slice(0,10); D.src=r.src;
-  D.qs.forEach(q=>{ if(q.t==="est" && !(q.max>q.min)) Object.assign(q, estRange(q.ans, q.unit, mulberry(hashStr(D.key+q.text)))); }); D.i=0; D.pts=[]; D.answers=[]; D.secs=[]; D.phase="intro"; renderDaily();
+  D.qs.forEach(q=>{ if(q.t==="est") Object.assign(q, estRange(q.ans, q.unit, mulberry(hashStr(D.key+q.text)))); }); D.i=0; D.pts=[]; D.answers=[]; D.secs=[]; D.phase="intro"; renderDaily();
   if(D.qs.some(q=>q.t==="pin"||q.t==="ctry")) loadMap();
 }
 /* every question starts at 100 and counts down to 10 as the timer runs; how right you are scales it */
@@ -6904,7 +6912,7 @@ function dailyAvail(q, ms){ const f=Math.max(0, Math.min(1, ms/(DDUR[q.t]*1000))
 function dailyAcc(q, v){
   if(v==null) return 0;
   if(q.t==="gk") return Number(v)===q.ans ? 1 : 0;
-  if(q.t==="est"){ const n=typeof v==="number"?v:parseNum(v); if(n==null) return 0; const r=Math.abs(n-q.ans)/Math.max(1e-9,(q.max-q.min)); return r<=0.01?1:Math.max(0, 1-(r-0.01)/0.24); }
+  if(q.t==="est"){ const n=typeof v==="number"?v:parseNum(v); if(n==null) return 0; const r=Math.abs(n-q.ans)/Math.max(1e-9,(q.max-q.min)); return r<=0.01?1:Math.max(0, 1-(r-0.01)/0.19); }
   if(q.t==="pin"){ if(!v||!isFinite(v.lat)) return 0; const d=km(v,q); return d<=15?1:Math.exp(-(d-15)/1200); }
   if(q.t==="ctry"){ if(!v||!isFinite(v.lat)) return 0; const f=ctryFeature(q.place); const inside=f?inRings(f,v):km(v,q)<200; if(inside) return 1; const d=f?kmToFeature(f,v):Math.max(0,km(v,q)-200); return d<=150?.7:d<=400?.5:d<=800?.3:d<=1500?.1:0; }
   return 0;
@@ -7098,7 +7106,7 @@ function acctApply(p, quiet){
   app.acct=p;
   if(p.name){ me.nick=p.name; LS.set("sq-nick",p.name); const ni=$("#nick"); if(ni) ni.value=p.name; }
   if(p.av && validAv(p.av) && p.av!==me.av){ me.av=p.av; LS.set("sq-av",p.av); if(isToonAv(p.av)) LS.set("sq-av-custom",p.av); }
-  for(const [d,v] of Object.entries(p.dq||{})) if(!LS.get(DQ_LS+d)) LS.set(DQ_LS+d,{score:v.score, pts:[], posted:1, acct:p.id, guest:v.guest||0});
+  for(const [d,v] of Object.entries(p.dq||{})) if(!LS.get(DQ_LS+d) && !(d===DQ_RESET_DAY && !v.v4)) LS.set(DQ_LS+d,{score:v.score, pts:[], posted:1, acct:p.id, guest:v.guest||0});
   for(const [d,v] of Object.entries(p.dg||{})) if(!LS.get(DG_LS+d)) LS.set(DG_LS+d,{score:v.score, n:v.n, words:[], posted:1, acct:p.id, guest:v.guest||0});
   const up={dq:{},dg:{}}; let any=false; /* results from before logging in, so streaks follow you */
   for(let i=0;i<60;i++){ const k=dayKeyBack(i); const a=LS.get(DQ_LS+k), g=LS.get(DG_LS+k);
@@ -7239,7 +7247,7 @@ document.addEventListener("keydown", e=>{ if(e.key==="Escape" && document.getEle
 document.addEventListener("input", e=>{
   const id=e.target.id;
   if(id==="nick"){ me.nick=e.target.value.trim().slice(0,18); }
-  if(id==="estr"||id==="destr"){ const q = id==="estr" ? (S&&S.q) : D.qs[D.i]; if(!q) return; const v=snap(+e.target.value, q.min, q.max, q.unit); if(id==="estr") draft=v; else D.draft=v; const ro=$("#"+id+"-ro"); if(ro) ro.textContent=fmtNum(v, q.unit)+unitTxt(q.unit); const lb=$(id==="estr"?"#lockest":"#dlockest"); if(lb) lb.disabled=false; }
+  if(id==="estr"||id==="destr"){ const q = id==="estr" ? (S&&S.q) : D.qs[D.i]; if(!q) return; const v=snap(+e.target.value, q.min, q.max, q.unit, q.int); if(id==="estr") draft=v; else D.draft=v; const ro=$("#"+id+"-ro"); if(ro) ro.textContent=fmtNum(v, q.unit)+unitTxt(q.unit); const lb=$(id==="estr"?"#lockest":"#dlockest"); if(lb) lb.disabled=false; }
   if(id==="wordin" && gridNow()){ const w=e.target.value.toLowerCase().replace(/[^a-z]/g,""); gridPath = w ? (findPath(gridNow(), w)||[]) : []; paintTiles(); }
 });
 
