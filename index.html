@@ -3145,6 +3145,7 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -4220,6 +4221,9 @@ const RT = {
 RT.sp={name:"Speed Round", desc:"The grand finale. Four topics, three quick-fire questions each. Scores are hidden until the end. A right answer scores up to 100, and the faster you are the more you get. A wrong answer loses 50, so don't guess wildly.", def:12, min:12, max:12, dur:10, last:true};
 RT.lead={name:"Beat the Leader", desc:"Whoever's top of the scores plays alone against everyone else as one team. Three questions on each topic, and the first answer in decides each one: a right answer wins it for that side, a wrong answer hands it to the other side. The leader scores 150; the team scores 100 each. Needs 2+ players.", def:9, min:6, max:12, dur:15, minPlayers:2};
 RT.mf={name:"Minefield", desc:"Take turns picking from a grid of 12 answers. Most fit the category but some are traps. Right picks score 100, traps lose 50.", def:3, min:1, max:5, dur:15};
+
+/* one-line summaries for the game setup list (the full rules show at the start of each round) */
+RT.mm.short="Everyone picks their own subject and answers questions on it."; RT.gk.short="Multiple choice. Bonus for the fastest right answer."; RT.rank.short="Put five things in the right order."; RT.est.short="Slide to your best guess. Closest wins."; RT.uniq.short="Give a right answer nobody else gives. 3+ players."; RT.ctry.short="Tap the country on a map with no names."; RT.pin.short="Drop a pin on the world map. Closest wins."; RT.grid.short="Find words by joining touching letters."; RT.sp.short="The finale: quick-fire topics, scores hidden till the end."; RT.lead.short="The leader plays alone against everyone else. 2+ players."; RT.mf.short="Take turns picking answers. Avoid the traps."; 
 const ROUND_ORDER = ["gk","est","rank","pin","ctry","mf","grid","uniq","lead","sp"]; /* Specialist Subject ("mm") switched off for now */
 
 /* ---------------- built-in question bank ---------------- */
@@ -6157,7 +6161,7 @@ function render(){
 }
 
 function homeHTML(){
-  const rp = ROUND_ORDER.map(t=>`<div class="rp">${ICON[t]}<b>${RT[t].name}</b><span>${esc(RT[t].desc.split(". ")[0])}.</span></div>`).join("");
+  const rp = ROUND_ORDER.map(t=>`<div class="rp">${ICON[t]}<b>${RT[t].name}</b><span>${esc(RT[t].short)}</span></div>`).join("");
   return `
   <div class="hero">
     <section class="panel hero-main">
@@ -7185,10 +7189,10 @@ function roundsCfgHTML(){
   const list = host ? S.rounds : S.rounds.filter(r=>r.on);
   if(!list.length) return `<p class="muted">The host hasn't picked any rounds yet.</p>`;
   return diffPickHTML()+lenPickHTML()+list.map((r,i)=>{ const T=RT[r.t]; const blocked=r.t==="uniq" && n<3;
-    if(!host) return `<div class="rc" style="grid-template-columns:auto 1fr auto"><span style="width:26px;height:26px;color:var(--accent);display:block">${ICON[r.t]}</span><div class="nm"><b>${T.name}</b><span>${esc(T.desc)}</span></div><span class="muted num">${r.n}${r.t==="mm"?" each":r.t==="grid"?(r.n>1?" grids":" grid"):r.t==="mf"?(r.n>1?" boards":" board"):" Qs"}</span></div>`;
-    if(r.t==="sp") return `<div class="rc ${r.on?"":"off"}"><label class="sw" title="Include this round"><input type="checkbox" id="rc-sp" data-act="toggle" data-t="sp" ${r.on?"checked":""}><span></span></label><div class="nm"><b>${T.name}</b><span>${esc(T.desc)}</span></div><span class="muted num" style="white-space:nowrap">12 Qs · always last</span><span></span></div>`;
+    if(!host) return `<div class="rc" style="grid-template-columns:auto 1fr auto"><span style="width:26px;height:26px;color:var(--accent);display:block">${ICON[r.t]}</span><div class="nm"><b>${T.name}</b><span>${esc(T.short||T.desc)}</span></div><span class="muted num">${r.n}${r.t==="mm"?" each":r.t==="grid"?(r.n>1?" grids":" grid"):r.t==="mf"?(r.n>1?" boards":" board"):" Qs"}</span></div>`;
+    if(r.t==="sp") return `<div class="rc ${r.on?"":"off"}"><label class="sw" title="Include this round"><input type="checkbox" id="rc-sp" data-act="toggle" data-t="sp" ${r.on?"checked":""}><span></span></label><div class="nm"><b>${T.name}</b><span>${esc(T.short||T.desc)}</span></div><span class="muted num" style="white-space:nowrap">12 Qs · always last</span><span></span></div>`;
     return `<div class="rc ${r.on?"":"off"}"><label class="sw" title="Include this round"><input type="checkbox" id="rc-${r.t}" data-act="toggle" data-t="${r.t}" ${r.on?"checked":""}><span></span></label>
-      <div class="nm"><b>${T.name}</b><span>${esc(T.desc)}${blocked&&r.on?" <strong style='color:var(--bad)'>Skipped unless 3+ players join.</strong>":""}</span></div>
+      <div class="nm"><b>${T.name}</b><span>${esc(T.short||T.desc)}${blocked&&r.on?" <strong style='color:var(--bad)'>Skipped unless 3+ players join.</strong>":""}</span></div>
       <div class="stepper" aria-label="Number of questions"><button data-act="dec" data-t="${r.t}" aria-label="Fewer questions">−</button><span>${r.n}</span><button data-act="inc" data-t="${r.t}" aria-label="More questions">+</button></div>
       <div class="mv"><button data-act="up" data-i="${i}" aria-label="Move up" ${i===0?"disabled":""}>▲</button><button data-act="down" data-i="${i}" aria-label="Move down" ${i===list.length-1?"disabled":""}>▼</button></div></div>`; }).join("");
 }
