@@ -1062,6 +1062,16 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .summary{animation:fhIn .6s ease calc(var(--d) + .9s) both;width:100%}.summary.wait3d{animation:none;opacity:0}
 .aw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
 .aw-card{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;background:var(--panel2,rgba(255,255,255,.05));border:1px solid var(--line,rgba(255,255,255,.08));min-width:0}
+.sg-wrap{border-radius:14px;background:var(--panel2,rgba(127,127,127,.06));border:1px solid var(--line,rgba(127,127,127,.15));padding:12px 10px 10px;max-width:640px}
+.sg{width:100%;height:auto;display:block;overflow:visible}
+.sg-grid{stroke:var(--line,rgba(127,127,127,.25));stroke-width:1}.sg-grid.z{stroke:var(--muted,#888);stroke-opacity:.5}
+.sg-ax{fill:var(--muted,#888);font:500 10px var(--f-mono,ui-monospace,monospace)}
+.sg-line{fill:none;stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round;opacity:.85;stroke-dasharray:1;stroke-dashoffset:1;animation:sgDraw 1.4s ease calc(var(--d,0s) + 1.1s + var(--i)*.12s) forwards}
+.sg-line.lead{stroke-width:3.6;opacity:1}
+.sg-dot{opacity:0;animation:sgDot .3s ease calc(var(--d,0s) + 2.4s + var(--i)*.12s) forwards}
+@keyframes sgDraw{to{stroke-dashoffset:0}}@keyframes sgDot{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.sg-line{animation:none;stroke-dashoffset:0}.sg-dot{animation:none;opacity:1}}
+.sg-key{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:13px;padding-inline:4px}.sg-key span{display:inline-flex;align-items:center;gap:6px;min-width:0}.sg-key i{width:12px;height:4px;border-radius:2px;flex:none}
 .aw-card>div{min-width:0}.aw-card b{display:block;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.aw-card .muted{font-size:13px}
 .intro.final-head.wait3d .ri.fh-wait{animation:pulseTxt 1.4s ease-in-out infinite}
 .intro.final-head.wait3d .ri.fh-win,.res.final-list.wait3d{animation:none;opacity:0}
@@ -3065,6 +3075,8 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -6750,9 +6762,8 @@ function goIntro(ri){
 }
 function compactGs(){ const g=G.gs; if(!g) return null; const top=o=>{ let b=null; for(const p in o||{}) if(o[p]>0 && (!b || o[p]>o[b])) b=p; return b; };
   const avg=Object.entries(g.at||{}).filter(([,x])=>x[1]>=3).map(([p,x])=>({p, ms:Math.round(x[0]/x[1])})).sort((a,b)=>a.ms-b.ms);
-  const ch=Object.entries(g.pts||{}).map(([t,o])=>{ const p=top(o); return p?[t,p,o[p]]:null; }).filter(Boolean);
-  const bs={}; for(const p of Object.keys(G.scores||{})){ let bt=null, bv=0; for(const t in g.pts||{}){ const v=(g.pts[t]||{})[p]||0; if(v>bv){ bv=v; bt=t; } } if(bt) bs[p]=[bt,bv]; }
-  return {right:g.right, asked:g.asked, best:g.best, fast:g.fast, avg:avg.length>1?avg[0]:null, pin:g.pin, est:g.est, word:g.word, ch, bs}; }
+  const hp=Object.keys(G.scores||{}), h=(g.hist||[]).map(([t,o])=>[t, ...hp.map(p=>o[p]||0)]); /* points after each round, for the line graph */
+  return {right:g.right, asked:g.asked, best:g.best, fast:g.fast, avg:avg.length>1?avg[0]:null, pin:g.pin, est:g.est, word:g.word, hp, h}; }
 function goFinal(){ for(const p in (G.sp||{})){ G.scores[p]=(G.scores[p]||0)+G.sp[p]; } try{ G.gx=compactGs(); }catch(e){ G.gx=null; } G.spDone=G.sp||{}; G.sp={}; G.phase="final"; G.q=null; G.rev=null; G.adv=0; hostAdvAt=0; pushState(); }
 function nextQuestion(){
   const R=plan[G.ri]; G.qi++;
@@ -6781,6 +6792,7 @@ function gsAns(pid, ok, ms, t){ const g=gsOf(); g.asked[pid]=(g.asked[pid]||0)+1
   if(ok){ g.right[pid]=(g.right[pid]||0)+1; g.cur[pid]=(g.cur[pid]||0)+1; if(g.cur[pid]>(g.best[pid]||0)) g.best[pid]=g.cur[pid]; if(ms!=null && (!g.fast || ms<g.fast.ms)) g.fast={p:pid, ms:Math.round(ms), t}; }
   else g.cur[pid]=0; }
 function gsRoundEnd(t, pts){ const g=gsOf(), st=G.st||{}; const m=g.pts[t]||(g.pts[t]={}); for(const p in pts) m[p]=(m[p]||0)+(pts[p]||0);
+  const snap={}; for(const p of Object.keys(G.scores||{})) snap[p]=(G.scores[p]||0)+(t==="sp"?((G.sp||{})[p]||0):0); (g.hist||(g.hist=[])).push([t, snap]);
   if(st.pin && (!g.pin || st.pin.km<g.pin.km)) g.pin=st.pin; if(st.est && (!g.est || st.est.rel<g.est.rel)) g.est=st.est; if(st.word && (!g.word || st.word.w.length>g.word.w.length)) g.word=st.word; }
 function updStats(t, Q, A, rev){
   if(["gk","sp","ctry","uniq","lead"].includes(t)){ for(const p of Object.keys(G.scores||{})){ const r=rev.rows.find(x=>x.p===p), a=A[p], ms=a && typeof a.t==="number" ? Math.max(0,a.t) : null; gsAns(p, !!(r && r.pts>0), ms, t); } }
@@ -7361,24 +7373,45 @@ function standingsHTML(title, sub, roundEnd){
 }
 /* seconds until the last (winning) pillar has finished rising; matches Room.setPodium's timing */
 function finalRevealDelay(){ const n=Math.max(1, players().length); return .9+(n-1)*.75+.5+1.7; }
+const SG_COL=["var(--spot,#F5B83D)","#4FA3FF","#FF6B6B","#3DDC97","#C792EA","#FF9F43","#2EC4D6","#F78FB3","#A3D65C","#9AA0A6"];
+const RT_SHORT={gk:"Quiz", est:"Guess", rank:"Rank", pin:"Pin", ctry:"Country", mf:"Mines", grid:"Words", uniq:"Minds", lead:"Leader", sp:"Speed", mm:"Subject"};
+/* line graph: everyone's running total after each round */
+function scoreGraphSVG(g, ps){
+  const hp=g.hp||[], H=g.h||[]; if(H.length<1 || !hp.length) return "";
+  const order=ps.map(x=>x.p).filter(p=>hp.includes(p)); if(!order.length) return "";
+  const W=360, Ht=210, L=36, R=20, T=12, B=H.length>6?40:28, pw=W-L-R, ph=Ht-T-B, n=H.length;
+  const vals=H.flatMap(r=>r.slice(1)), lo=Math.min(0,...vals), hi=Math.max(100,...vals);
+  const step=[50,100,200,250,500,1000,2000,2500,5000].find(x=>(hi-lo)/x<=5)||10000, y0=Math.floor(lo/step)*step, y1=Math.ceil(hi/step)*step;
+  const X=i=>L+pw*i/n, Y=v=>T+ph*(1-(v-y0)/(y1-y0||1));
+  let svg=`<svg class="sg" viewBox="0 0 ${W} ${Ht}" role="img" aria-label="Points after each round">`;
+  for(let v=y0; v<=y1; v+=step) svg+=`<line x1="${L}" x2="${W-R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" class="sg-grid${v===0?" z":""}"/><text x="${L-6}" y="${(Y(v)+3.5).toFixed(1)}" text-anchor="end" class="sg-ax">${v.toLocaleString("en-GB")}</text>`;
+  svg+=`<text x="${X(0)}" y="${Ht-B+16}" text-anchor="middle" class="sg-ax">Start</text>`;
+  H.forEach((r,i)=>{ const lab=RT_SHORT[r[0]]||("R"+(i+1)); svg+=`<text x="${X(i+1).toFixed(1)}" y="${Ht-B+16+(B>30&&i%2===0?13:0)}" text-anchor="middle" class="sg-ax">${esc(lab)}</text>`; });
+  /* draw the leader last so it sits on top */
+  order.slice().reverse().forEach((p,ri)=>{ const k=hp.indexOf(p), lead=p===order[0], c=SG_COL[order.indexOf(p)%SG_COL.length];
+    const pts=[[X(0),Y(0)], ...H.map((r,i)=>[X(i+1), Y(r[k+1]||0)])], d=pts.map((q,i)=>(i?"L":"M")+q[0].toFixed(1)+" "+q[1].toFixed(1)).join("");
+    svg+=`<path d="${d}" pathLength="1" class="sg-line${lead?" lead":""}" style="stroke:${c};--i:${order.length-1-ri}"/>`;
+    const e=pts[pts.length-1]; svg+=`<circle cx="${e[0].toFixed(1)}" cy="${e[1].toFixed(1)}" r="${lead?4.5:3.5}" class="sg-dot" style="fill:${c};--i:${order.length-1-ri}"/>`; });
+  svg+=`</svg>`;
+  const key=`<div class="sg-key">${order.map(p=>`<span><i style="background:${SG_COL[order.indexOf(p)%SG_COL.length]}"></i>${esc(nameOf(p))}${p===me.pid?" (you)":""}</span>`).join("")}</div>`;
+  return `<div class="eyebrow" style="margin:4px 0 8px">How the game went</div><div class="sg-wrap">${svg}${key}</div>`;
+}
 function gameSummaryHTML(ps, wait, D){
   const g=S.gx; if(!g || !ps.length) return "";
-  const nm=p=>esc(nameOf(p))+(p===me.pid?" (you)":""), cards=[], top=o=>{ let b=null; for(const p in o||{}) if(o[p]>0 && (!b || o[p]>o[b])) b=p; return b; };
-  const card=(icon,title,p,val)=>cards.push(`<div class="aw-card">${avatar(p)}<div><div class="eyebrow">${icon} ${esc(title)}</div><b>${nm(p)}</b><div class="muted">${esc(val)}</div></div></div>`);
-  const r=top(g.right); if(r) card("✅","Most correct answers",r,`${g.right[r]} right${g.asked[r]?` out of ${g.asked[r]}`:""}`);
-  const b=top(g.best); if(b && g.best[b]>=2) card("🔥","Longest winning streak",b,`${g.best[b]} correct in a row`);
-  if(g.fast) card("⚡","Quickest correct answer",g.fast.p,`${(g.fast.ms/1000).toFixed(1)} seconds${RT[g.fast.t]?` in ${RT[g.fast.t].name}`:""}`);
-  if(g.avg) card("⏱️","Fastest on average",g.avg.p,`${(g.avg.ms/1000).toFixed(1)} seconds an answer`);
-  if(g.pin) card("📍","Closest pin of the game",g.pin.p,`${g.pin.km.toLocaleString("en-GB")} km away`);
-  if(g.est) card("🎯","Sharpest guess of the game",g.est.p,g.est.d===0?"Spot on":`Off by ${fmtNum(g.est.d, g.est.unit==="year"?"":g.est.unit)}${g.est.unit==="year"?" years":unitTxt(g.est.unit)}`);
-  if(g.word) card("🔤","Longest word",g.word.p,g.word.w.toUpperCase());
-  /* each round's champion, and each player's best subject */
-  const subj=(g.ch||[]).map(([t,p,v])=>({t,p,v})).filter(x=>x.p && RT[x.t]);
-  let h=`<div class="summary${wait?" wait3d":""}" style="--d:${D}s"><div class="eyebrow" style="margin-bottom:8px">Game summary</div>`;
-  h+=`<div class="aw-grid">${cards.join("")}</div>`;
-  if(subj.length) h+=`<div class="eyebrow" style="margin:14px 0 8px">Round champions</div><div class="res still">${subj.map(x=>`<div class="res-row">${avatar(x.p)}<div><b>${esc(RT[x.t].name)}</b><div class="note">${nm(x.p)}</div></div><span></span><span class="pts on">+${x.v}</span></div>`).join("")}</div>`;
-  const best=ps.map(x=>{ const b=(g.bs||{})[x.p]; return {p:x.p, t:b&&RT[b[0]]?b[0]:null, v:b?b[1]:0, s:x.s}; }).filter(x=>x.t);
-  if(best.length) h+=`<div class="eyebrow" style="margin:14px 0 8px">Everyone's best subject</div><div class="res still">${best.map(x=>`<div class="res-row">${avatar(x.p)}<div><b>${nm(x.p)}</b><div class="note">${esc(RT[x.t].name)} · ${g.right[x.p]||0} right in total${g.best[x.p]>1?` · best streak ${g.best[x.p]}`:""}</div></div><span></span><span class="pts on">${x.s}</span></div>`).join("")}</div>`;
+  const nm=p=>esc(nameOf(p))+(p===me.pid?" (you)":""), top=o=>{ let b=null; for(const p in o||{}) if(o[p]>0 && (!b || o[p]>o[b])) b=p; return b; };
+  /* candidate accolades, best first; show at most three, spreading them across different players where possible */
+  const C=[], add=(icon,title,p,val)=>{ if(p) C.push({icon,title,p,val}); };
+  const r=top(g.right); if(r) add("✅","Most correct answers",r,`${g.right[r]} right${g.asked[r]?` out of ${g.asked[r]}`:""}`);
+  if(g.fast) add("⚡","Quickest correct answer",g.fast.p,`${(g.fast.ms/1000).toFixed(1)} seconds${RT[g.fast.t]?` in ${RT[g.fast.t].name}`:""}`);
+  const b=top(g.best); if(b && g.best[b]>=2) add("🔥","Longest winning streak",b,`${g.best[b]} correct in a row`);
+  if(g.pin) add("📍","Closest pin",g.pin.p,`${g.pin.km.toLocaleString("en-GB")} km away`);
+  if(g.est) add("🎯","Sharpest guess",g.est.p,g.est.d===0?"Spot on":`Off by ${fmtNum(g.est.d, g.est.unit==="year"?"":g.est.unit)}${g.est.unit==="year"?" years":unitTxt(g.est.unit)}`);
+  if(g.word) add("🔤","Longest word",g.word.p,g.word.w.toUpperCase());
+  if(g.avg) add("⏱️","Fastest on average",g.avg.p,`${(g.avg.ms/1000).toFixed(1)} seconds an answer`);
+  const pick=[], used=new Set(); for(const c of C){ if(pick.length<3 && !used.has(c.p)){ pick.push(c); used.add(c.p); } } for(const c of C){ if(pick.length<3 && !pick.includes(c)) pick.push(c); }
+  let h=`<div class="summary${wait?" wait3d":""}" style="--d:${D}s">`;
+  h+=scoreGraphSVG(g, ps);
+  if(pick.length) h+=`<div class="eyebrow" style="margin:16px 0 8px">Accolades</div><div class="aw-grid">${pick.map(c=>`<div class="aw-card">${avatar(c.p)}<div><div class="eyebrow">${c.icon} ${esc(c.title)}</div><b>${nm(c.p)}</b><div class="muted">${esc(c.val)}</div></div></div>`).join("")}</div>`;
   return h+`</div>`;
 }
 function finalHTML(){
