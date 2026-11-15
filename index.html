@@ -3144,6 +3144,7 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -4217,7 +4218,7 @@ const RT = {
   grid:{name:"Word Grid", desc:"30 seconds to find words by joining touching letters. 3 letters score 10, 4 letters 20, 5 letters 40, then big points for long words: 6 letters 100, 7 letters 150, 8 letters 200 and 50 more for each extra letter.", def:1, min:1, max:3, dur:30}
 };
 RT.sp={name:"Speed Round", desc:"The grand finale. Four topics, three quick-fire questions each. Scores are hidden until the end. A right answer scores up to 100, and the faster you are the more you get. A wrong answer loses 50, so don't guess wildly.", def:12, min:12, max:12, dur:10, last:true};
-RT.lead={name:"Beat the Leader", desc:"Whoever's top of the scores plays alone against everyone else as one team. Three questions on each topic, and it's a race: the first right answer wins it. If the leader gets there first they score 150. If anyone on the team does, the whole team scores 100 each. A wrong answer locks you out of that question. Needs 2+ players.", def:9, min:6, max:12, dur:15, minPlayers:2};
+RT.lead={name:"Beat the Leader", desc:"Whoever's top of the scores plays alone against everyone else as one team. Three questions on each topic, and the first answer in decides each one: a right answer wins it for that side, a wrong answer hands it to the other side. The leader scores 150; the team scores 100 each. Needs 2+ players.", def:9, min:6, max:12, dur:15, minPlayers:2};
 RT.mf={name:"Minefield", desc:"Take turns picking from a grid of 12 answers. Most fit the category but some are traps. Right picks score 100, traps lose 50.", def:3, min:1, max:5, dur:15};
 const ROUND_ORDER = ["gk","est","rank","pin","ctry","mf","grid","uniq","lead","sp"]; /* Specialist Subject ("mm") switched off for now */
 
@@ -5811,8 +5812,8 @@ const seenTexts = LS.get("sq-seentext")||{};
 function saveSeen(){ const ks=Object.keys(seenAt); if(ks.length>9000){ ks.sort((a,b)=>seenAt[a]-seenAt[b]).slice(0,ks.length-9000).forEach(k=>delete seenAt[k]); } LS.set("sq-seen2",seenAt); LS.set("sq-seentext",seenTexts); }
 function noteText(t,txt){ const a=seenTexts[t]||(seenTexts[t]=[]); a.push(String(txt).slice(0,120)); if(a.length>200) a.splice(0,a.length-200); }
 function recentTexts(t,n){ return (seenTexts[t]||[]).slice(-n); }
-function bankPick(type, n, rnd=Math.random, track=true){
-  const all = BANK[type].map((x,i)=>({x,i,k:qKey(type,x)}));
+function bankPick(type, n, rnd=Math.random, track=true, keep=null){
+  const all = BANK[type].map((x,i)=>({x,i,k:qKey(type,x)})).filter(o=>!keep || keep(o.x));
   let pick;
   if(!track) pick=shuffle(all,rnd).slice(0,n);
   else { const fresh=shuffle(all.filter(o=>!seenAt[o.k]),rnd); const old=all.filter(o=>seenAt[o.k]).sort((a,b)=>seenAt[a.k]-seenAt[b.k]); pick=fresh.concat(old).slice(0,n); }
@@ -6395,8 +6396,11 @@ async function buildRound(r, ps){
   if(r.t==="lead") return {t:"lead", qs:(await buildSpeed(Math.max(2,Math.ceil(r.n/3)))).slice(0,r.n)};
   if(r.t==="ctry"){ GeoData.load(); return {t:"ctry", qs:ctryPick(r.n)}; }
   let qs=[];
-  if(aiOn()){ try{ qs=cleanQs(r.t, await ask(promptFor(r.t, r.n+3))).filter(q=>{ const k=r.t+":ai:"+(hashStr(norm(q.text))%1e9).toString(36); if(seenAt[k]) return false; seenAt[k]=Date.now(); noteText(r.t,q.text); return true; }).slice(0, r.n); saveSeen(); }catch(e){ qs=[]; } }
+  /* Great Minds: there must be plenty more valid answers than players, so a clash isn't forced */
+  const uMin=Math.max(6, (ps&&ps.length||players().length)*2), keep=r.t==="uniq"?(x=>Array.isArray(x[1]) && x[1].length>=uMin):null;
+  if(aiOn()){ try{ qs=cleanQs(r.t, await ask(promptFor(r.t, r.n+3, null, uMin))).filter(q=>r.t!=="uniq" || (q.valid||[]).length>=uMin).filter(q=>{ const k=r.t+":ai:"+(hashStr(norm(q.text))%1e9).toString(36); if(seenAt[k]) return false; seenAt[k]=Date.now(); noteText(r.t,q.text); return true; }).slice(0, r.n); saveSeen(); }catch(e){ qs=[]; } }
   if(qs.length<r.n && G && G.diff==="hard" && BANK[r.t+"_hard"]) qs=qs.concat(bankPick(r.t+"_hard", r.n-qs.length));
+  if(qs.length<r.n && keep){ qs=qs.concat(bankPick(r.t, r.n-qs.length, Math.random, true, keep)); }
   if(qs.length<r.n){ const need=r.n-qs.length; if(BANK[r.t+"_pop"]){ const np=Math.round(need*(r.t==="pin"?0.5:0.65)); qs=qs.concat(shuffle(bankPick(r.t+"_pop",np).concat(bankPick(r.t,need-np)))); } else qs=qs.concat(bankPick(r.t,need)); }
   return {t:r.t, qs};
 }
@@ -6706,13 +6710,13 @@ async function buildSpeed(NT=4){
   return out;
 }
 const AI_RULES = "Facts must be accurate, well established and not time-sensitive: nothing that changes from year to year and no current holders of titles or records. Keep questions under 140 characters. British English.";
-function promptFor(t, n, topic){
+function promptFor(t, n, topic, uMin){
   const seed=rid(6), hard=G&&G.diff==="hard", lvl=hard?" DIFFICULTY: HARD. Write for a strong pub-quiz team, not casual players. Avoid famous headline facts anyone would know (capital cities of big countries, who won a recent World Cup, the lead actor of a blockbuster). Ask about specific details instead: years, runners-up, original line-ups, debut works, record holders from past eras, lesser-known people and places. Wrong options must be close and tempting: same category, same era, similar-sounding. A casual player should get fewer than a third right.":" Make them EASY to medium: well-known facts most adults could get, nothing obscure.", avoid=recentTexts(t,40), av=avoid.length?`\nDo NOT repeat or closely resemble any of these questions already used: ${JSON.stringify(avoid)}`:"";
   if(t==="gk") return `Write ${n} general knowledge quiz questions for friends playing a pub-style quiz. Make about two thirds of them about sport and pop culture (football and other sports, film, TV, music, celebrities, video games, internet culture) and the rest a mix of other subjects. ${hard?"Every question must be hard.":"Mix difficulty from easy to medium."} Each question has exactly 4 short options with exactly one correct. ${AI_RULES}\nVariety code: ${seed}\nReply with only a JSON array, for example [{"q":"Which planet is known as the Red Planet?","options":["Mars","Venus","Jupiter","Mercury"],"answer":0}], where answer is the index of the correct option.${lvl}${av}`;
   if(t==="mm") return `Write ${n} quiz questions on the specialist subject: ${JSON.stringify(topic)}. ${hard?"Start at medium difficulty and get steadily harder, ending with questions only an expert would know.":"Start easy and get steadily harder."} Each answer must be short (1 to 4 words) and unambiguous. In "alt" list other accepted forms of the answer (alternative spellings, surnames alone, abbreviations). If the subject is vague, unclear or unsuitable for a friendly quiz, use the nearest sensible family-friendly interpretation. ${AI_RULES}\nVariety code: ${seed}\nReply with only a JSON array, for example [{"q":"Which band released the album Abbey Road?","a":"The Beatles","alt":["Beatles"]}].${lvl}${av}`;
   if(t==="rank") return `Write ${n} "rank it" questions for a party quiz. Each gives exactly 5 well-known items that players must put in order by one clear, measurable property: size, weight, height, length, age, date, speed, distance, population and so on. The items must be far enough apart on that property that the order is not debatable. Vary the subjects and properties. Lean towards sport and pop culture (sport, film, TV, music, celebrities, video games): about two thirds of the questions. ${AI_RULES}\nVariety code: ${seed}\nReply with only a JSON array, listing "items" in the correct order from first to last, for example [{"q":"Put these animals in order of weight","items":["Mouse","Cat","Lion","Horse","Elephant"],"values":["about 20 g","about 4 kg","about 190 kg","about 500 kg","about 6 tonnes"],"first":"Lightest","last":"Heaviest"}].${lvl}${av}`;
   if(t==="est") return `Write ${n} "guesstimate" quiz questions whose answer is a single well-established number: years, distances, heights, counts, speeds, populations of fixed historical events. Mix magnitudes and subjects. Lean towards sport and pop culture (sport, film, TV, music, celebrities, video games): about two thirds of the questions. ${AI_RULES}\nVariety code: ${seed}\nReply with only a JSON array, for example [{"q":"How tall is the Eiffel Tower to its tip, in metres?","answer":330,"unit":"m","min":0,"max":600}]. unit is a short label such as "m", "km", "year", "people", "days". min and max are the two ends of a slider that players drag: use round numbers, put the answer somewhere between 15% and 85% of the way along (vary it, not always the middle), and make the range wide enough to be a challenge.${lvl}${av}`;
-  if(t==="uniq") return `Write ${n} questions for a quiz round where every player gives one answer and only answers nobody else gave score points. Each question must have between 6 and 30 valid answers, for example "Name a country that borders Germany". List every valid answer using common names; put alternative names for the same answer in one string separated by "|". Lean towards sport and pop culture (sport, film, TV, music, celebrities, video games): about two thirds of the questions. ${AI_RULES}\nVariety code: ${seed}\nReply with only a JSON array, for example [{"q":"Name a planet in our solar system other than Earth","valid":["Mercury","Venus","Mars","Jupiter","Saturn","Uranus","Neptune"]}].${lvl}${av}`;
+  if(t==="uniq") return `Write ${n} questions for a quiz round where every player gives one answer and only answers nobody else gave score points. Each question must have between ${Math.max(8,(uMin||6)+2)} and 40 valid answers, for example "Name a country that borders Germany". List every valid answer using common names; put alternative names for the same answer in one string separated by "|". Lean towards sport and pop culture (sport, film, TV, music, celebrities, video games): about two thirds of the questions. ${AI_RULES}\nVariety code: ${seed}\nReply with only a JSON array, for example [{"q":"Name a planet in our solar system other than Earth","valid":["Mercury","Venus","Mars","Jupiter","Saturn","Uranus","Neptune"]}].${lvl}${av}`;
   if(t==="pin") return `Write ${n} "where in the world" questions about famous landmarks, natural wonders or cities, spread across different continents and including some less obvious ones. Give accurate decimal latitude and longitude. ${AI_RULES}\nVariety code: ${seed}\nReply with only a JSON array, for example [{"q":"Where is Machu Picchu?","place":"Machu Picchu, Peru","lat":-13.1631,"lng":-72.545}].${lvl}${av}`;
 }
 function cleanQs(t, arr){
@@ -6821,8 +6825,9 @@ async function scoreQuestion(t, Q, A){
     const L=G.lead&&G.lead.p, rows=players().map(p=>({p:p.pid, a: A[p.pid] ? Number(A[p.pid].v) : null, ms: A[p.pid] ? A[p.pid].t : null}));
     for(const pid of ps) if(!rows.find(r=>r.p===pid)) rows.push({p:pid, a:Number(A[pid].v), ms:A[pid].t});
     rows.forEach(r=>{ r.ok=r.a===Q.ans; r.lead=r.p===L; r.pts=0; });
-    const first=rows.filter(r=>r.ok && r.ms!=null).sort((a,b)=>a.ms-b.ms)[0]||rows.find(r=>r.ok);
-    let win=null; if(first){ win=first.lead?"leader":"team"; first.first=true; if(win==="leader") first.pts=150; else rows.forEach(r=>{ if(!r.lead) r.pts=100; }); }
+    /* the first answer decides it: right wins it for their side, wrong hands it to the other side */
+    const first=rows.filter(r=>r.a!=null && !isNaN(r.a)).sort((a,b)=>(a.ms??1e12)-(b.ms??1e12))[0];
+    let win=null; if(first){ first.first=true; const leaderSide=first.lead===first.ok; win=leaderSide?"leader":"team"; if(leaderSide){ const l=rows.find(r=>r.lead); if(l) l.pts=150; } else rows.forEach(r=>{ if(!r.lead) r.pts=100; }); }
     const s=first&&first.ms!=null?+(first.ms/1000).toFixed(1):null; rows.forEach(r=>delete r.ms);
     return {t, ans:Q.ans, opts:Q.opts, topic:Q.topic, tn:Q.tn, tq:Q.tq, tof:Q.tof||4, lead:L, win, by:first?first.p:null, s, rows};
   }
@@ -6909,7 +6914,7 @@ function hostTick(){
   else if(G.phase==="q" && !closing){
     hostCollect();
     const exp=expected(), got=ansCache[G.q.k]||{};
-    if(G.q.t==="lead"){ const Q=plan[G.ri].qs[G.qi]; if(Object.values(got).some(a=>Number(a.v)===Q.ans)){ if(!leadFirstAt) leadFirstAt=now; } if(leadFirstAt && now-leadFirstAt>450){ leadFirstAt=0; closeQuestion(); return; } }
+    if(G.q.t==="lead"){ if(Object.keys(got).length){ if(!leadFirstAt) leadFirstAt=now; } if(leadFirstAt && now-leadFirstAt>450){ leadFirstAt=0; closeQuestion(); return; } } /* first answer in decides it */
     if(now>hostQEnd || (exp.length && exp.every(p=>got[p]))){ leadFirstAt=0; closeQuestion(); }
   }
   if(G.phase==="topics"){ hostTopics(); if(topicsEnd && now>topicsEnd && !players().some(p=>G.tp[p.pid]&&G.tp[p.pid].s==="gen")){ topicsEnd=0; mmBegin(); } }
@@ -7085,7 +7090,7 @@ function renderStage(){
     if(t==="mm") h += `<p class="muted" style="font-size:15px">First everyone types a subject. Then you all answer your own questions at the same time, ${Math.round(RT.mm.dur*(S.diff==="hard"?1:1.5))} seconds each.</p>`;
     else if(t==="grid") h += `<p class="muted" style="font-size:15px">${I.n} grid${I.n>1?"s":""} · ${RT.grid.dur} seconds each</p><p class="num" style="font-size:15px;margin:0">3 letters <b>10</b> · 4 <b>20</b> · 5 <b>40</b> · 6 <b>100</b> · 7 <b>150</b> · 8+ <b>200+</b></p>`;
     else if(t==="ctry") h += `<p class="muted" style="font-size:15px">${S.diff==="hard"?"Hard mode: smaller and trickier countries":"Easy mode: bigger, better-known countries"} · no names on the map · ${durFor("ctry")} seconds each</p>`;
-    else if(t==="lead"){ const Ld=I.lead||{}, team=players().filter(p=>p.pid!==Ld.p); h += `<div class="lv-bar big"><div class="lv-side">${avatar(Ld.p,"lg")}<div><div class="eyebrow">The leader${Ld.tie?" (picked from the tie)":""}</div><b>${esc(Ld.p===me.pid?"You":nameOf(Ld.p))}</b></div></div><div class="lv-vs">VS</div><div class="lv-side team"><div class="lv-avs">${team.slice(0,8).map(p=>avatar(p.pid,"sm")).join("")}</div><div><div class="eyebrow">The Rest</div><b>${team.map(p=>esc(p.pid===me.pid?"You":nameOf(p.pid))).join(", ")}</b></div></div></div><p class="muted" style="font-size:15px">${Math.ceil(I.n/3)} topics · 3 questions each · ${durFor("lead")} seconds · first right answer wins · a wrong answer locks you out</p>`; }
+    else if(t==="lead"){ const Ld=I.lead||{}, team=players().filter(p=>p.pid!==Ld.p); h += `<div class="lv-bar big"><div class="lv-side">${avatar(Ld.p,"lg")}<div><div class="eyebrow">The leader${Ld.tie?" (picked from the tie)":""}</div><b>${esc(Ld.p===me.pid?"You":nameOf(Ld.p))}</b></div></div><div class="lv-vs">VS</div><div class="lv-side team"><div class="lv-avs">${team.slice(0,8).map(p=>avatar(p.pid,"sm")).join("")}</div><div><div class="eyebrow">The Rest</div><b>${team.map(p=>esc(p.pid===me.pid?"You":nameOf(p.pid))).join(", ")}</b></div></div></div><p class="muted" style="font-size:15px">${Math.ceil(I.n/3)} topics · 3 questions each · ${durFor("lead")} seconds · the first answer in decides it: right wins it for your side, wrong gives it to the other side</p>`; }
     else if(t==="sp") h += `<p class="muted" style="font-size:15px">4 topics · 3 questions each · ${S.diff==="hard"?8:12} seconds a question · wrong answers lose 50 · scores hidden</p>`;
     else if(t==="mf") h += `<p class="muted" style="font-size:15px">${I.n} board${I.n>1?"s":""} · players take turns · ${Math.round(RT.mf.dur*(S.diff==="hard"?1:1.5))} seconds a pick</p>`;
     else h += `<p class="muted" style="font-size:15px">${I.n} questions · ${Math.round(RT[t].dur*(S.diff==="hard"?1:1.5))} seconds each · ${S.diff==="hard"?"Hard":"Easy"} mode</p>`;
@@ -7192,7 +7197,7 @@ function qHead(q, timer=true){
   if(t==="lead"){ const L=q.lead, mine=L===me.pid, team=players().filter(p=>p.pid!==L);
     return `<div class="stagehead"><div><div class="eyebrow">Beat the Leader · Topic ${q.tn} of ${q.tof||3}</div><div class="sp-topic">${esc(q.topic)}</div><div class="muted num" style="font-size:14px">Question ${q.tq} of 3 on this topic</div></div>${timer?timerHTML(qLocalEnd, q.dur):""}</div>
     <div class="lv-bar"><div class="lv-side ${mine?"me":""}">${avatar(L)}<div><div class="eyebrow">Leader</div><b>${esc(mine?"You":nameOf(L))}</b></div></div><div class="lv-vs">VS</div><div class="lv-side team ${mine?"":"me"}"><div class="lv-avs">${team.slice(0,6).map(p=>avatar(p.pid,"sm")).join("")}</div><div><div class="eyebrow">The Rest</div><b>${mine?`${team.length} player${team.length===1?"":"s"}`:"You"+(team.length>1?` + ${team.length-1}`:"")}</b></div></div></div>
-    <p class="muted lv-tip">${mine?"First right answer wins. Beat them all to it for 150.":"First right answer wins. If anyone on your team gets it first, you all score 100."}</p>`; }
+    <p class="muted lv-tip">${mine?"The first answer in decides it. Right first: you score 150. But if you answer wrong first, the team scores.":"The first answer in decides it. Anyone on your team right first: you all score 100. But a wrong answer first hands the leader 150."}</p>`; }
   if(t==="sp") return `<div class="stagehead"><div><div class="eyebrow">Speed Round · Topic ${q.tn} of ${q.tof||4}</div><div class="sp-topic">${esc(q.topic)}</div><div class="muted num" style="font-size:14px">Question ${q.tq} of 3 · ${q.n} of ${q.of} overall</div></div>${timer?timerHTML(qLocalEnd, q.dur):""}</div>`;
   return `<div class="stagehead"><div><div class="eyebrow">Round ${S.ri+1} · ${RT[t].name}</div><div class="muted num" style="font-size:14px">${t==="mm"?esc(nameOf(q.chair))+" · ":""}${t==="grid"?"Grid":"Question"} ${q.n} of ${q.of}</div></div>${timer?timerHTML(qLocalEnd, q.dur):""}</div>`;
 }
@@ -7267,9 +7272,10 @@ function revealHTML(q, rev){
   if(rev.t==="lead"){
     const L=rev.lead, by=rev.by, team=rev.rows.filter(r=>!r.lead);
     h += `<div class="opts sp">${rev.opts.map((o,i)=>{ const who=rev.rows.filter(r=>r.a===i); return `<div class="opt ${i===rev.ans?"right":(who.length?"wrong":"")}"><span class="k">${"ABCD"[i]}</span><span class="grow">${esc(o)}</span><span class="row" style="gap:4px">${who.map(r=>avatar(r.p,"sm",nameOf(r.p))).join("")}</span></div>`; }).join("")}</div>`;
-    const msg = rev.win==="leader" ? `<b>${esc(L===me.pid?"You":nameOf(L))} got there first</b> <span class="num">+150</span><span class="muted sp-n">The leader takes it${rev.s!=null?` in ${rev.s}s`:""}.</span>`
-      : rev.win==="team" ? `<b>The Rest win it!</b> <span class="num">+100 each</span><span class="muted sp-n">${esc(by===me.pid?"You":nameOf(by))} answered first${rev.s!=null?` in ${rev.s}s`:""}, so all ${team.length} on the team score.</span>`
-      : `<b>Nobody got it</b><span class="muted sp-n">No points this time.</span>`;
+    const fr=rev.rows.find(r=>r.p===by), who=esc(by===me.pid?"You":nameOf(by)), sec=rev.s!=null?` in ${rev.s}s`:"", ok=fr&&fr.ok;
+    const msg = rev.win==="leader" ? `<b>${ok?`${who} got it first`:`${who} got it wrong`}</b> <span class="num">+150 to ${esc(L===me.pid?"you":nameOf(L))}</span><span class="muted sp-n">${ok?`The leader answered right${sec}.`:`A wrong answer from the team${sec} hands the leader the points.`}</span>`
+      : rev.win==="team" ? `<b>${ok?`${who} got it first`:`${who} got it wrong`}</b> <span class="num">+100 each to The Rest</span><span class="muted sp-n">${ok?`Right answer${sec}, so all ${team.length} on the team score.`:`The leader answered wrong${sec}, so all ${team.length} on the team score.`}</span>`
+      : `<b>Nobody answered</b><span class="muted sp-n">No points this time.</span>`;
     h += `<div class="sp-res ${rev.win==="team"?(L===me.pid?"no":"ok"):rev.win==="leader"?(L===me.pid?"ok":"no"):"no"}">${msg}</div>`;
     h += `<p class="muted" style="font-size:13px;margin:0" data-adv></p>`;
     return h;
