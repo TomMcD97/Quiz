@@ -1161,6 +1161,22 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .lb-tag{white-space:nowrap}.lb-card.bot .lb-nm{padding-right:22px}
 @media (max-width:620px){.lb-onair{font-size:10px;letter-spacing:.08em;padding:4px 8px}.lb-tag{font-size:9px;letter-spacing:.06em;padding:2px 4px}.lb-nm b{font-size:14px}.lb-mq-in{padding:16px 14px}}
 @media (prefers-reduced-motion:reduce){.lb-marquee::before,.lb-marquee::after,.lb-beams i,.lb-title,.lb-onair i,.lb-dot,.lb-card{animation:none}}
+
+/* ready-up */
+.lb-tags{display:flex;gap:4px;flex-wrap:wrap}
+.lb-tag.rdy{color:#000;background:var(--good,#3BCF86);border-color:var(--good,#3BCF86)}
+.lb-tag.wait{border-style:dashed}
+.lb-card.isrdy:not(.me){border-color:color-mix(in srgb,var(--good,#3BCF86) 55%,var(--line))}
+.rdy-btn.on{border-color:var(--good,#3BCF86);color:var(--ink);background:color-mix(in srgb,var(--good,#3BCF86) 18%,transparent);box-shadow:none}
+.rdy-tick{color:var(--good,#3BCF86);font-weight:800}
+.rdy-wrap{display:grid;gap:12px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.rdy-list{display:flex;flex-wrap:wrap;gap:8px}
+.rdy-p{position:relative;display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border:1px dashed var(--line);font-size:13px;opacity:.6;transition:opacity .2s,border-color .2s}
+.rdy-p.on{opacity:1;border-style:solid;border-color:var(--good,#3BCF86)}
+.rdy-p i{position:absolute;left:22px;top:-4px;width:16px;height:16px;border-radius:50%;display:none;place-items:center;background:var(--good,#3BCF86);color:#000;font-style:normal;font-size:10px;font-weight:800}
+.rdy-p.on i{display:grid}
+.rdy-count{font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;color:var(--muted)}.rdy-count b{color:var(--ink);font-size:15px}
+.rdy-act{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 </style>
 <style id="sq-fixes">
 /* clear right / wrong colours */
@@ -3157,6 +3173,7 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -6276,7 +6293,7 @@ function boot(){
   acctInit();
 }
 /* answer time: never more than 15 seconds a question (10 on Hard); Word Grid keeps its own clock */
-function durFor(t){ const g=(typeof G!=="undefined"&&G)||(typeof S!=="undefined"&&S)||{}, hard=g.diff==="hard"; if(t==="grid") return RT.grid.dur; if(t==="sp") return hard?8:12; if(t==="pin"||t==="rank"||t==="est") return hard?15:20; return hard?10:15; }
+function durFor(t){ const g=(typeof G!=="undefined"&&G)||(typeof S!=="undefined"&&S)||{}, hard=g.diff==="hard"; if(t==="grid") return RT.grid.dur; if(t==="sp") return hard?8:12; if(t==="rank") return hard?25:30; if(t==="ctry") return hard?15:20; if(t==="pin"||t==="est") return hard?15:20; return hard?10:15; }
 function aiOn(){ return !!app.sample && !app.sampleDenied; }
 async function ask(prompt, tier="default", ms=90000, extra){
   if(!aiOn()) throw new Error("no-ai");
@@ -6478,8 +6495,8 @@ function botTick(now){
 function players(){
   const out=[]; const seen=new Set();
   for(const p of partyPeers()){ const pr=p.presence||{}; if(!pr.pid || (pr.role!=="host" && pr.role!=="player")) continue; if(seen.has(pr.pid)) continue; seen.add(pr.pid);
-    out.push({pid:String(pr.pid).slice(0,64), nick:String(pr.nick||"Player").slice(0,18), topicReq:(pr.topic && typeof pr.topic==="object")?pr.topic:null, wc:pr.wc, av:validAv(pr.av)?pr.av:null, emo:(pr.emo && typeof pr.emo==="object" && EMO_IDS.includes(pr.emo.e))?pr.emo:null, host:pr.role==="host", ans:pr.ans, isMe:pr.pid===me.pid}); }
-  if(!seen.has(me.pid) && app.party) out.push({pid:me.pid, nick:me.nick, topicReq:myPres.topic||null, wc:myPres.wc, av:me.av, host:app.isHost, ans:myPres.ans, isMe:true});
+    out.push({pid:String(pr.pid).slice(0,64), nick:String(pr.nick||"Player").slice(0,18), topicReq:(pr.topic && typeof pr.topic==="object")?pr.topic:null, wc:pr.wc, av:validAv(pr.av)?pr.av:null, emo:(pr.emo && typeof pr.emo==="object" && EMO_IDS.includes(pr.emo.e))?pr.emo:null, host:pr.role==="host", ans:pr.ans, rdy:typeof pr.rdy==="string"?pr.rdy.slice(0,40):null, isMe:pr.pid===me.pid}); }
+  if(!seen.has(me.pid) && app.party) out.push({pid:me.pid, nick:me.nick, topicReq:myPres.topic||null, wc:myPres.wc, av:me.av, host:app.isHost, ans:myPres.ans, rdy:myPres.rdy||null, isMe:true});
   if(app.party) for(const b of botList()){ if(!b || seen.has(b.pid)) continue; seen.add(b.pid); out.push({pid:b.pid, nick:String(b.nick).slice(0,18), av:validAv(b.av)?b.av:null, bot:true, lv:b.lv}); }
   return out;
 }
@@ -6533,7 +6550,7 @@ async function hostStart(){
   if(!G.rounds.some(r=>r.t==="sp")) G.rounds.push({t:"sp", n:12, on:true});
   const rk=t=>t==="sp"?2:t==="lead"?1:0;
   const act = G.rounds.filter(r=>r.on && !(r.t==="uniq" && ps.length<3) && !(r.t==="lead" && ps.length<2)).sort((a,b)=>rk(a.t)-rk(b.t));
-  if(!act.length){ stageKey=""; renderStage(); toast(ps.length<3 && G.rounds.some(r=>r.on&&r.t==="uniq") ? "Great Minds needs 3 or more players. Turn on another round." : "Turn on at least one round"); return; }
+  if(!act.length){ rdyFiredK=""; stageKey=""; renderStage(); toast(ps.length<3 && G.rounds.some(r=>r.on&&r.t==="uniq") ? "Great Minds needs 3 or more players. Turn on another round." : "Turn on at least one round"); return; }
   G.phase="gen"; G.msg="Getting the questions ready"; G.ai=aiOn(); G.active=act.map(r=>r.t); G.scores={}; G.rs={}; G.sp={}; ps.forEach(p=>{ G.scores[p.pid]=0; G.names[p.pid]=p.nick; }); pushState();
   if(act.some(r=>r.t==="pin")) loadMap();
   if(act.some(r=>r.t==="grid")) loadDict();
@@ -6919,7 +6936,7 @@ function cleanQs(t, arr){
 }
 
 function goIntro(ri){
-  G.phase="intro"; G.ri=ri; G.qi=-1; G.q=null; G.rev=null; G.rs={}; G.st={c:{}, n:0, at:{}}; G.adv=8; hostAdvAt=Date.now()+8000;
+  G.phase="intro"; G.ri=ri; G.qi=-1; G.q=null; G.rev=null; G.rs={}; G.st={c:{}, n:0, at:{}}; G.adv=0; hostAdvAt=0; /* waits for everyone to ready up */
   const R=plan[ri]; G.intro = {t:R.t, n: R.t==="mm" ? players().length : R.qs.length};
   if(R.t==="lead"){ const here=players().map(p=>p.pid), sc=here.map(p=>G.scores[p]||0), mx=Math.max(...sc), tops=here.filter(p=>(G.scores[p]||0)===mx); G.lead={p:tops[Math.floor(Math.random()*tops.length)], tie:tops.length>1}; G.intro.lead=G.lead; }
   pushState();
@@ -7093,6 +7110,7 @@ function hostTick(){
   if(!app.isHost || !G) return;
   const now=Date.now();
   try{ botTick(now); }catch(e){ console.warn("bots",e); }
+  hostReadyTick(now);
   if(G.phase==="q" && G.q && G.q.t==="mf"){ mfTick(now); }
   else if(G.phase==="q" && G.q && G.q.sim){ mmTick(now); }
   else if(G.phase==="q" && !closing){
@@ -7278,8 +7296,7 @@ function renderStage(){
     else if(t==="sp") h += `<p class="muted" style="font-size:15px">4 topics · 3 questions each · ${S.diff==="hard"?8:12} seconds a question · right answers start at 150 and count down · wrong answers lose 50 · scores hidden</p>`;
     else if(t==="mf") h += `<p class="muted" style="font-size:15px">${I.n} board${I.n>1?"s":""} · players take turns · ${durFor("mf")} seconds a pick</p>`;
     else h += `<p class="muted" style="font-size:15px">${I.n} questions · ${durFor(t)} seconds each · ${S.diff==="hard"?"Hard":"Easy"} mode</p>`;
-    h += `<p class="muted" style="font-size:14px" data-adv>Starting soon</p></div>`;
-    if(host) h += `<div class="hostbar"><button class="btn primary" data-act="next">Start round</button></div>`;
+    h += `<div class="rdy-wrap"><div data-rdylist>${rdyListHTML()}</div><div class="rdy-act"><span data-rdybtn>${rdyBtnHTML("Ready for this round")}</span>${host?`<button class="btn small" data-act="next" title="Start without waiting for everyone">Start now</button>`:""}</div></div></div>`;
   }
   else if(S.phase==="q") h = questionHTML(S.q);
   else if(S.phase==="topics") h = topicsHTML();
@@ -7339,6 +7356,27 @@ function renderLobbyStage(){
 function playEmote(f, e){ if(!EMO_IDS.includes(e) || RM) return; EMO_IDS.forEach(x=>f.classList.remove("e-"+x)); void f.offsetWidth; f.classList.add("e-"+e); clearTimeout(f._et); f._et=setTimeout(()=>f.classList.remove("e-"+e), 2800); }
 let lastEmote=0;
 function sendEmote(e){ if(!EMO_IDS.includes(e) || Date.now()-lastEmote<500) return; lastEmote=Date.now(); setMyPresence({emo:{e, t:Date.now()}}); renderLobbyStage(); }
+/* ---------- ready-up: the game and every round start once everyone has tapped Ready (bots are always ready) ---------- */
+function rdyKeyOf(g){ return g ? (g.phase==="lobby" ? g.gid+":L" : g.gid+":R"+g.ri) : ""; }
+function rdyKey(){ return rdyKeyOf(S); }
+function isRdy(p,k){ return !!(p.bot || (p.isMe ? myPres.rdy===k : p.rdy===k)); }
+function rdyCounts(){ const k=rdyKey(), ps=players(); return {k, ps, n:ps.length, r:ps.filter(p=>isRdy(p,k)).length, me:myPres.rdy===k}; }
+function rdyBtnHTML(label){ const c=rdyCounts(); return `<button type="button" class="btn ${c.me?"":"primary"} lb-start rdy-btn${c.me?" on":""}" data-act="ready" aria-pressed="${c.me}">${c.me?`<span class="rdy-tick" aria-hidden="true">✓</span>Ready · tap to undo`:`<span class="lb-dot" aria-hidden="true"></span>${label||"I'm ready"}`}</button>`; }
+function rdyListHTML(){ const c=rdyCounts(); return `<div class="rdy-list">${c.ps.map(p=>`<span class="rdy-p${isRdy(p,c.k)?" on":""}">${avatar(p.pid,"sm")}<i aria-hidden="true">✓</i><b>${esc(p.isMe?"You":p.nick)}</b></span>`).join("")}</div><div class="rdy-count"><b class="num">${c.r}</b> of ${c.n} ready${c.r<c.n?` · starts when everyone's ready`:` · starting…`}</div>`; }
+function rdyLive(){ const set=(sel,h)=>document.querySelectorAll(sel).forEach(el=>{ if(el._h!==h){ el._h=h; el.innerHTML=h; } });
+  set("[data-rdylist]", rdyListHTML()); set("[data-rdybtn]", rdyBtnHTML(S&&S.phase==="lobby"?"I'm ready":"Ready for this round")); }
+let rdyAllAt=0, rdyFiredK="";
+function hostReadyTick(now){
+  if(!G || (G.phase!=="lobby" && G.phase!=="intro")) { rdyAllAt=0; return; }
+  const k=rdyKeyOf(G); if(rdyFiredK===k) return;
+  const ps=players(); const all=ps.length>0 && ps.some(p=>!p.bot) && ps.every(p=>isRdy(p,k));
+  if(!all){ rdyAllAt=0; return; }
+  if(!rdyAllAt){ rdyAllAt=now; return; }
+  if(now-rdyAllAt<900) return; /* a short beat so everyone sees the last tick land */
+  rdyFiredK=k; rdyAllAt=0;
+  if(G.phase==="lobby") hostStart(); else hostAdvance();
+}
+
 /* ---------- lobby: marquee, live cast, running order ---------- */
 const LB_UNIT={mm:"each",grid:"grid",mf:"board"};
 function lbCount(r){ const n=r.t==="sp"?12:r.n, u=LB_UNIT[r.t]; return u==="each"?`${n} each`:u?`${n} ${u}${n>1?"s":""}`:`${n} Qs`; }
@@ -7348,8 +7386,8 @@ function lbStatsHTML(){ const ps=players(), on=S.rounds.filter(r=>r.on && !(r.t=
   return cell(ps.length, ps.length===1?"Player":"Players")+cell(on.length, on.length===1?"Round":"Rounds")+cell("~"+mins, "Minutes")+cell(S.diff==="hard"?"Hard":"Easy","Difficulty"); }
 function lbCastHTML(){
   const ps=players(), host=app.isHost, local=app.party&&app.party.local;
-  const tag=p=> p.host?`<span class="lb-tag host">Host</span>` : p.bot?`<span class="lb-tag">${esc(p.lv||"")} bot</span>` : `<span class="lb-tag">Player</span>`;
-  let h=ps.map((p,i)=>`<div class="lb-card${p.isMe?" me":""}${p.bot?" bot":""}" style="--i:${i}"><div class="lb-av">${avatar(p.pid,"lg")}</div><div class="lb-nm"><b>${esc(p.nick)}${p.isMe?` <span class="muted">(you)</span>`:""}</b>${tag(p)}</div>${host&&p.bot?`<button type="button" class="lb-x" data-act="rmbot" data-pid="${esc(p.pid)}" aria-label="Remove ${esc(p.nick)}">×</button>`:""}</div>`).join("");
+  const rk=rdyKey(), tag=p=> (p.host?`<span class="lb-tag host">Host</span>` : p.bot?`<span class="lb-tag">${esc(p.lv||"")} bot</span>` : `<span class="lb-tag">Player</span>`)+(isRdy(p,rk)?`<span class="lb-tag rdy">Ready</span>`:`<span class="lb-tag wait">Not ready</span>`);
+  let h=ps.map((p,i)=>`<div class="lb-card${p.isMe?" me":""}${p.bot?" bot":""}${isRdy(p,rk)?" isrdy":""}" style="--i:${i}"><div class="lb-av">${avatar(p.pid,"lg")}</div><div class="lb-nm"><b>${esc(p.nick)}${p.isMe?` <span class="muted">(you)</span>`:""}</b><span class="lb-tags">${tag(p)}</span></div>${host&&p.bot?`<button type="button" class="lb-x" data-act="rmbot" data-pid="${esc(p.pid)}" aria-label="Remove ${esc(p.nick)}">×</button>`:""}</div>`).join("");
   const open=Math.max(local?0:1, (ps.length<4?4:ps.length<8?8:ps.length)-ps.length);
   for(let k=0;k<Math.min(open, local?0:3);k++) h+=`<div class="lb-card seat"><div class="lb-av"><span class="lb-seat-ic" aria-hidden="true"></span></div><div class="lb-nm"><b>Seat open</b><span class="muted">${k===0?`Join with code ${esc(S.code)}`:"Waiting for a player"}</span></div></div>`;
   if(host) h+=`<div class="lb-card add"><div class="lb-nm"><b>Add a bot</b><span class="muted">Fill the stage with computer players</span></div><div class="lb-addrow"><button type="button" class="btn small" data-act="addbot" data-lv="easy">Easy</button><button type="button" class="btn small" data-act="addbot" data-lv="medium">Medium</button><button type="button" class="btn small" data-act="addbot" data-lv="hard">Hard</button></div></div>`;
@@ -7362,7 +7400,7 @@ function lbProgHTML(){
   return h+`<li class="fin"><span class="lb-pn num">★</span><span class="lb-pi" aria-hidden="true"></span><div class="lb-pt"><b>The finale</b><span>Final scores, the points graph and awards</span></div><span class="lb-pc"></span></li></ol>`; }
 function lbLive(){ const set=(id,h)=>{ const el=document.getElementById(id); if(el && el._h!==h){ el._h=h; el.innerHTML=h; } };
   set("lbstats", lbStatsHTML()); set("lbcast", lbCastHTML()); set("lbprog", lbProgHTML());
-  const n=players().length, go=document.getElementById("lbgo"); if(go) go.textContent=`${n} ${n===1?"player":"players"} · about ${estMinutes(S.rounds)} min`; }
+  const c=rdyCounts(), go=document.getElementById("lbgo"); if(go) go.textContent=`${c.r} of ${c.n} ready · about ${estMinutes(S.rounds)} min`; rdyLive(); }
 function lobbyHTML(){
   const host=app.isHost, ps=players(), hp=ps.find(p=>p.host), local=app.party&&app.party.local;
   const title=S.pname || (local?"Solo Showdown":"Quiz Night");
@@ -7384,8 +7422,8 @@ function lobbyHTML(){
     if(!local) h+=`<div class="pset"><form class="answer-row" data-form="pname" style="margin:0"><input class="input" id="pnamein" maxlength="30" autocomplete="off" placeholder="Name your party (optional)" value="${esc(S.pname||"")}"><button class="btn">Save name</button></form>
       <div class="lenpick" role="radiogroup" aria-label="Who can join"><span class="lp-l">Who can join</span><div class="seg"><button type="button" role="radio" aria-checked="${!S.pub}" class="${!S.pub?"on":""}" data-act="pub" data-pub="0">Private</button><button type="button" role="radio" aria-checked="${!!S.pub}" class="${S.pub?"on":""}" data-act="pub" data-pub="1">Public</button></div><span class="muted">${S.pub?"Listed under Open parties: anyone on Spotlight can join.":"Hidden: only people you give the code to can join."}</span></div></div>`;
     h+=`<details class="hostcfg"${app.cfgOpen?" open":""}><summary>Game setup <span class="muted">Only you can see this. ${aiOn()?"Questions by Claude.":"Built-in question bank."}</span></summary><div class="rcfg" id="rcfg">${roundsCfgHTML()}</div></details>`;
-    h+=`<div class="lb-go"><div class="lb-go-meta"><span class="eyebrow">Ready?</span><span class="num" id="lbgo">${ps.length} ${ps.length===1?"player":"players"} · about ${estMinutes(S.rounds)} min</span></div><button class="btn primary lb-start" data-act="start"><span class="lb-dot" aria-hidden="true"></span>Start the show</button><button class="btn ghost small" data-act="leave">Close party</button></div>`;
-  } else h+=`<div class="lb-go"><div class="lb-go-meta"><span class="eyebrow">Hang tight</span><span>The host starts the show</span></div><span class="grow"></span><button class="btn ghost small" data-act="leave">Leave party</button></div>`;
+    h+=`<div class="lb-go"><div class="lb-go-meta"><span class="eyebrow">Ready up</span><span class="num" id="lbgo">${rdyCounts().r} of ${ps.length} ready · about ${estMinutes(S.rounds)} min</span></div><span data-rdybtn>${rdyBtnHTML("I'm ready")}</span><button class="btn small" data-act="start" title="Start without waiting for everyone">Start now</button><button class="btn ghost small" data-act="leave">Close party</button></div>`;
+  } else h+=`<div class="lb-go"><div class="lb-go-meta"><span class="eyebrow">Ready up</span><span class="num" id="lbgo">${rdyCounts().r} of ${ps.length} ready</span></div><span data-rdybtn>${rdyBtnHTML("I'm ready")}</span><button class="btn ghost small" data-act="leave">Leave party</button></div>`;
   return h;
 }
 const LEN={short:{gk:5,est:3,rank:3,pin:3,ctry:3,uniq:3,mm:5,grid:1,mf:2,sp:12},medium:{gk:8,est:5,rank:4,pin:5,ctry:5,uniq:5,mm:8,grid:1,mf:3,sp:12},long:{gk:12,est:8,rank:6,pin:8,ctry:8,uniq:8,mm:10,grid:2,mf:4,sp:12}};
@@ -7816,6 +7854,7 @@ function updateLive(){
   if(c && S.phase==="q" && S.q){ const ps=players(); const k=S.q.k; const exp = S.q.t==="mm" ? ps.filter(p=>p.pid===S.q.chair) : ps; const n=exp.filter(p=>(p.ans&&p.ans.k===k)||(p.isMe&&myAns)).length; c.textContent = S.q.t==="mm" ? (n?"Answer locked in":"Waiting for an answer") : `${n} of ${exp.length} ${S.q.t==="grid"?"done":"answered"}`; }
   if(S.phase==="topics") renderTopicsLive();
   if(app.view==="party" && S.phase==="lobby"){ const rc=$("#rcfg"); if(rc && !app.isHost) rc.innerHTML=roundsCfgHTML(); lbLive(); }
+  if(S.phase==="intro") rdyLive();
 }
 const CROWN_SVG=`<svg class="crown" viewBox="0 0 40 26" aria-hidden="true"><path d="M3 24 L2 6 L12 14 L20 2 L28 14 L38 6 L37 24 Z" fill="#FFD23F" stroke="#2A2238" stroke-width="2.4" stroke-linejoin="round"/><circle cx="20" cy="17" r="3" fill="#FF5E7E"/></svg>`;
 const MIC_SVG=`<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>`;
@@ -8501,6 +8540,7 @@ document.addEventListener("click", async e=>{
   if(a==="host"){ if(!readNick()) return; const code=Array.from(crypto.getRandomValues(new Uint8Array(4)), x=>"ABCDEFGHJKMNPQRSTUVWXYZ"[x%23]).join(""); openParty(code, true); return; }
   if(a==="join"||a==="joinlist"){ if(!readNick()) return; const code=(a==="join"?($("#joincode").value||""):b.dataset.code).toUpperCase().replace(/[^A-Z]/g,"").slice(0,4); if(code.length!==4){ toast("Party codes are 4 letters"); return; } openParty(code, false); return; }
   if(a==="leave"){ leaveParty(); return; }
+  if(a==="ready" && S && (S.phase==="lobby"||S.phase==="intro")){ const k=rdyKey(); setMyPresence({rdy: myPres.rdy===k?null:k}); if(S.phase==="lobby") lbLive(); else rdyLive(); if(app.isHost) hostTick(); return; }
   if(a==="emote"){ sendEmote(b.dataset.e); return; }
   if(a==="bighead"){ BIG.set(!BIG.on); document.querySelectorAll('[data-act="bighead"]').forEach(x=>x.setAttribute("aria-pressed",String(BIG.on))); document.querySelectorAll("img[data-pav]").forEach(im=>{ const u=Portrait.get(im.dataset.pav); im.src=u||avURI(im.dataset.pav); im.classList.toggle("r3",!!u); }); return; }
   if(a==="maker"){ if(document.getElementById("mkmodal")) closeMaker(); else { app.mkOpen=true; app.mk=null; mkState(); openMaker(); } return; }
