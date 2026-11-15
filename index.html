@@ -1036,6 +1036,10 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .avopt.custom::after{bottom:2px}
 
 /* ---- speed round ---- */
+.sp-right{display:flex;align-items:center;gap:12px}
+.sp-pts{display:grid;justify-items:center;line-height:1;min-width:64px;padding:8px 10px;border-radius:14px;border:1px solid var(--line);background:color-mix(in srgb, var(--spot) calc(var(--f)*22%), transparent)}
+.sp-pts b{font-size:clamp(26px,5vw,34px);font-weight:800;color:var(--spot)}.sp-pts small{font-size:11px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em}
+.sp-pts.locked{border-color:var(--spot)}.sp-pts.locked small{text-transform:none;letter-spacing:0}
 .sp-topic{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,4.4vw,40px);line-height:1.05;margin:4px 0 2px;color:var(--acc,var(--spot))}
 .opts.sp .opt{min-height:64px}
 .sp-res{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;padding:14px 16px;border-radius:12px;border:1px solid var(--line2);font-size:18px}
@@ -3164,6 +3168,7 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -4236,12 +4241,12 @@ const RT = {
   pin: {name:"Pin Drop", desc:"Drop a pin on the world map, then watch everyone's pins land. Closest scores 100, second closest 50.", def:5, min:3, max:10, dur:30},
   grid:{name:"Word Grid", desc:"30 seconds to find words by joining touching letters. 3 letters score 10, 4 letters 20, 5 letters 40, then big points for long words: 6 letters 100, 7 letters 150, 8 letters 200 and 50 more for each extra letter.", def:1, min:1, max:3, dur:30}
 };
-RT.sp={name:"Speed Round", desc:"The grand finale. Four topics, three quick-fire questions each. Scores are hidden until the end. A right answer scores up to 100, and the faster you are the more you get. A wrong answer loses 50, so don't guess wildly.", def:12, min:12, max:12, dur:10, last:true};
+RT.sp={name:"Speed Round", desc:"The grand finale. Four topics, three quick-fire questions each. Scores are hidden until the end. A right answer is worth 150 points the moment the question appears, and the points count down as the clock runs. A wrong answer loses 50, so don't guess wildly.", def:12, min:12, max:12, dur:10, last:true};
 RT.lead={name:"Beat the Leader", desc:"Whoever's top of the scores plays alone against everyone else as one team. Three questions on each topic, and the first answer in decides each one: a right answer wins it for that side, a wrong answer hands it to the other side. The leader scores 150; the team scores 100 each. Needs 2+ players.", def:9, min:6, max:12, dur:15, minPlayers:2};
 RT.mf={name:"Minefield", desc:"Take turns picking from a grid of 12 answers. Most fit the category but some are traps. Right picks score 100, traps lose 50.", def:3, min:1, max:5, dur:15};
 
 /* one-line summaries for the game setup list (the full rules show at the start of each round) */
-RT.mm.short="Everyone picks their own subject and answers questions on it."; RT.gk.short="Multiple choice. Bonus for the fastest right answer."; RT.rank.short="Put five things in the right order."; RT.est.short="Slide to your best guess. Closest wins."; RT.uniq.short="Give a right answer nobody else gives. 3+ players."; RT.ctry.short="Tap the country on a map with no names."; RT.pin.short="Drop a pin on the world map. Closest wins."; RT.grid.short="Find words by joining touching letters."; RT.sp.short="The finale: quick-fire topics, scores hidden till the end."; RT.lead.short="The leader plays alone against everyone else. 2+ players."; RT.mf.short="Take turns picking answers. Avoid the traps."; 
+RT.mm.short="Everyone picks their own subject and answers questions on it."; RT.gk.short="Multiple choice. Bonus for the fastest right answer."; RT.rank.short="Put five things in the right order."; RT.est.short="Slide to your best guess. Closest wins."; RT.uniq.short="Give a right answer nobody else gives. 3+ players."; RT.ctry.short="Tap the country on a map with no names."; RT.pin.short="Drop a pin on the world map. Closest wins."; RT.grid.short="Find words by joining touching letters."; RT.sp.short="The finale: quick-fire topics. Points count down from 150, scores hidden till the end."; RT.lead.short="The leader plays alone against everyone else. 2+ players."; RT.mf.short="Take turns picking answers. Avoid the traps."; 
 const ROUND_ORDER = ["gk","est","rank","pin","ctry","mf","grid","uniq","lead","sp"]; /* Specialist Subject ("mm") switched off for now */
 
 /* ---------------- built-in question bank ---------------- */
@@ -6887,7 +6892,7 @@ async function scoreQuestion(t, Q, A){
     const durMs=durFor("sp")*1000;
     const rows=players().map(p=>({p:p.pid, a: A[p.pid] ? Number(A[p.pid].v) : null, ms: A[p.pid] ? A[p.pid].t : null}));
     for(const pid of ps) if(!rows.find(r=>r.p===pid)) rows.push({p:pid, a:Number(A[pid].v), ms:A[pid].t});
-    rows.forEach(r=>{ r.ok = r.a===Q.ans; const f=Math.max(0, Math.min(1, (r.ms||0)/durMs)); r.pts = r.ok ? Math.max(20, Math.round(100-80*f)) : (r.a!=null && !isNaN(r.a) ? -50 : 0); r.s = r.ms!=null ? +(r.ms/1000).toFixed(1) : null; delete r.ms; });
+    rows.forEach(r=>{ r.ok = r.a===Q.ans; const f=Math.max(0, Math.min(1, (r.ms||0)/durMs)); r.pts = r.ok ? spPtsAt(r.ms||0) : (r.a!=null && !isNaN(r.a) ? -50 : 0); r.s = r.ms!=null ? +(r.ms/1000).toFixed(1) : null; delete r.ms; });
     return {t, ans:Q.ans, opts:Q.opts, topic:Q.topic, rows};
   }
   if(t==="mm"){
@@ -7143,7 +7148,7 @@ function renderStage(){
     else if(t==="grid") h += `<p class="muted" style="font-size:15px">${I.n} grid${I.n>1?"s":""} · ${RT.grid.dur} seconds each</p><p class="num" style="font-size:15px;margin:0">3 letters <b>10</b> · 4 <b>20</b> · 5 <b>40</b> · 6 <b>100</b> · 7 <b>150</b> · 8+ <b>200+</b></p>`;
     else if(t==="ctry") h += `<p class="muted" style="font-size:15px">${S.diff==="hard"?"Hard mode: smaller and trickier countries":"Easy mode: bigger, better-known countries"} · no names on the map · ${durFor("ctry")} seconds each</p>`;
     else if(t==="lead"){ const Ld=I.lead||{}, team=players().filter(p=>p.pid!==Ld.p); h += `<div class="lv-bar big"><div class="lv-side">${avatar(Ld.p,"lg")}<div><div class="eyebrow">The leader${Ld.tie?" (picked from the tie)":""}</div><b>${esc(Ld.p===me.pid?"You":nameOf(Ld.p))}</b></div></div><div class="lv-vs">VS</div><div class="lv-side team"><div class="lv-avs">${team.slice(0,8).map(p=>avatar(p.pid,"sm")).join("")}</div><div><div class="eyebrow">The Rest</div><b>${team.map(p=>esc(p.pid===me.pid?"You":nameOf(p.pid))).join(", ")}</b></div></div></div><p class="muted" style="font-size:15px">${Math.ceil(I.n/3)} topics · 3 questions each · ${durFor("lead")} seconds · the first answer in decides it: right wins it for your side, wrong gives it to the other side</p>`; }
-    else if(t==="sp") h += `<p class="muted" style="font-size:15px">4 topics · 3 questions each · ${S.diff==="hard"?8:12} seconds a question · wrong answers lose 50 · scores hidden</p>`;
+    else if(t==="sp") h += `<p class="muted" style="font-size:15px">4 topics · 3 questions each · ${S.diff==="hard"?8:12} seconds a question · right answers start at 150 and count down · wrong answers lose 50 · scores hidden</p>`;
     else if(t==="mf") h += `<p class="muted" style="font-size:15px">${I.n} board${I.n>1?"s":""} · players take turns · ${durFor("mf")} seconds a pick</p>`;
     else h += `<p class="muted" style="font-size:15px">${I.n} questions · ${durFor(t)} seconds each · ${S.diff==="hard"?"Hard":"Easy"} mode</p>`;
     h += `<p class="muted" style="font-size:14px" data-adv>Starting soon</p></div>`;
@@ -7250,7 +7255,7 @@ function qHead(q, timer=true){
     return `<div class="stagehead"><div><div class="eyebrow">Beat the Leader · Topic ${q.tn} of ${q.tof||3}</div><div class="sp-topic">${esc(q.topic)}</div><div class="muted num" style="font-size:14px">Question ${q.tq} of 3 on this topic</div></div>${timer?timerHTML(qLocalEnd, q.dur):""}</div>
     <div class="lv-bar"><div class="lv-side ${mine?"me":""}">${avatar(L)}<div><div class="eyebrow">Leader</div><b>${esc(mine?"You":nameOf(L))}</b></div></div><div class="lv-vs">VS</div><div class="lv-side team ${mine?"":"me"}"><div class="lv-avs">${team.slice(0,6).map(p=>avatar(p.pid,"sm")).join("")}</div><div><div class="eyebrow">The Rest</div><b>${mine?`${team.length} player${team.length===1?"":"s"}`:"You"+(team.length>1?` + ${team.length-1}`:"")}</b></div></div></div>
     <p class="muted lv-tip">${mine?"The first answer in decides it. Right first: you score 150. But if you answer wrong first, the team scores.":"The first answer in decides it. Anyone on your team right first: you all score 100. But a wrong answer first hands the leader 150."}</p>`; }
-  if(t==="sp") return `<div class="stagehead"><div><div class="eyebrow">Speed Round · Topic ${q.tn} of ${q.tof||4}</div><div class="sp-topic">${esc(q.topic)}</div><div class="muted num" style="font-size:14px">Question ${q.tq} of 3 · ${q.n} of ${q.of} overall</div></div>${timer?timerHTML(qLocalEnd, q.dur):""}</div>`;
+  if(t==="sp") return `<div class="stagehead"><div><div class="eyebrow">Speed Round · Topic ${q.tn} of ${q.tof||4}</div><div class="sp-topic">${esc(q.topic)}</div><div class="muted num" style="font-size:14px">Question ${q.tq} of 3 · ${q.n} of ${q.of} overall</div></div><div class="sp-right">${timer?`<div class="sp-pts" data-sppts style="--f:1"><b class="num">150</b><small>points</small></div>`:""}${timer?timerHTML(qLocalEnd, q.dur):""}</div></div>`;
   return `<div class="stagehead"><div><div class="eyebrow">Round ${S.ri+1} · ${RT[t].name}</div><div class="muted num" style="font-size:14px">${t==="mm"?esc(nameOf(q.chair))+" · ":""}${t==="grid"?"Grid":"Question"} ${q.n} of ${q.of}</div></div>${timer?timerHTML(qLocalEnd, q.dur):""}</div>`;
 }
 function questionHTML(q){
@@ -7636,6 +7641,12 @@ function afterStage(){
   if(S.phase==="q" && S.q.t==="grid"){ renderWordList(); paintTiles(); }
   const ai=$("#ansin")||$("#tpin")||(window.matchMedia("(pointer:fine)").matches?$("#wordin"):null); if(ai) setTimeout(()=>ai.focus({preventScroll:true}), 30);
 }
+/* Speed Round: a right answer is worth 150 the moment the question appears, counting down to 10 at the buzzer */
+function spPtsAt(ms){ const f=Math.max(0, Math.min(1, ms/(durFor("sp")*1000))); return Math.max(10, Math.round(150-140*f)); }
+function spPtsTick(now){ const el=document.querySelector("[data-sppts]"); if(!el || !S || S.phase!=="q" || !S.q || S.q.t!=="sp") return;
+  const locked=myAns && myAns.k===S.q.k, v=locked ? (typeof myAns.t==="number" ? spPtsAt(myAns.t) : 0) : spPtsAt(now-qShownAt);
+  const b=el.querySelector("b"); if(b.textContent!==String(v)) b.textContent=v; el.classList.toggle("locked", !!locked); el.querySelector("small").textContent = locked ? "if you're right" : "points";
+  el.style.setProperty("--f", ((v-10)/140).toFixed(3)); }
 function updateLive(){
   if(!S) return;
   if(S.phase==="gen"){ const g=$("#genmsg"); if(g) g.textContent=(S.msg||"Getting ready")+"…"; }
@@ -7766,10 +7777,12 @@ setInterval(()=>{
   if(app.view==="party" && S && S.phase==="q" && S.q && S.q.sim){ const m=S.mm&&S.mm[me.pid]; if(m && m.i<m.n && mmMyAnsK!==mmKey(m.i) && now>mmLocalEnd){ const i=$("#ansin"); submitMM(i?i.value.trim():""); } }
   if(app.view==="party" && !app.isHost && S && !app.party.local){ const hp=partyPeers().some(p=>p.presence&&p.presence.role==="host"); if(hp) hostLastSeen=now; else if(!hostGone && hostLastSeen && now-hostLastSeen>8000){ hostGone=true; stageKey=""; renderStage(); } }
   if(app.view==="party" && !app.isHost && !S && joinedAt && now-joinedAt>9000 && stageKey==="wait"){ stageKey="nf"; const el=$("#stage"); if(el) el.innerHTML=`<div class="intro"><h2>No party found for ${esc(app.code)}</h2><p>Check the code with the host, and make sure they still have the page open.</p><div class="row"><button class="btn primary" data-act="leave">Back</button></div></div>`; }
+  spPtsTick(now);
   hostTick();
   if(app.view==="daily") dailyTick(now);
   if(app.view==="dgrid" && DG.phase==="play" && now>=DG.end) dgFinish();
 }, 200);
+setInterval(()=>{ if(!document.hidden) spPtsTick(Date.now()); }, 50);
 
 /* ---------------- map ---------------- */
 /* ---------------- world map (drawn in-page, [lng,lat] outlines) ---------------- */
