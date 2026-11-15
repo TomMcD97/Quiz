@@ -1048,6 +1048,7 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .intro.final-head .ri.fh-wait{animation:fhOut .4s ease var(--d) both}
 .intro.final-head .ri.fh-win{animation:fhIn .6s cubic-bezier(.2,1.3,.5,1) var(--d) both}
 .res.final-list{animation:fhIn .6s ease calc(var(--d) + .4s) both}
+.pset{display:flex;flex-direction:column;gap:10px}
 .summary{animation:fhIn .6s ease calc(var(--d) + .9s) both;width:100%}.summary.wait3d{animation:none;opacity:0}
 .aw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
 .aw-card{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;background:var(--panel2,rgba(255,255,255,.05));border:1px solid var(--line,rgba(255,255,255,.08));min-width:0}
@@ -3054,6 +3055,7 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -6173,7 +6175,7 @@ function renderParties(){
   const list = (app.lobbyPeers||[]).filter(p=>!p.sameTab && p.presence && p.presence.hosting && p.presence.hosting.code);
   const seen=new Set(); const items=[];
   for(const p of list){ const h=p.presence.hosting; if(seen.has(h.code)) continue; seen.add(h.code); items.push(h); }
-  el.innerHTML = items.length ? `<div class="eyebrow">Open parties</div>` + items.map(h=>`<div class="party-item"><div><span class="code">${esc(String(h.code).slice(0,4))}</span> <span class="muted">hosted by ${esc(String(h.nick||"someone").slice(0,18))}${h.phase && h.phase!=="lobby"?" · in progress":""}</span></div><button class="btn small primary" data-act="joinlist" data-code="${esc(String(h.code).slice(0,4))}">Join</button></div>`).join("") : "";
+  el.innerHTML = items.length ? `<div class="eyebrow">Open parties</div>` + items.map(h=>`<div class="party-item"><div>${h.name?`<b>${esc(String(h.name).slice(0,30))}</b> `:""}<span class="code">${esc(String(h.code).slice(0,4))}</span> <span class="muted">hosted by ${esc(String(h.nick||"someone").slice(0,18))}${h.phase && h.phase!=="lobby"?" · in progress":""}</span></div><button class="btn small primary" data-act="joinlist" data-code="${esc(String(h.code).slice(0,4))}">Join</button></div>`).join("") : "";
 }
 
 async function loadHomeDaily(){
@@ -6219,7 +6221,7 @@ async function openParty(code, host){
     const saved = SS.get("sq-host-"+code);
     if(saved && saved.G){ G=saved.G; plan=saved.plan; }
     else G = newGame(code);
-    if(app.room && !pr.local) app.room.presence({hosting:{code, nick:me.nick, phase:G.phase}}).catch(()=>{});
+    if(G.pub===undefined){ G.pub=LS.get("sq-pub")===true; G.pname=String(LS.get("sq-pname")||"").slice(0,30); }
     pushState();
   }
   render();
@@ -6272,12 +6274,15 @@ function onState(g){
 
 /* ---------------- host engine ---------------- */
 let hostAdvAt=0, hostQEnd=0, closing=false, ansCache={};
+/* the home-screen "Open parties" list only shows public parties */
+function advertiseParty(){ if(!app.room || !app.party || app.party.local || !G) return; app.room.presence({hosting:G.pub?{code:G.code, nick:me.nick, phase:G.phase, name:G.pname||""}:null}).catch(()=>{}); }
 function pushState(){
   G.seq++;
   let g=G;
+  if(G.gs){ g=Object.assign({},G); delete g.gs; if(g.phase==="final"){ delete g.st; g.rev=null; g.q=null; } } /* players only need the short end-of-game summary (gx) */
   if(JSON.stringify(g).length>3700){ g=clone(G); if(g.rev && g.rev.rows) g.rev.rows.forEach(r=>{ if(typeof r.a==="string") r.a=r.a.slice(0,20); }); if(g.rev && g.rev.spare) g.rev.spare=g.rev.spare.slice(0,3); if(g.rev && g.rev.t==="grid"){ g.rev.rows.forEach(r=>{ r.best=r.best.slice(0,3); r.bad=r.bad.slice(0,3); }); g.rev.top=(g.rev.top||[]).slice(0,3); } }
   setMyPresence({game:g});
-  if(app.room && !app.party.local) app.room.presence({hosting:{code:G.code, nick:me.nick, phase:G.phase}}).catch(()=>{});
+  advertiseParty();
   SS.set("sq-host-"+G.code, {G, plan});
   onState(clone(g));
 }
@@ -6653,7 +6658,12 @@ function goIntro(ri){
   const R=plan[ri]; G.intro = {t:R.t, n: R.t==="mm" ? players().length : R.qs.length};
   pushState();
 }
-function goFinal(){ for(const p in (G.sp||{})){ G.scores[p]=(G.scores[p]||0)+G.sp[p]; } G.spDone=G.sp||{}; G.sp={}; G.phase="final"; G.q=null; G.rev=null; G.adv=0; hostAdvAt=0; pushState(); }
+function compactGs(){ const g=G.gs; if(!g) return null; const top=o=>{ let b=null; for(const p in o||{}) if(o[p]>0 && (!b || o[p]>o[b])) b=p; return b; };
+  const avg=Object.entries(g.at||{}).filter(([,x])=>x[1]>=3).map(([p,x])=>({p, ms:Math.round(x[0]/x[1])})).sort((a,b)=>a.ms-b.ms);
+  const ch=Object.entries(g.pts||{}).map(([t,o])=>{ const p=top(o); return p?[t,p,o[p]]:null; }).filter(Boolean);
+  const bs={}; for(const p of Object.keys(G.scores||{})){ let bt=null, bv=0; for(const t in g.pts||{}){ const v=(g.pts[t]||{})[p]||0; if(v>bv){ bv=v; bt=t; } } if(bt) bs[p]=[bt,bv]; }
+  return {right:g.right, asked:g.asked, best:g.best, fast:g.fast, avg:avg.length>1?avg[0]:null, pin:g.pin, est:g.est, word:g.word, ch, bs}; }
+function goFinal(){ for(const p in (G.sp||{})){ G.scores[p]=(G.scores[p]||0)+G.sp[p]; } try{ G.gx=compactGs(); }catch(e){ G.gx=null; } G.spDone=G.sp||{}; G.sp={}; G.phase="final"; G.q=null; G.rev=null; G.adv=0; hostAdvAt=0; pushState(); }
 function nextQuestion(){
   const R=plan[G.ri]; G.qi++;
   if(G.qi>=R.qs.length && R.t==="sp"){ try{ gsRoundEnd("sp", G.sp||{}); }catch(e){} goFinal(); return; }
@@ -6954,7 +6964,7 @@ function mmFinish(){
   G.rev={t:"mmsim", rows:Object.entries(G.mm).map(([p,m])=>{ const c=m.res.split("").filter(x=>x==="1").length; return {p, topic:m.topic, c, n:m.n, done:m.res.length, pts:c*100}; }).sort((a,b)=>b.c-a.c)};
   G.phase="reveal"; G.adv=12; hostAdvAt=Date.now()+12000; pushState();
 }
-function hostReset(){ mmSets={}; const keep={rounds:G.rounds, names:G.names, avs:G.avs}; G=newGame(G.code); G.rounds=keep.rounds; G.names=keep.names; G.avs=keep.avs||{}; plan=null; ansCache={}; pushState(); }
+function hostReset(){ mmSets={}; const keep={rounds:G.rounds, names:G.names, avs:G.avs}; const kp={pub:G.pub, pname:G.pname}; G=newGame(G.code); Object.assign(G,kp); G.rounds=keep.rounds; G.names=keep.names; G.avs=keep.avs||{}; plan=null; ansCache={}; pushState(); }
 
 /* ---------------- party rendering ---------------- */
 function nameOf(pid){ const p=players().find(x=>x.pid===pid); return (p&&p.nick) || (S&&S.names&&S.names[pid]) || "Player"; }
@@ -7045,10 +7055,12 @@ let lastEmote=0;
 function sendEmote(e){ if(!EMO_IDS.includes(e) || Date.now()-lastEmote<500) return; lastEmote=Date.now(); setMyPresence({emo:{e, t:Date.now()}}); renderLobbyStage(); }
 function lobbyHTML(){
   const host=app.isHost, ps=players(), hp=ps.find(p=>p.host);
-  let h=`<div class="lobby-top"><div><div class="eyebrow">Party code</div><div class="lobby-code"><span class="code">${esc(S.code)}</span>${host?`<button class="btn small" data-act="copycode">Copy code</button>`:""}</div></div><div class="lobby-count"><b class="num">${ps.length}</b><span>${ps.length===1?"player":"players"} in the lobby</span></div></div>`;
+  let h=`${S.pname?`<div class="ri" style="font-size:clamp(24px,4vw,34px);margin-bottom:-4px">${esc(S.pname)}</div>`:""}<div class="lobby-top"><div><div class="eyebrow">Party code${host?` · ${S.pub?"Public":"Private"}`:""}</div><div class="lobby-code"><span class="code">${esc(S.code)}</span>${host?`<button class="btn small" data-act="copycode">Copy code</button>`:""}</div></div><div class="lobby-count"><b class="num">${ps.length}</b><span>${ps.length===1?"player":"players"} in the lobby</span></div></div>`;
   h+=stageHTML(host ? "Friends join from the home screen with this code." : `You're in. Waiting for ${esc(hp?hp.nick:"the host")} to start the game.`);
   h+=`<details><summary class="eyebrow" style="cursor:pointer">Change your look</summary><div style="margin-top:8px">${avPickerHTML()}</div></details>`;
   if(host){
+    h+=`<div class="pset"><form class="answer-row" data-form="pname" style="margin:0"><input class="input" id="pnamein" maxlength="30" autocomplete="off" placeholder="Name your party (optional)" value="${esc(S.pname||"")}"><button class="btn">Save name</button></form>
+      <div class="lenpick" role="radiogroup" aria-label="Who can join"><span class="lp-l">Who can join</span><div class="seg"><button type="button" role="radio" aria-checked="${!S.pub}" class="${!S.pub?"on":""}" data-act="pub" data-pub="0">Private</button><button type="button" role="radio" aria-checked="${!!S.pub}" class="${S.pub?"on":""}" data-act="pub" data-pub="1">Public</button></div><span class="muted">${S.pub?"Listed under Open parties: anyone on Spotlight can join.":"Hidden: only people you give the code to can join."}</span></div></div>`;
     h+=`<details class="hostcfg"><summary>Game setup <span class="muted">Only you can see this. ${aiOn()?"Questions by Claude.":"Built-in question bank."}</span></summary><div class="rcfg" id="rcfg">${roundsCfgHTML()}</div></details>`;
     h+=`<div class="hostbar"><button class="btn primary" data-act="start">Start game</button><span class="grow"></span><button class="btn ghost small" data-act="leave">Close party</button></div>`;
   } else h+=`<div class="hostbar"><span class="grow"></span><button class="btn ghost small" data-act="leave">Leave party</button></div>`;
@@ -7218,22 +7230,22 @@ function standingsHTML(title, sub, roundEnd){
 /* seconds until the last (winning) pillar has finished rising; matches Room.setPodium's timing */
 function finalRevealDelay(){ const n=Math.max(1, players().length); return .9+(n-1)*.75+.5+1.7; }
 function gameSummaryHTML(ps, wait, D){
-  const g=S.gs; if(!g || !ps.length) return "";
+  const g=S.gx; if(!g || !ps.length) return "";
   const nm=p=>esc(nameOf(p))+(p===me.pid?" (you)":""), cards=[], top=o=>{ let b=null; for(const p in o||{}) if(o[p]>0 && (!b || o[p]>o[b])) b=p; return b; };
   const card=(icon,title,p,val)=>cards.push(`<div class="aw-card">${avatar(p)}<div><div class="eyebrow">${icon} ${esc(title)}</div><b>${nm(p)}</b><div class="muted">${esc(val)}</div></div></div>`);
   const r=top(g.right); if(r) card("✅","Most correct answers",r,`${g.right[r]} right${g.asked[r]?` out of ${g.asked[r]}`:""}`);
   const b=top(g.best); if(b && g.best[b]>=2) card("🔥","Longest winning streak",b,`${g.best[b]} correct in a row`);
   if(g.fast) card("⚡","Quickest correct answer",g.fast.p,`${(g.fast.ms/1000).toFixed(1)} seconds${RT[g.fast.t]?` in ${RT[g.fast.t].name}`:""}`);
-  const avg=Object.entries(g.at||{}).filter(([,x])=>x[1]>=3).map(([p,x])=>({p, ms:x[0]/x[1]})).sort((a,b)=>a.ms-b.ms); if(avg.length>1) card("⏱️","Fastest on average",avg[0].p,`${(avg[0].ms/1000).toFixed(1)} seconds an answer`);
+  if(g.avg) card("⏱️","Fastest on average",g.avg.p,`${(g.avg.ms/1000).toFixed(1)} seconds an answer`);
   if(g.pin) card("📍","Closest pin of the game",g.pin.p,`${g.pin.km.toLocaleString("en-GB")} km away`);
   if(g.est) card("🎯","Sharpest guess of the game",g.est.p,g.est.d===0?"Spot on":`Off by ${fmtNum(g.est.d, g.est.unit==="year"?"":g.est.unit)}${g.est.unit==="year"?" years":unitTxt(g.est.unit)}`);
   if(g.word) card("🔤","Longest word",g.word.p,g.word.w.toUpperCase());
   /* each round's champion, and each player's best subject */
-  const subj=Object.entries(g.pts||{}).map(([t,o])=>({t, p:top(o), v:o[top(o)]||0})).filter(x=>x.p && RT[x.t]);
+  const subj=(g.ch||[]).map(([t,p,v])=>({t,p,v})).filter(x=>x.p && RT[x.t]);
   let h=`<div class="summary${wait?" wait3d":""}" style="--d:${D}s"><div class="eyebrow" style="margin-bottom:8px">Game summary</div>`;
   h+=`<div class="aw-grid">${cards.join("")}</div>`;
   if(subj.length) h+=`<div class="eyebrow" style="margin:14px 0 8px">Round champions</div><div class="res still">${subj.map(x=>`<div class="res-row">${avatar(x.p)}<div><b>${esc(RT[x.t].name)}</b><div class="note">${nm(x.p)}</div></div><span></span><span class="pts on">+${x.v}</span></div>`).join("")}</div>`;
-  const best=ps.map(x=>{ let bt=null, bv=0; for(const t in g.pts||{}){ const v=(g.pts[t]||{})[x.p]||0; if(v>bv && RT[t]){ bv=v; bt=t; } } return {p:x.p, t:bt, v:bv, s:x.s}; }).filter(x=>x.t);
+  const best=ps.map(x=>{ const b=(g.bs||{})[x.p]; return {p:x.p, t:b&&RT[b[0]]?b[0]:null, v:b?b[1]:0, s:x.s}; }).filter(x=>x.t);
   if(best.length) h+=`<div class="eyebrow" style="margin:14px 0 8px">Everyone's best subject</div><div class="res still">${best.map(x=>`<div class="res-row">${avatar(x.p)}<div><b>${nm(x.p)}</b><div class="note">${esc(RT[x.t].name)} · ${g.right[x.p]||0} right in total${g.best[x.p]>1?` · best streak ${g.best[x.p]}`:""}</div></div><span></span><span class="pts on">${x.s}</span></div>`).join("")}</div>`;
   return h+`</div>`;
 }
@@ -8129,6 +8141,7 @@ document.addEventListener("click", async e=>{
   if(app.isHost && G && G.phase==="lobby"){
     const r = b.dataset.t ? G.rounds.find(x=>x.t===b.dataset.t) : null;
     if(a==="diff" && (b.dataset.diff==="easy"||b.dataset.diff==="hard")) G.diff=b.dataset.diff;
+    if(a==="pub"){ G.pub=b.dataset.pub==="1"; LS.set("sq-pub",G.pub); pushState(); render(); return; }
     if(a==="len" && LEN[b.dataset.len]){ const P=LEN[b.dataset.len]; for(const x of G.rounds) x.n=Math.max(RT[x.t].min,Math.min(RT[x.t].max,P[x.t]||x.n)); }
     if(a==="toggle"&&r){ r.on=b.checked; }
     else if(a==="inc"&&r){ r.n=Math.min(RT[r.t].max, r.n+1); }
@@ -8160,6 +8173,7 @@ document.addEventListener("click", async e=>{
   if(a==="dnext"){ dailyNext(); return; }
 });
 document.addEventListener("submit", e=>{
+  if(e.target && e.target.dataset && e.target.dataset.form==="pname"){ e.preventDefault(); if(app.isHost && G){ const v=String(($("#pnamein")||{}).value||"").replace(/[\u0000-\u001f]/g," ").trim().slice(0,30); G.pname=v; LS.set("sq-pname",v); pushState(); render(); toast(v?"Party name saved":"Party name cleared"); } return; }
   const f=e.target; e.preventDefault();
   if(f.dataset.form && f.dataset.form.startsWith("acct-")){ acctSubmit(f.dataset.form.slice(5)); return; }
   if(f.dataset.form==="mm"){ submitMM(($("#ansin").value||"").trim()); return; }
