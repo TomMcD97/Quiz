@@ -3143,6 +3143,7 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -6139,6 +6140,7 @@ function renderStatus(){
 
 /* ---------------- views ---------------- */
 function render(){
+  if(rkDrag || dragging){ renderLater=true; return; } /* never rebuild the page under someone's finger */
   if(mapView){ mapView.destroy(); mapView=null; }
   stageKey="";
   const v=$("#view");
@@ -6233,7 +6235,7 @@ async function openParty(code, host, solo){
   app.party=pr; app.code=code; app.isHost=host; app.view="party"; hostGone=false; joinedAt=Date.now(); hostLastSeen=0;
   myAns=null; draft=null; S=null;
   pr.onPeers(onPartyPeers, ()=>{ toast("Lost connection to the party"); });
-  app.phRoom=null; if(app.room && !pr.local){ app.room.join("sq-"+code.toLowerCase()+"-ph").then(r=>{ if(app.party!==pr){ try{ r.leave(); }catch(e){} return; } app.phRoom=r; r.onPeers(c=>{ let ch=false; for(const p of c.peers||[]){ const q=p.presence||{}; if(!q.pid || p.isMe) continue; const ph=photoFromPres(q); if(PHOTOS[q.pid]!==ph){ PHOTOS[q.pid]=ph; ch=true; } if(ph && validAv(q.av)) AVPH[q.av]=ph; } if(ch){ AVR.png.clear(); render(); } }); sharePhoto(); }).catch(()=>{}); }
+  app.phRoom=null; if(app.room && !pr.local){ app.room.join("sq-"+code.toLowerCase()+"-ph").then(r=>{ if(app.party!==pr){ try{ r.leave(); }catch(e){} return; } app.phRoom=r; r.onPeers(c=>{ let ch=false; for(const p of c.peers||[]){ const q=p.presence||{}; if(!q.pid || p.isMe) continue; const ph=photoFromPres(q); if((PHOTOS[q.pid]||null)!==ph){ PHOTOS[q.pid]=ph; ch=true; } } if(ch){ renderBoard(); if(S && ["lobby","intro","roundEnd","final"].includes(S.phase)){ stageKey=""; renderStage(); } } }); sharePhoto(); }).catch(()=>{}); }
   setMyPresence({role: host?"host":"player", pid:me.pid, nick:me.nick, av:me.av, topic:null, wc:null, ans:null, emo:null});
   if(host){
     const saved = SS.get("sq-host-"+code);
@@ -6262,13 +6264,26 @@ function leaveParty(){
 
 function partyPeers(){ return app.party ? app.party.peers() : []; }
 /* ---------------- bots: computer players the host can add (great for testing, or playing solo) ---------------- */
-const BOT_NAMES=["Robo Rita","Quizbot Kev","Byte Bev","Captain Cog","Data Dave","Pixel Pam","Turbo Tom","Circuit Sue","Gadget Gary","Nova Nell","Sparky Sam","Widget Wendy"];
+/* the same twelve bots every time: a fixed name and look for each */
+const BOT_SET=[
+ ["John",{gender:"m",hair:"crop",hairColour:"#4A2F23",skin:"#E8B896",eyeColour:"#4F7BA0",top:"tee",topColour:"#2E86C1"}],
+ ["Sarah",{gender:"f",hair:"long",hairColour:"#C9974F",skin:"#F3CFB3",eyeColour:"#5E8C4F",top:"tee",topColour:"#C0392B"}],
+ ["Michael",{gender:"m",hair:"sidepart",hairColour:"#2A1A12",skin:"#C58C64",eyeColour:"#5A3A1E",facial:"stubble",top:"tee",topColour:"#27AE60"}],
+ ["Emma",{gender:"f",hair:"bob",hairColour:"#7A2E1E",skin:"#F0C8A8",eyeColour:"#3B6A8F",top:"tee",topColour:"#8E44AD"}],
+ ["David",{gender:"m",hair:"fade",hairColour:"#16110F",skin:"#7A4A2E",eyeColour:"#3A2418",facial:"short",top:"tee",topColour:"#F39C12"}],
+ ["Laura",{gender:"f",hair:"ponytail",hairColour:"#3A2418",skin:"#E8B896",eyeColour:"#5A3A1E",top:"tee",topColour:"#16A085"}],
+ ["James",{gender:"m",hair:"messy",hairColour:"#6B4A2E",skin:"#F3CFB3",eyeColour:"#4F7BA0",top:"tee",topColour:"#34495E"}],
+ ["Sophie",{gender:"f",hair:"curlylong",hairColour:"#2A1A12",skin:"#8D5A3B",eyeColour:"#3A2418",top:"tee",topColour:"#E84393"}],
+ ["Chris",{gender:"m",hair:"buzz",hairColour:"#4A2F23",skin:"#D49C78",eyeColour:"#5E8C4F",glasses:"round",top:"tee",topColour:"#D35400"}],
+ ["Rachel",{gender:"f",hair:"wavy",hairColour:"#1A120E",skin:"#C58C64",eyeColour:"#5A3A1E",top:"tee",topColour:"#2980B9"}],
+ ["Daniel",{gender:"m",hair:"quiff",hairColour:"#C9974F",skin:"#F0C8A8",eyeColour:"#3B6A8F",top:"tee",topColour:"#7F8C8D"}],
+ ["Kate",{gender:"f",hair:"medium",hairColour:"#6B4A2E",skin:"#F3CFB3",eyeColour:"#4F7BA0",top:"tee",topColour:"#9B59B6"}]];
 const BOT_LV={easy:{acc:.4, spd:[5,11], err:.45, words:.06}, medium:{acc:.62, spd:[3,9], err:.25, words:.12}, hard:{acc:.82, spd:[2,6], err:.1, words:.22}};
 let botPlan={};
 function botList(){ return (app.isHost && G ? G.bots : (S && S.bots)) || []; }
 function addBot(lv){ if(!app.isHost || !G || G.phase!=="lobby") return; G.bots=G.bots||[]; if(G.bots.length>=11) return toast("That's plenty of bots");
-  const used=new Set(G.bots.map(b=>b.nick)), nick=shuffle(BOT_NAMES.filter(n=>!used.has(n)))[0]||("Bot "+(G.bots.length+1));
-  let av=null; try{ av=encodeToon(Object.assign({}, mkRandom(), {eyes:"almond"})); }catch(e){} if(!validAv(av)) av=AVATARS[Math.floor(Math.random()*AVATARS.length)];
+  const used=new Set(G.bots.map(b=>b.nick)), pick=BOT_SET.find(x=>!used.has(x[0]))||BOT_SET[G.bots.length%BOT_SET.length], nick=pick[0];
+  let av=null; try{ av=encodeToon(Object.assign(TOON.def(), pick[1])); }catch(e){} if(!validAv(av)) av=AVATARS[G.bots.length%AVATARS.length];
   G.bots.push({pid:"bot"+rid(8), nick, av, lv:BOT_LV[lv]?lv:"medium"}); pushState(); render(); }
 function removeBot(pid){ if(!app.isHost || !G) return; G.bots=(G.bots||[]).filter(b=>b.pid!==pid); pushState(); render(); }
 /* every grid word a bot could find, from the dictionary */
@@ -7192,7 +7207,7 @@ function questionHTML(q){
   else h += `<div class="muted" style="font-size:13px;margin-top:auto" data-count></div>`;
   return h;
 }
-let rkMoved=null, rkDrag=null;
+var rkMoved=null, rkDrag=null;
 function rankAreaHTML(q, done, late){
   const n=q.items.length;
   if(!done && !(Array.isArray(draft) && draft.length===n)){ draft=q.items.map((_,i)=>i); }
@@ -7214,12 +7229,16 @@ document.addEventListener("pointermove", e=>{
   if(!rkDrag || e.pointerId!==rkDrag.id) return; e.preventDefault();
   const {row, list}=rkDrag; if(!document.contains(list)){ rkDrag=null; return; }
   const want=rkDrag.top0+(e.clientY-rkDrag.y0), rs=[...list.children], i=rs.indexOf(row), prev=rs[i-1], next=rs[i+1];
-  if(prev && want < prev.offsetTop+prev.offsetHeight/2){ list.insertBefore(row, prev); rkRenumber(list); }
+  if(prev && want < prev.offsetTop+prev.offsetHeight/2){ list.insertBefore(prev, row.nextSibling); rkRenumber(list); }
   else if(next && want+row.offsetHeight > next.offsetTop+next.offsetHeight/2){ list.insertBefore(next, row); rkRenumber(list); }
   const lo=-row.offsetTop-12, hi=list.offsetHeight-row.offsetTop-row.offsetHeight+12;
   row.style.transform=`translateY(${Math.max(lo, Math.min(hi, want-row.offsetTop))}px)`;
 }, {passive:false});
-function rkEnd(e){ if(!rkDrag || (e && e.pointerId!==rkDrag.id)) return; const {row, list}=rkDrag; rkDrag=null; row.classList.remove("dragging"); row.style.transform=""; if(document.contains(list)) rkRenumber(list); }
+var renderLater=false;
+function afterDrag(){ if(renderLater){ renderLater=false; setTimeout(()=>{ if(!rkDrag && !dragging) render(); },0); } }
+/* iPhone: stop the page scrolling while dragging a Rank It row or a Word Grid path */
+document.addEventListener("touchmove", e=>{ if(rkDrag || dragging) e.preventDefault(); }, {passive:false});
+function rkEnd(e){ if(!rkDrag || (e && e.pointerId!==rkDrag.id)) return; const {row, list}=rkDrag; rkDrag=null; afterDrag(); row.classList.remove("dragging"); row.style.transform=""; if(document.contains(list)) rkRenumber(list); }
 document.addEventListener("pointerup", rkEnd); document.addEventListener("pointercancel", rkEnd);
 document.addEventListener("keydown", e=>{
   const row=e.target.closest && e.target.closest("#rklist .rk-drag"); if(!row || !rkActive() || (e.key!=="ArrowUp" && e.key!=="ArrowDown")) return;
@@ -7411,7 +7430,7 @@ function paintTiles(){
   const pts=gridPath.map(i=>{ const t=tiles[i]; return (t.offsetLeft+t.offsetWidth/2)+","+(t.offsetTop+t.offsetHeight/2); }).join(" ");
   svg.innerHTML = gridPath.length>1 ? `<polyline points="${pts}" fill="none" stroke="var(--spot)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" opacity=".6"/>` : "";
 }
-let dragging=false;
+var dragging=false;
 function gridNow(){ if(app.view==="dgrid") return DG.phase==="play"?DG.grid:null; return (S && S.phase==="q" && S.q && S.q.t==="grid" && !myAns) ? S.q.grid : null; }
 function curWord(){ const g=gridNow(); return g ? gridPath.map(j=>g[j]).join("").toLowerCase() : ""; }
 function showCur(){ const m=$("#wmsg"); if(m && gridPath.length) m.innerHTML=`<b style="color:var(--ink);font-size:18px;letter-spacing:.08em">${esc(curWord().toUpperCase())}</b>`; }
@@ -7438,11 +7457,11 @@ document.addEventListener("pointermove", e=>{
   showCur(); paintTiles();
 }, {passive:false});
 document.addEventListener("pointerup", ()=>{
-  if(!dragging) return; dragging=false;
+  if(!dragging) return; dragging=false; afterDrag();
   const w=gridNow() ? curWord() : ""; gridPath=[]; paintTiles();
   if(w.length>=3) addWord(w); else { const m=$("#wmsg"); if(m) m.textContent = w ? "Words need at least 3 letters." : ""; }
 });
-document.addEventListener("pointercancel", ()=>{ if(!dragging) return; dragging=false; gridPath=[]; paintTiles(); });
+document.addEventListener("pointercancel", ()=>{ if(!dragging) return; dragging=false; gridPath=[]; paintTiles(); afterDrag(); });
 function gridTap(i){
   const G0=gridNow(); if(!G0) return;
   const L=gridPath[gridPath.length-1], at=gridPath.indexOf(i);
