@@ -1049,6 +1049,8 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .intro.final-head .ri.fh-win{animation:fhIn .6s cubic-bezier(.2,1.3,.5,1) var(--d) both}
 .res.final-list{animation:fhIn .6s ease calc(var(--d) + .4s) both}
 .pset{display:flex;flex-direction:column;gap:10px}
+.botrow{display:flex;flex-direction:column;gap:8px}.botchip{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 4px;border-radius:999px;background:var(--panel2,rgba(255,255,255,.06));border:1px solid var(--line,rgba(255,255,255,.1));font-size:13px}
+.botchip .x{border:0;background:none;color:inherit;font-size:16px;line-height:1;cursor:pointer;padding:0 4px;opacity:.7}.botchip .x:hover{opacity:1}
 .lv-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 2px}.lv-bar.big{margin:10px 0}
 .lv-side{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:14px;background:var(--panel2,rgba(255,255,255,.05));border:1px solid var(--line,rgba(255,255,255,.08));min-width:0;flex:1}
 .lv-side.me{border-color:var(--spot,#f5b800);box-shadow:0 0 0 1px var(--spot,#f5b800) inset}.lv-side b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lv-side>div{min-width:0}
@@ -3063,6 +3065,8 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -6162,6 +6166,7 @@ function homeHTML(){
         <div class="field"><label>Your avatar</label>${avPickerHTML()}</div>
         <div class="row">
           <button class="btn primary" data-act="host">Host a party</button>
+          <button class="btn" data-act="solo" title="Play on your own against computer players">Play vs bots</button>
           <div class="join-row"><input class="input" id="joincode" maxlength="4" placeholder="CODE" aria-label="Party code"><button class="btn" data-act="join">Join</button></div>
         </div>
         <div id="parties" class="parties"></div>
@@ -6220,10 +6225,10 @@ function localParty(){
 }
 function readNick(){ const ni=$("#nick"); const v=(ni?ni.value:me.nick).trim().slice(0,18); if(!v){ toast("Add your name first"); ni && ni.focus(); return false; } me.nick=v; LS.set("sq-nick", v); if(app.acct && v!==app.acct.name){ const old=app.acct.name; window.SQ_AUTH.saveProfile({name:v}).then(p=>{ if(p){ app.acct.name=p.name; renderStatus(); } }).catch(e=>{ toast((e&&e.message)||"Couldn't change your name"); me.nick=old; LS.set("sq-nick", old); const n=$("#nick"); if(n) n.value=old; }); } return true; }
 
-async function openParty(code, host){
+async function openParty(code, host, solo){
   await Promise.race([userReady, new Promise(r=>setTimeout(r,3000))]);
   let pr=null;
-  if(app.room){ try{ pr = await app.room.join("sq-"+code.toLowerCase()); }catch(e){ toast("Couldn't open a live party, so this one is solo"); } }
+  if(app.room && !solo){ try{ pr = await app.room.join("sq-"+code.toLowerCase()); }catch(e){ toast("Couldn't open a live party, so this one is solo"); } }
   if(!pr) pr = localParty();
   app.party=pr; app.code=code; app.isHost=host; app.view="party"; hostGone=false; joinedAt=Date.now(); hostLastSeen=0;
   myAns=null; draft=null; S=null;
@@ -6256,11 +6261,53 @@ function leaveParty(){
 }
 
 function partyPeers(){ return app.party ? app.party.peers() : []; }
+/* ---------------- bots: computer players the host can add (great for testing, or playing solo) ---------------- */
+const BOT_NAMES=["Robo Rita","Quizbot Kev","Byte Bev","Captain Cog","Data Dave","Pixel Pam","Turbo Tom","Circuit Sue","Gadget Gary","Nova Nell","Sparky Sam","Widget Wendy"];
+const BOT_LV={easy:{acc:.4, spd:[5,11], err:.45, words:.06}, medium:{acc:.62, spd:[3,9], err:.25, words:.12}, hard:{acc:.82, spd:[2,6], err:.1, words:.22}};
+let botPlan={};
+function botList(){ return (app.isHost && G ? G.bots : (S && S.bots)) || []; }
+function addBot(lv){ if(!app.isHost || !G || G.phase!=="lobby") return; G.bots=G.bots||[]; if(G.bots.length>=11) return toast("That's plenty of bots");
+  const used=new Set(G.bots.map(b=>b.nick)), nick=shuffle(BOT_NAMES.filter(n=>!used.has(n)))[0]||("Bot "+(G.bots.length+1));
+  let av=null; try{ av=encodeToon(Object.assign({}, mkRandom(), {eyes:"almond"})); }catch(e){} if(!validAv(av)) av=AVATARS[Math.floor(Math.random()*AVATARS.length)];
+  G.bots.push({pid:"bot"+rid(8), nick, av, lv:BOT_LV[lv]?lv:"medium"}); pushState(); render(); }
+function removeBot(pid){ if(!app.isHost || !G) return; G.bots=(G.bots||[]).filter(b=>b.pid!==pid); pushState(); render(); }
+/* every grid word a bot could find, from the dictionary */
+function botGridWords(grid){ if(!DSORT) return []; const L=grid.map(c=>c.toLowerCase()), out=new Set();
+  const hasPrefix=w=>{ let lo=0, hi=DSORT.length; while(lo<hi){ const m=(lo+hi)>>1; if(DSORT[m]<w) lo=m+1; else hi=m; } return lo<DSORT.length && DSORT[lo].startsWith(w); };
+  const go=(i,w,used)=>{ if(w.length>=3 && DICT.has(w)) out.add(w); if(w.length>=8 || out.size>400) return; for(let j=0;j<16;j++){ if(used&(1<<j) || !adj(i,j)) continue; const nw=w+L[j]; if(hasPrefix(nw)) go(j,nw,used|(1<<j)); } };
+  for(let i=0;i<16;i++) go(i,L[i],1<<i); return [...out]; }
+function botAnswer(t, Q, q, L){
+  const r=Math.random;
+  if(t==="gk"||t==="sp"||t==="lead"){ if(r()<L.acc) return Q.ans; const w=[0,1,2,3].filter(i=>i!==Q.ans); return w[Math.floor(r()*w.length)]; }
+  if(t==="est"){ const g=(r()+r()+r()-1.5)*1.6; let v=Q.ans*(1+g*L.err*2); v=Math.max(q.min, Math.min(q.max, v)); return q.int?Math.round(v):+v.toPrecision(3); }
+  if(t==="rank"){ const a=[...Q.correct], sw=r()<L.acc?0:1+Math.floor(r()*3); for(let k=0;k<sw;k++){ const i=Math.floor(r()*(a.length-1)); [a[i],a[i+1]]=[a[i+1],a[i]]; } return a.join(","); }
+  if(t==="pin"||t==="ctry"){ const km=(t==="ctry"&&r()<L.acc)?r()*60:(50+r()*(1-L.acc)*4000), b=r()*Math.PI*2, la=Math.max(-85,Math.min(85,Q.lat+km/111*Math.cos(b))); return {lat:la, lng:((Q.lng+km/(111*Math.max(.2,Math.cos(Q.lat*Math.PI/180)))*Math.sin(b)+540)%360)-180}; }
+  if(t==="uniq"){ const v=(Q.valid||[]).map(x=>String(x).split("|")[0]); return v.length?v[Math.floor(r()*v.length)]:"Pass"; }
+  if(t==="grid"){ const w=shuffle(botGridWords(q.grid||Q.grid)); return w.slice(0, Math.max(1, Math.round(w.length*L.words))); }
+  return null; }
+function botTick(now){
+  const bots=G.bots||[]; if(!bots.length || G.phase!=="q" || !G.q) return;
+  const q=G.q, k=q.k, R=plan&&plan[G.ri]; ansCache[k]=ansCache[k]||{};
+  const due=(pid, mn, mx)=>{ const key=k+"|"+pid; if(!botPlan[key]) botPlan[key]=now+1000*(mn+Math.random()*(mx-mn)); return now>=botPlan[key]; };
+  for(const b of bots){ const L=BOT_LV[b.lv]||BOT_LV.medium;
+    if(ansCache[k][b.pid]) continue;
+    if(q.t==="mf"){
+      if(q.pick && q.chooser===b.pid && due(b.pid,1.5,3)) ansCache[k][b.pid]={k, v:Math.floor(Math.random()*(q.opts||[1]).length), t:0};
+      else if(!q.pick && !q.loading && q.turn===b.pid && mfH.board && due(b.pid,2,4.5)){ const free=mfH.board.tiles.map((t,i)=>({t,i})).filter(x=>!x.t.s); const good=free.filter(x=>x.t.ok); const pick=(Math.random()<L.acc && good.length)?good[Math.floor(Math.random()*good.length)]:free[Math.floor(Math.random()*free.length)]; if(pick) ansCache[k][b.pid]={k, v:pick.i, t:2000}; }
+      continue; }
+    if(q.sim || !R) continue;
+    const Q=R.qs[G.qi]; if(!Q) continue;
+    const dur=q.dur||20, [a,z]=q.t==="grid"?[dur-4,dur-2]:q.t==="est"||q.t==="pin"||q.t==="ctry"||q.t==="rank"?[Math.min(dur*.35,L.spd[0]+3),Math.min(dur*.8,L.spd[1]+5)]:[Math.min(dur*.3,L.spd[0]),Math.min(dur*.75,L.spd[1])];
+    if(!due(b.pid,a,z)) continue;
+    if(q.t==="grid" && !DSORT){ loadDict(); continue; }
+    const v=botAnswer(q.t, Q, q, L); if(v===null) continue;
+    ansCache[k][b.pid]={k, v, t:Math.max(300, now-(hostQEnd-dur*1000-1500))}; } }
 function players(){
   const out=[]; const seen=new Set();
   for(const p of partyPeers()){ const pr=p.presence||{}; if(!pr.pid || (pr.role!=="host" && pr.role!=="player")) continue; if(seen.has(pr.pid)) continue; seen.add(pr.pid);
     out.push({pid:String(pr.pid).slice(0,64), nick:String(pr.nick||"Player").slice(0,18), topicReq:(pr.topic && typeof pr.topic==="object")?pr.topic:null, wc:pr.wc, av:validAv(pr.av)?pr.av:null, emo:(pr.emo && typeof pr.emo==="object" && EMO_IDS.includes(pr.emo.e))?pr.emo:null, host:pr.role==="host", ans:pr.ans, isMe:pr.pid===me.pid}); }
   if(!seen.has(me.pid) && app.party) out.push({pid:me.pid, nick:me.nick, topicReq:myPres.topic||null, wc:myPres.wc, av:me.av, host:app.isHost, ans:myPres.ans, isMe:true});
+  if(app.party) for(const b of botList()){ if(!b || seen.has(b.pid)) continue; seen.add(b.pid); out.push({pid:b.pid, nick:String(b.nick).slice(0,18), av:validAv(b.av)?b.av:null, bot:true, lv:b.lv}); }
   return out;
 }
 
@@ -6841,6 +6888,7 @@ function hostAdvance(){
 function hostTick(){
   if(!app.isHost || !G) return;
   const now=Date.now();
+  try{ botTick(now); }catch(e){ console.warn("bots",e); }
   if(G.phase==="q" && G.q && G.q.t==="mf"){ mfTick(now); }
   else if(G.phase==="q" && G.q && G.q.sim){ mmTick(now); }
   else if(G.phase==="q" && !closing){
@@ -6996,7 +7044,7 @@ function mmFinish(){
   G.rev={t:"mmsim", rows:Object.entries(G.mm).map(([p,m])=>{ const c=m.res.split("").filter(x=>x==="1").length; return {p, topic:m.topic, c, n:m.n, done:m.res.length, pts:c*100}; }).sort((a,b)=>b.c-a.c)};
   G.phase="reveal"; G.adv=12; hostAdvAt=Date.now()+12000; pushState();
 }
-function hostReset(){ mmSets={}; const keep={rounds:G.rounds, names:G.names, avs:G.avs}; const kp={pub:G.pub, pname:G.pname}; G=newGame(G.code); Object.assign(G,kp); G.rounds=keep.rounds; G.names=keep.names; G.avs=keep.avs||{}; plan=null; ansCache={}; pushState(); }
+function hostReset(){ mmSets={}; const keep={rounds:G.rounds, names:G.names, avs:G.avs}; const kp={pub:G.pub, pname:G.pname, bots:G.bots||[]}; G=newGame(G.code); Object.assign(G,kp); G.rounds=keep.rounds; G.names=keep.names; G.avs=keep.avs||{}; plan=null; ansCache={}; pushState(); }
 
 /* ---------------- party rendering ---------------- */
 function nameOf(pid){ const p=players().find(x=>x.pid===pid); return (p&&p.nick) || (S&&S.names&&S.names[pid]) || "Player"; }
@@ -7090,11 +7138,14 @@ function sendEmote(e){ if(!EMO_IDS.includes(e) || Date.now()-lastEmote<500) retu
 function lobbyHTML(){
   const host=app.isHost, ps=players(), hp=ps.find(p=>p.host);
   let h=`${S.pname?`<div class="ri" style="font-size:clamp(24px,4vw,34px);margin-bottom:-4px">${esc(S.pname)}</div>`:""}<div class="lobby-top"><div><div class="eyebrow">Party code${host?` · ${S.pub?"Public":"Private"}`:""}</div><div class="lobby-code"><span class="code">${esc(S.code)}</span>${host?`<button class="btn small" data-act="copycode">Copy code</button>`:""}</div></div><div class="lobby-count"><b class="num">${ps.length}</b><span>${ps.length===1?"player":"players"} in the lobby</span></div></div>`;
-  h+=stageHTML(host ? "Friends join from the home screen with this code." : `You're in. Waiting for ${esc(hp?hp.nick:"the host")} to start the game.`);
+  h+=stageHTML(host ? (app.party&&app.party.local?((G.bots||[]).length?"Solo game against bots. Add or remove bots below, then start.":"Solo game. Add some bots below to play against."):"Friends join from the home screen with this code.") : `You're in. Waiting for ${esc(hp?hp.nick:"the host")} to start the game.`);
   h+=`<details><summary class="eyebrow" style="cursor:pointer">Change your look</summary><div style="margin-top:8px">${avPickerHTML()}</div></details>`;
   if(host){
-    h+=`<div class="pset"><form class="answer-row" data-form="pname" style="margin:0"><input class="input" id="pnamein" maxlength="30" autocomplete="off" placeholder="Name your party (optional)" value="${esc(S.pname||"")}"><button class="btn">Save name</button></form>
+    if(!(app.party&&app.party.local)) h+=`<div class="pset"><form class="answer-row" data-form="pname" style="margin:0"><input class="input" id="pnamein" maxlength="30" autocomplete="off" placeholder="Name your party (optional)" value="${esc(S.pname||"")}"><button class="btn">Save name</button></form>
       <div class="lenpick" role="radiogroup" aria-label="Who can join"><span class="lp-l">Who can join</span><div class="seg"><button type="button" role="radio" aria-checked="${!S.pub}" class="${!S.pub?"on":""}" data-act="pub" data-pub="0">Private</button><button type="button" role="radio" aria-checked="${!!S.pub}" class="${S.pub?"on":""}" data-act="pub" data-pub="1">Public</button></div><span class="muted">${S.pub?"Listed under Open parties: anyone on Spotlight can join.":"Hidden: only people you give the code to can join."}</span></div></div>`;
+    const bl=G.bots||[];
+    h+=`<div class="botrow"><div class="eyebrow">Bots${bl.length?` · ${bl.length}`:""}</div><div class="row" style="gap:8px;flex-wrap:wrap">${bl.map(b=>`<span class="botchip">${avatar(b.pid,"sm")}<b>${esc(b.nick)}</b><span class="muted">${b.lv}</span><button type="button" class="x" data-act="rmbot" data-pid="${esc(b.pid)}" aria-label="Remove ${esc(b.nick)}">×</button></span>`).join("")}</div>
+      <div class="row" style="gap:6px;flex-wrap:wrap"><span class="muted" style="font-size:13px">Add a bot:</span><button type="button" class="btn small" data-act="addbot" data-lv="easy">Easy</button><button type="button" class="btn small" data-act="addbot" data-lv="medium">Medium</button><button type="button" class="btn small" data-act="addbot" data-lv="hard">Hard</button></div></div>`;
     h+=`<details class="hostcfg"><summary>Game setup <span class="muted">Only you can see this. ${aiOn()?"Questions by Claude.":"Built-in question bank."}</span></summary><div class="rcfg" id="rcfg">${roundsCfgHTML()}</div></details>`;
     h+=`<div class="hostbar"><button class="btn primary" data-act="start">Start game</button><span class="grow"></span><button class="btn ghost small" data-act="leave">Close party</button></div>`;
   } else h+=`<div class="hostbar"><span class="grow"></span><button class="btn ghost small" data-act="leave">Leave party</button></div>`;
@@ -8161,6 +8212,9 @@ document.addEventListener("click", async e=>{
   const b=e.target.closest("[data-act]"); if(!b) return;
   const a=b.dataset.act;
   if(a==="home"){ if(app.party){ leaveParty(); return; } stopLBs(); if(DG.timer){ clearInterval(DG.timer); DG.timer=0; } if(app.view==="dgrid" && DG.phase==="play"){ dgFinish(); } app.view="home"; render(); return; }
+  if(a==="solo"){ if(!readNick()) return; const code=Array.from(crypto.getRandomValues(new Uint8Array(4)), x=>"ABCDEFGHJKMNPQRSTUVWXYZ"[x%23]).join(""); openParty(code, true, true).then(()=>{ if(G && !(G.bots||[]).length){ addBot("easy"); addBot("medium"); addBot("hard"); } }); return; }
+  if(a==="addbot"){ addBot(b.dataset.lv); return; }
+  if(a==="rmbot"){ removeBot(b.dataset.pid); return; }
   if(a==="host"){ if(!readNick()) return; const code=Array.from(crypto.getRandomValues(new Uint8Array(4)), x=>"ABCDEFGHJKMNPQRSTUVWXYZ"[x%23]).join(""); openParty(code, true); return; }
   if(a==="join"||a==="joinlist"){ if(!readNick()) return; const code=(a==="join"?($("#joincode").value||""):b.dataset.code).toUpperCase().replace(/[^A-Z]/g,"").slice(0,4); if(code.length!==4){ toast("Party codes are 4 letters"); return; } openParty(code, false); return; }
   if(a==="leave"){ leaveParty(); return; }
