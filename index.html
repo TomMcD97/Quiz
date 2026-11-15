@@ -1048,6 +1048,10 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .intro.final-head .ri.fh-wait{animation:fhOut .4s ease var(--d) both}
 .intro.final-head .ri.fh-win{animation:fhIn .6s cubic-bezier(.2,1.3,.5,1) var(--d) both}
 .res.final-list{animation:fhIn .6s ease calc(var(--d) + .4s) both}
+.summary{animation:fhIn .6s ease calc(var(--d) + .9s) both;width:100%}.summary.wait3d{animation:none;opacity:0}
+.aw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.aw-card{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;background:var(--panel2,rgba(255,255,255,.05));border:1px solid var(--line,rgba(255,255,255,.08));min-width:0}
+.aw-card>div{min-width:0}.aw-card b{display:block;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.aw-card .muted{font-size:13px}
 .intro.final-head.wait3d .ri.fh-wait{animation:pulseTxt 1.4s ease-in-out infinite}
 .intro.final-head.wait3d .ri.fh-win,.res.final-list.wait3d{animation:none;opacity:0}
 @keyframes pulseTxt{50%{opacity:.55}}
@@ -3050,6 +3054,7 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -6651,8 +6656,8 @@ function goIntro(ri){
 function goFinal(){ for(const p in (G.sp||{})){ G.scores[p]=(G.scores[p]||0)+G.sp[p]; } G.spDone=G.sp||{}; G.sp={}; G.phase="final"; G.q=null; G.rev=null; G.adv=0; hostAdvAt=0; pushState(); }
 function nextQuestion(){
   const R=plan[G.ri]; G.qi++;
-  if(G.qi>=R.qs.length && R.t==="sp"){ goFinal(); return; }
-  if(G.qi>=R.qs.length){ G.phase="roundEnd"; G.q=null; G.rev=null; G.adv=15; hostAdvAt=Date.now()+15000; pushState(); return; } /* round scores show for 15 seconds, then the game moves on by itself */
+  if(G.qi>=R.qs.length && R.t==="sp"){ try{ gsRoundEnd("sp", G.sp||{}); }catch(e){} goFinal(); return; }
+  if(G.qi>=R.qs.length){ try{ gsRoundEnd(R.t, G.rs||{}); }catch(e){} G.phase="roundEnd"; G.q=null; G.rev=null; G.adv=15; hostAdvAt=Date.now()+15000; pushState(); return; } /* round scores show for 15 seconds, then the game moves on by itself */
   const Q=R.qs[G.qi];
   if(R.t==="mf"){ mfPick(R); return; }
   const pq={k:G.gid+"-"+G.ri+"-"+G.qi, t:R.t, text:Q.text, dur:durFor(R.t), n:G.qi+1, of:R.qs.length};
@@ -6667,7 +6672,16 @@ function nextQuestion(){
   myAns=null;
   pushState();
 }
+/* ---------- whole-game tallies for the end-of-game summary ---------- */
+function gsOf(){ return G.gs||(G.gs={pts:{}, right:{}, asked:{}, cur:{}, best:{}, fast:null, at:{}, pin:null, est:null, word:null}); }
+function gsAns(pid, ok, ms, t){ const g=gsOf(); g.asked[pid]=(g.asked[pid]||0)+1;
+  if(ms!=null){ const x=g.at[pid]||[0,0]; x[0]+=ms; x[1]++; g.at[pid]=x; }
+  if(ok){ g.right[pid]=(g.right[pid]||0)+1; g.cur[pid]=(g.cur[pid]||0)+1; if(g.cur[pid]>(g.best[pid]||0)) g.best[pid]=g.cur[pid]; if(ms!=null && (!g.fast || ms<g.fast.ms)) g.fast={p:pid, ms:Math.round(ms), t}; }
+  else g.cur[pid]=0; }
+function gsRoundEnd(t, pts){ const g=gsOf(), st=G.st||{}; const m=g.pts[t]||(g.pts[t]={}); for(const p in pts) m[p]=(m[p]||0)+(pts[p]||0);
+  if(st.pin && (!g.pin || st.pin.km<g.pin.km)) g.pin=st.pin; if(st.est && (!g.est || st.est.rel<g.est.rel)) g.est=st.est; if(st.word && (!g.word || st.word.w.length>g.word.w.length)) g.word=st.word; }
 function updStats(t, Q, A, rev){
+  if(["gk","sp","ctry","uniq"].includes(t)){ for(const p of Object.keys(G.scores||{})){ const r=rev.rows.find(x=>x.p===p), a=A[p], ms=a && typeof a.t==="number" ? Math.max(0,a.t) : null; gsAns(p, !!(r && r.pts>0), ms, t); } }
   const st=G.st||(G.st={c:{}, n:0, at:{}}); st.n++;
   for(const r of rev.rows){
     const a=A[r.p], ms=a && typeof a.t==="number" ? Math.max(0, a.t) : null;
@@ -6894,7 +6908,7 @@ function mfTick(now){
       last={by:q.turn, i, ok:t.ok, w:t.w, pts};
       const st=G.st||(G.st={c:{}, n:0, at:{}}); const ms=typeof a.t==="number"?Math.max(0,a.t):null;
       if(ms!=null){ const x=st.at[q.turn]||[0,0]; x[0]+=ms; x[1]++; st.at[q.turn]=x; }
-      if(t.ok){ st.c[q.turn]=(st.c[q.turn]||0)+1; if(ms!=null && (!st.f || ms<st.f.ms)) st.f={p:q.turn, ms:Math.round(ms)}; } } }
+      if(t.ok){ st.c[q.turn]=(st.c[q.turn]||0)+1; if(ms!=null && (!st.f || ms<st.f.ms)) st.f={p:q.turn, ms:Math.round(ms)}; } gsAns(q.turn, !!t.ok, ms, "mf"); } }
   if(!mfH.board.tiles.some(t=>t.ok&&!t.s) || !mfH.board.tiles.some(t=>!t.s)){ mfEnd(last); return; }
   mfTurn(last);
 }
@@ -6928,6 +6942,7 @@ async function mmJudge(pid, h, a){
   const st=G.st||(G.st={c:{}, n:0, at:{}}), ms=a && typeof a.t==="number" ? Math.max(0,a.t) : null;
   if(ms!=null){ const x=st.at[pid]||[0,0]; x[0]+=ms; x[1]++; st.at[pid]=x; }
   if(ok){ st.c[pid]=(st.c[pid]||0)+1; if(ms!=null && (!st.f || ms<st.f.ms)) st.f={p:pid, ms:Math.round(ms)}; }
+  gsAns(pid, ok, ms, "mm");
   h.i++; m.i=h.i; h.sentAt=Date.now(); h.judging=false;
   m.text = h.i<h.qs.length ? h.qs[h.i].text.slice(0,130) : "";
   if(Object.values(hostMM).every(x=>x.i>=x.qs.length)) mmFinish(); else pushState();
@@ -7202,6 +7217,26 @@ function standingsHTML(title, sub, roundEnd){
 }
 /* seconds until the last (winning) pillar has finished rising; matches Room.setPodium's timing */
 function finalRevealDelay(){ const n=Math.max(1, players().length); return .9+(n-1)*.75+.5+1.7; }
+function gameSummaryHTML(ps, wait, D){
+  const g=S.gs; if(!g || !ps.length) return "";
+  const nm=p=>esc(nameOf(p))+(p===me.pid?" (you)":""), cards=[], top=o=>{ let b=null; for(const p in o||{}) if(o[p]>0 && (!b || o[p]>o[b])) b=p; return b; };
+  const card=(icon,title,p,val)=>cards.push(`<div class="aw-card">${avatar(p)}<div><div class="eyebrow">${icon} ${esc(title)}</div><b>${nm(p)}</b><div class="muted">${esc(val)}</div></div></div>`);
+  const r=top(g.right); if(r) card("✅","Most correct answers",r,`${g.right[r]} right${g.asked[r]?` out of ${g.asked[r]}`:""}`);
+  const b=top(g.best); if(b && g.best[b]>=2) card("🔥","Longest winning streak",b,`${g.best[b]} correct in a row`);
+  if(g.fast) card("⚡","Quickest correct answer",g.fast.p,`${(g.fast.ms/1000).toFixed(1)} seconds${RT[g.fast.t]?` in ${RT[g.fast.t].name}`:""}`);
+  const avg=Object.entries(g.at||{}).filter(([,x])=>x[1]>=3).map(([p,x])=>({p, ms:x[0]/x[1]})).sort((a,b)=>a.ms-b.ms); if(avg.length>1) card("⏱️","Fastest on average",avg[0].p,`${(avg[0].ms/1000).toFixed(1)} seconds an answer`);
+  if(g.pin) card("📍","Closest pin of the game",g.pin.p,`${g.pin.km.toLocaleString("en-GB")} km away`);
+  if(g.est) card("🎯","Sharpest guess of the game",g.est.p,g.est.d===0?"Spot on":`Off by ${fmtNum(g.est.d, g.est.unit==="year"?"":g.est.unit)}${g.est.unit==="year"?" years":unitTxt(g.est.unit)}`);
+  if(g.word) card("🔤","Longest word",g.word.p,g.word.w.toUpperCase());
+  /* each round's champion, and each player's best subject */
+  const subj=Object.entries(g.pts||{}).map(([t,o])=>({t, p:top(o), v:o[top(o)]||0})).filter(x=>x.p && RT[x.t]);
+  let h=`<div class="summary${wait?" wait3d":""}" style="--d:${D}s"><div class="eyebrow" style="margin-bottom:8px">Game summary</div>`;
+  h+=`<div class="aw-grid">${cards.join("")}</div>`;
+  if(subj.length) h+=`<div class="eyebrow" style="margin:14px 0 8px">Round champions</div><div class="res still">${subj.map(x=>`<div class="res-row">${avatar(x.p)}<div><b>${esc(RT[x.t].name)}</b><div class="note">${nm(x.p)}</div></div><span></span><span class="pts on">+${x.v}</span></div>`).join("")}</div>`;
+  const best=ps.map(x=>{ let bt=null, bv=0; for(const t in g.pts||{}){ const v=(g.pts[t]||{})[x.p]||0; if(v>bv && RT[t]){ bv=v; bt=t; } } return {p:x.p, t:bt, v:bv, s:x.s}; }).filter(x=>x.t);
+  if(best.length) h+=`<div class="eyebrow" style="margin:14px 0 8px">Everyone's best subject</div><div class="res still">${best.map(x=>`<div class="res-row">${avatar(x.p)}<div><b>${nm(x.p)}</b><div class="note">${esc(RT[x.t].name)} · ${g.right[x.p]||0} right in total${g.best[x.p]>1?` · best streak ${g.best[x.p]}`:""}</div></div><span></span><span class="pts on">${x.s}</span></div>`).join("")}</div>`;
+  return h+`</div>`;
+}
 function finalHTML(){
   const ps=Object.keys(S.scores||{}).map(p=>({p, s:S.scores[p]||0, sp:(S.spDone||{})[p]||0})).sort((a,b)=>b.s-a.s);
   const three=Room.init(), top=ps.slice(0,3), win=top[0], ties=win?ps.filter(x=>x.s===win.s).length-1:0, D=(RM||three)?0:finalRevealDelay();
@@ -7210,6 +7245,7 @@ function finalHTML(){
   if(three) h += stageHTML("The final podium");
   else if(top.length){ const order=[top[1],top[0],top[2]], mx=Math.max(1,win.s); h += `<div class="podium">${order.map((x,i)=>x?`<div class="pod">${avatar(x.p, i===1?"xl":"lg")}<span class="nm">${esc(nameOf(x.p))}</span><div class="bar" style="height:${Math.round(40+150*Math.max(0,x.s)/mx)}px;background:${i===1?"var(--spot)":"var(--accent-soft)"};color:${i===1?"#1B1400":"var(--ink)"}">${x.s}</div></div>`:`<div></div>`).join("")}</div>`; }
   h += `<div class="res final-list${wait?" wait3d":""}" style="--d:${D}s">${ps.map((x,i)=>`<div class="res-row">${avatar(x.p)}<div class="a"><b>${i+1}. ${esc(nameOf(x.p))}${x.p===me.pid?" (you)":""}</b>${x.sp?`<div class="note">including ${x.sp>0?"+":"−"}${Math.abs(x.sp)} from the Speed Round</div>`:""}</div><span></span><span class="pts on" style="font-size:22px">${x.s}</span></div>`).join("")}</div>`;
+  h += gameSummaryHTML(ps, wait, D);
   h += app.isHost ? `<div class="hostbar"><button class="btn primary" data-act="again">Play again</button><button class="btn ghost" data-act="leave">Close party</button></div>` : `<div class="hostbar"><button class="btn ghost" data-act="leave">Leave party</button></div>`;
   return h;
 }
