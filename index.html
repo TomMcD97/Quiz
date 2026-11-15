@@ -3146,6 +3146,8 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -6123,7 +6125,8 @@ function boot(){
   C.use("db").then(d=>{ app.db=d; if(app.view==="home") loadHomeDaily(); postPending(); }).catch(()=>{});
   acctInit();
 }
-function durFor(t){ const base=RT[t].dur; if(t==="grid") return base; if(t==="sp") return (G&&G.diff==="hard")?8:12; if(t==="lead") return (G&&G.diff==="hard")?10:15; return (G&&G.diff==="hard")?base:Math.round(base*1.5); }
+/* answer time: never more than 15 seconds a question (10 on Hard); Word Grid keeps its own clock */
+function durFor(t){ const g=(typeof G!=="undefined"&&G)||(typeof S!=="undefined"&&S)||{}, hard=g.diff==="hard"; if(t==="grid") return RT.grid.dur; if(t==="sp") return hard?8:12; return hard?10:15; }
 function aiOn(){ return !!app.sample && !app.sampleDenied; }
 async function ask(prompt, tier="default", ms=90000, extra){
   if(!aiOn()) throw new Error("no-ai");
@@ -6801,7 +6804,7 @@ async function closeQuestion(){
   if(R.t==="sp"){ G.sp=G.sp||{}; for(const r of rev.rows){ if(r.pts) G.sp[r.p]=(G.sp[r.p]||0)+r.pts; } }
   else for(const r of rev.rows){ if(r.pts){ G.scores[r.p]=(G.scores[r.p]||0)+r.pts; G.rs[r.p]=(G.rs[r.p]||0)+r.pts; } }
   try{ updStats(R.t, Q, A, rev); }catch(e){ console.warn("stats", e); }
-  G.rev=rev; G.phase="reveal"; G.adv = (R.t==="pin"||R.t==="ctry") ? 14 : R.t==="sp" ? 4 : R.t==="lead" ? 6 : 10; hostAdvAt=Date.now()+G.adv*1000;
+  G.rev=rev; G.phase="reveal"; G.adv = 3; hostAdvAt=Date.now()+3000; /* 3 seconds on the answer, then straight on */
   pushState();
 }
 async function scoreQuestion(t, Q, A){
@@ -6981,7 +6984,7 @@ function mfPick(R){
   const opts=(pool.length>=4 ? pool : shuffle(all)).slice(0,4);
   mfH.opts=opts; mfH.chooser=chooser;
   G.q={k:`${G.gid}-${G.ri}-${G.qi}-pick`, t:"mf", pick:true, chooser, opts, dur:20, n:G.qi+1, of:R.qs.length};
-  G.phase="q"; G.rev=null; G.adv=0; hostAdvAt=0; closing=false; hostQEnd=Date.now()+21500; pushState();
+  G.q.dur=durFor("mf"); G.phase="q"; G.rev=null; G.adv=0; hostAdvAt=0; closing=false; hostQEnd=Date.now()+durFor("mf")*1000+1500; pushState();
 }
 async function mfChoose(idx){
   if(closing) return; closing=true;
@@ -7004,7 +7007,7 @@ function mfTurn(last){
   if(!order.length) return;
   if(last) mfH.turnIdx=(mfH.turnIdx+1)%order.length; else mfH.turnIdx%=order.length;
   mfH.turnNo++;
-  G.q={k:`${G.gid}-${G.ri}-${G.qi}-t${mfH.turnNo}`, t:"mf", topic:mfH.board.topic, prompt:mfH.board.prompt, note:mfH.board.note||"", tiles:mfH.board.tiles.map(t=>({w:t.w, s:t.s||0, by:t.by||null})), turn:order[mfH.turnIdx], last, dur:RT.mf.dur, n:G.qi+1, of:plan[G.ri].qs.length, left:mfH.board.tiles.filter(t=>t.ok&&!t.s).length};
+  G.q={k:`${G.gid}-${G.ri}-${G.qi}-t${mfH.turnNo}`, t:"mf", topic:mfH.board.topic, prompt:mfH.board.prompt, note:mfH.board.note||"", tiles:mfH.board.tiles.map(t=>({w:t.w, s:t.s||0, by:t.by||null})), turn:order[mfH.turnIdx], last, dur:durFor("mf"), n:G.qi+1, of:plan[G.ri].qs.length, left:mfH.board.tiles.filter(t=>t.ok&&!t.s).length};
   hostQEnd=Date.now()+durFor("mf")*1000+1500; closing=false; pushState();
 }
 function mfTick(now){
@@ -7031,7 +7034,7 @@ function mfEnd(last){
   const per={}; mfH.board.tiles.forEach(t=>{ if(t.by){ per[t.by]=per[t.by]||{r:0,w:0}; t.ok?per[t.by].r++:per[t.by].w++; } });
   G.rev={t:"mf", topic:mfH.board.topic, prompt:mfH.board.prompt, last, tiles:mfH.board.tiles.map(t=>({w:t.w, ok:t.ok, s:t.s||0, by:t.by||null})),
     rows:Object.entries(per).map(([p,x])=>({p, r:x.r, w:x.w, pts:x.r*100-x.w*50})).sort((a,b)=>b.pts-a.pts)};
-  G.phase="reveal"; G.adv=12; hostAdvAt=Date.now()+12000; closing=false; pushState();
+  G.phase="reveal"; G.adv=4; hostAdvAt=Date.now()+4000; closing=false; pushState();
 }
 /* ---- Specialist Subject, everyone at once (host) ---- */
 let hostMM={};
@@ -7096,8 +7099,8 @@ function renderStage(){
     else if(t==="ctry") h += `<p class="muted" style="font-size:15px">${S.diff==="hard"?"Hard mode: smaller and trickier countries":"Easy mode: bigger, better-known countries"} · no names on the map · ${durFor("ctry")} seconds each</p>`;
     else if(t==="lead"){ const Ld=I.lead||{}, team=players().filter(p=>p.pid!==Ld.p); h += `<div class="lv-bar big"><div class="lv-side">${avatar(Ld.p,"lg")}<div><div class="eyebrow">The leader${Ld.tie?" (picked from the tie)":""}</div><b>${esc(Ld.p===me.pid?"You":nameOf(Ld.p))}</b></div></div><div class="lv-vs">VS</div><div class="lv-side team"><div class="lv-avs">${team.slice(0,8).map(p=>avatar(p.pid,"sm")).join("")}</div><div><div class="eyebrow">The Rest</div><b>${team.map(p=>esc(p.pid===me.pid?"You":nameOf(p.pid))).join(", ")}</b></div></div></div><p class="muted" style="font-size:15px">${Math.ceil(I.n/3)} topics · 3 questions each · ${durFor("lead")} seconds · the first answer in decides it: right wins it for your side, wrong gives it to the other side</p>`; }
     else if(t==="sp") h += `<p class="muted" style="font-size:15px">4 topics · 3 questions each · ${S.diff==="hard"?8:12} seconds a question · wrong answers lose 50 · scores hidden</p>`;
-    else if(t==="mf") h += `<p class="muted" style="font-size:15px">${I.n} board${I.n>1?"s":""} · players take turns · ${Math.round(RT.mf.dur*(S.diff==="hard"?1:1.5))} seconds a pick</p>`;
-    else h += `<p class="muted" style="font-size:15px">${I.n} questions · ${Math.round(RT[t].dur*(S.diff==="hard"?1:1.5))} seconds each · ${S.diff==="hard"?"Hard":"Easy"} mode</p>`;
+    else if(t==="mf") h += `<p class="muted" style="font-size:15px">${I.n} board${I.n>1?"s":""} · players take turns · ${durFor("mf")} seconds a pick</p>`;
+    else h += `<p class="muted" style="font-size:15px">${I.n} questions · ${durFor(t)} seconds each · ${S.diff==="hard"?"Hard":"Easy"} mode</p>`;
     h += `<p class="muted" style="font-size:14px" data-adv>Starting soon</p></div>`;
     if(host) h += `<div class="hostbar"><button class="btn primary" data-act="next">Start round</button></div>`;
   }
@@ -7177,7 +7180,7 @@ function lobbyHTML(){
 }
 const LEN={short:{gk:5,est:3,rank:3,pin:3,ctry:3,uniq:3,mm:5,grid:1,mf:2,sp:12},medium:{gk:8,est:5,rank:4,pin:5,ctry:5,uniq:5,mm:8,grid:1,mf:3,sp:12},long:{gk:12,est:8,rank:6,pin:8,ctry:8,uniq:8,mm:10,grid:2,mf:4,sp:12}};
 function lenOf(rounds){ for(const k in LEN){ if(rounds.every(r=>r.n===Math.max(RT[r.t].min,Math.min(RT[r.t].max,LEN[k][r.t])))) return k; } return "custom"; }
-function estMinutes(rounds, np){ let sec=0; for(const r of rounds){ if(!r.on) continue; const T=RT[r.t]; if(r.t==="mf") sec+=r.n*110; else if(r.t==="grid") sec+=r.n*50; else sec+=r.n*((T.dur||20)*.7+9); sec+=20; } return Math.max(1,Math.round(sec/60)); }
+function estMinutes(rounds, np){ let sec=0; for(const r of rounds){ if(!r.on) continue; const T=RT[r.t]; if(r.t==="mf") sec+=r.n*110; else if(r.t==="grid") sec+=r.n*50; else sec+=r.n*(durFor(r.t)*.7+4); sec+=25; } return Math.max(1,Math.round(sec/60)); }
 function diffPickHTML(){ const cur=S.diff==="hard"?"hard":"easy", lab={easy:"Easy",hard:"Hard"}, note=cur==="hard"?"No country names on the map, shorter timers, tougher questions":"Country names on the map, more time, friendlier questions";
   if(!app.isHost) return `<div class="lenpick ro"><span class="lp-l">Difficulty</span><b>${lab[cur]}</b><span class="muted">${note}</span></div>`;
   return `<div class="lenpick" role="radiogroup" aria-label="Difficulty"><span class="lp-l">Difficulty</span><div class="seg">${Object.keys(lab).map(k=>`<button type="button" role="radio" aria-checked="${cur===k}" class="${cur===k?"on":""}" data-act="diff" data-diff="${k}">${lab[k]}</button>`).join("")}</div><span class="muted">${note}</span></div>`; }
@@ -7802,14 +7805,14 @@ class MapView{
   resize(){
     if(this.dead) return;
     const w=this.el.clientWidth, h=this.el.clientHeight; if(!w||!h) return;
-    const dpr=window.devicePixelRatio||1; this.w=w; this.h=h; this.dpr=dpr;
+    const dpr=Math.min(2, window.devicePixelRatio||1); this.w=w; this.h=h; this.dpr=dpr;
     this.cv.width=Math.round(w*dpr); this.cv.height=Math.round(h*dpr); this.cv.style.width=w+"px"; this.cv.style.height=h+"px";
     if(!this.view) this.view={cx:12, cy:mY(20), z:this.minZ()};
     this.clamp(); this.render();
   }
   minZ(){ return Math.max(this.w/360, this.h/(MAP_TOP-MAP_BOT)); }
   clamp(){
-    const v=this.view, mz=this.minZ(); v.z=Math.max(mz, Math.min(mz*90, v.z));
+    const v=this.view, mz=this.minZ(); v.z=Math.max(mz, Math.min(mz*40, v.z));
     const hw=this.w/2/v.z, hh=this.h/2/v.z;
     v.cx = hw>=180 ? 0 : Math.max(-180+hw, Math.min(180-hw, v.cx));
     v.cy = hh>=(MAP_TOP-MAP_BOT)/2 ? (MAP_TOP+MAP_BOT)/2 : Math.max(MAP_BOT+hh, Math.min(MAP_TOP-hh, v.cy));
@@ -7819,9 +7822,10 @@ class MapView{
   animZoom(f, x, y){ if(RM){ this.zoomAt(f,x,y); return; } const t0=performance.now(), dur=260; let done=1; const step=t=>{ if(this.dead) return; const k=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-k,3), target=Math.pow(f,e); this.zoomAt(target/done, x, y); done=target; if(k<1) requestAnimationFrame(step); }; requestAnimationFrame(step); }
   zoomAt(f, x, y){
     const v=this.view, lng=v.cx+(x-this.w/2)/v.z, lat=v.cy-(y-this.h/2)/v.z;
-    v.z*=f; const mz=this.minZ(); v.z=Math.max(mz, Math.min(mz*90, v.z));
-    v.cx=lng-(x-this.w/2)/v.z; v.cy=lat+(y-this.h/2)/v.z; this.clamp(); this.render();
+    if(!isFinite(f) || f<=0) return; v.z*=f; const mz=this.minZ(); v.z=Math.max(mz, Math.min(mz*40, v.z));
+    v.cx=lng-(x-this.w/2)/v.z; v.cy=lat+(y-this.h/2)/v.z; this.clamp(); this.renderSoon();
   }
+  renderSoon(){ if(this.rq || this.dead) return; this.rq=requestAnimationFrame(()=>{ this.rq=0; if(!this.dead) this.render(); }); }
   bind(){
     const el=this.el, pts=new Map(); let start=null, moved=0, pinch=null;
     const pos=e=>{ const r=el.getBoundingClientRect(); return [e.clientX-r.left, e.clientY-r.top]; };
@@ -7830,13 +7834,13 @@ class MapView{
       try{ el.setPointerCapture(e.pointerId); }catch(_){}
       pts.set(e.pointerId, pos(e));
       if(pts.size===1){ start={p:pos(e), t:Date.now()}; moved=0; pinch=null; }
-      else if(pts.size===2){ const [a,b]=[...pts.values()]; pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1]), z:this.view.z}; moved=99; }
+      else if(pts.size===2){ const [a,b]=[...pts.values()]; pinch={d:Math.max(8,Math.hypot(a[0]-b[0],a[1]-b[1])), z:this.view.z}; moved=99; }
     });
     el.addEventListener("pointermove", e=>{
       if(!pts.has(e.pointerId)) return;
       const prev=pts.get(e.pointerId), cur=pos(e); pts.set(e.pointerId, cur);
-      if(pts.size===1){ const dx=cur[0]-prev[0], dy=cur[1]-prev[1]; moved+=Math.abs(dx)+Math.abs(dy); if(moved>6){ this.view.cx-=dx/this.view.z; this.view.cy+=dy/this.view.z; this.clamp(); this.render(); } }
-      else if(pts.size===2 && pinch){ const [a,b]=[...pts.values()]; const d=Math.hypot(a[0]-b[0],a[1]-b[1]); const mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2; const target=pinch.z*d/pinch.d; this.zoomAt(target/this.view.z, mx, my); }
+      if(pts.size===1){ const dx=cur[0]-prev[0], dy=cur[1]-prev[1]; moved+=Math.abs(dx)+Math.abs(dy); if(moved>6){ this.view.cx-=dx/this.view.z; this.view.cy+=dy/this.view.z; this.clamp(); this.renderSoon(); } }
+      else if(pts.size===2 && pinch){ const [a,b]=[...pts.values()]; const d=Math.max(8,Math.hypot(a[0]-b[0],a[1]-b[1])); const mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2; const target=pinch.z*d/pinch.d; this.zoomAt(target/this.view.z, mx, my); }
     });
     const end=e=>{
       if(!pts.has(e.pointerId)) return;
