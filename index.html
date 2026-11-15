@@ -2944,10 +2944,13 @@ function avDiagText(){ return `Avatar check: ${AVR.good} detailed, ${AVR.bad} fa
 /* phones and tablets: smaller drawings, more time, and a pause between each so memory can recover */
 const AV_MOBILE=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
 function avKey(t,o,px){ return encodeToon(t)+"|"+((o&&o.vb)||"")+"|"+((o&&o.headOnly)?1:0)+"|"+px; }
+function avHashK(k){ let h=2166136261>>>0; for(let i=0;i<k.length;i++){ h^=k.charCodeAt(i); h=Math.imul(h,16777619)>>>0; } return h.toString(36)+k.length.toString(36); }
 function avSrc(t,o,px){ px=Math.round((px||360)*(AV_MOBILE?.66:1));
-  if(t && t.eyes==="photo"){ let ph=null; try{ ph=(typeof AVPH!=="undefined" && AVPH[encodeToon(t)]) || (typeof mySelfie==="function" && mySelfie()) || null; }catch(e){} if(ph) o=Object.assign({},o||{},{photo:ph}); }
+  /* a photo face only ever comes from the player it belongs to: passed in by the caller, or your own selfie for your own avatar / the maker preview */
+  if(t && t.eyes==="photo" && !(o&&(o.photo||o.noPhoto))){ let ph=null; try{ const k0=encodeToon(t); if(typeof mySelfie==="function" && (k0===me.av || (app && app.mk && encodeToon(app.mk)===k0))) ph=mySelfie(); }catch(e){} if(ph) o=Object.assign({},o||{},{photo:ph}); }
+  if(o && o.noPhoto){ o=Object.assign({},o); delete o.noPhoto; }
   const k=avKey(t,o,px)+((o&&o.photo)?"|ph"+o.photo.length+o.photo.slice(-24):""); const p=AVR.png.get(k); if(p) return p;
-  let l=AVR.lite.get(k); if(!l){ try{ l="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(toonSVGLite(t,Object.assign({},o||{}))); }catch(e){ l=""; } if(AVR.lite.size>400) AVR.lite.clear(); AVR.lite.set(k,l); }
+  let l=AVR.lite.get(k); if(!l){ try{ l="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(toonSVGLite(t,Object.assign({},o||{}))+"<!--"+avHashK(k)+"-->"); /* unique per avatar+photo, so a finished picture only replaces its own placeholders */ }catch(e){ l=""; } if(AVR.lite.size>400) AVR.lite.clear(); AVR.lite.set(k,l); }
   if(px<130 && AV_MOBILE) return l; /* small tiles on phones stay in the lighter style */
   if(AVR.bad<3 && !AVR.q.some(j=>j.k===k)){ AVR.q.push({k,t,o,l,px}); setTimeout(avPump,0); }
   return l; }
@@ -3047,6 +3050,7 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -4153,7 +4157,7 @@ const Portrait={ gx:null, ok:null, cache:{}, cv:null, busy:false, q:[], wait:new
       const u=this.cv.toDataURL("image/png"); freeChar(this.gx,ch); return u; }catch(e){ console.warn(e); return null; } }
 };
 const TOON_URI={}; /* v2 */
-function avSVG(id, bg){ const tt=avToon(id); if(tt){ const u=avSrc(tt,{},360); return `<img class="avimg toon" src="${u}" alt="" draggable="false">`; } if(Room.ok===false || typeof Worker==="undefined") return avSVG2D(id, bg); const u=Portrait.get(id); return `<img class="avimg${u?" r3":""}" data-pav="${id}" src="${u||avURI(id)}" alt="" draggable="false">`; }
+function avSVG(id, bg, pid){ const tt=avToon(id); if(tt){ const ph=(tt.eyes==="photo")?(pid?photoOf(pid,id):(id===me.av?mySelfie():null)):null; const u=avSrc(tt,ph?{photo:ph}:{noPhoto:1},360); return `<img class="avimg toon" src="${u}" alt="" draggable="false">`; } if(Room.ok===false || typeof Worker==="undefined") return avSVG2D(id, bg); const u=Portrait.get(id); return `<img class="avimg${u?" r3":""}" data-pav="${id}" src="${u||avURI(id)}" alt="" draggable="false">`; }
 
 const PCOL = ["#FFFFFF","#B9B9BF","#8C8C93","#E2E2E0","#6E6E75","#CFCFD4","#A2A2A8","#F4F4F2"];
 function pcol(pid){ let h=0; for(const c of String(pid)) h=(h*31+c.charCodeAt(0))>>>0; return PCOL[h%PCOL.length]; }
@@ -5832,7 +5836,7 @@ function scaleRevealHTML(min, max, unit, ans, marks){
   const ms=marks.filter(m=>m.v!=null && isFinite(m.v)).map(m=>({...m, p:pct(m.v)})).sort((a,b)=>a.p-b.p);
   const ends=[]; ms.forEach(m=>{ let l=0; while(ends[l]!=null && m.p-ends[l]<16) l++; ends[l]=m.p; m.l=l; });
   const L=Math.max(1, ends.length), ap=pct(ans), dl=ms.length*0.3+0.3;
-  return `<div class="scale rev" style="padding-top:${18+L*22}px"><div class="track">${ms.map((m,i)=>`<span class="mk${m.e?" e":""}" style="left:${m.p}%;background:${m.color};animation-delay:${i*0.3}s">${m.e?avSVG(m.e):""}</span><span class="mkl" style="left:${Math.max(6,Math.min(94,m.p))}%;bottom:${16+m.l*22}px;border-bottom:2px solid ${m.color};animation-delay:${i*0.3}s">${esc(m.label)}</span>`).join("")}<span class="mk ans" style="left:${ap}%;animation-delay:${dl}s"></span><span class="mkl ansl" style="left:${Math.max(8,Math.min(92,ap))}%;top:22px;animation-delay:${dl}s">${esc(fmtNum(ans,unit))}</span></div><div class="ticks" style="margin-top:40px">${scaleTicks(min,max,unit,Number.isInteger(ans))}</div></div>`;
+  return `<div class="scale rev" style="padding-top:${18+L*22}px"><div class="track">${ms.map((m,i)=>`<span class="mk${m.e?" e":""}" style="left:${m.p}%;background:${m.color};animation-delay:${i*0.3}s">${m.e?avSVG(m.e,undefined,m.pid):""}</span><span class="mkl" style="left:${Math.max(6,Math.min(94,m.p))}%;bottom:${16+m.l*22}px;border-bottom:2px solid ${m.color};animation-delay:${i*0.3}s">${esc(m.label)}</span>`).join("")}<span class="mk ans" style="left:${ap}%;animation-delay:${dl}s"></span><span class="mkl ansl" style="left:${Math.max(8,Math.min(92,ap))}%;top:22px;animation-delay:${dl}s">${esc(fmtNum(ans,unit))}</span></div><div class="ticks" style="margin-top:40px">${scaleTicks(min,max,unit,Number.isInteger(ans))}</div></div>`;
 }
 
 /* ---------------- word grid ---------------- */
@@ -5875,7 +5879,7 @@ const me = { pid: SS.get("sq-pid") || ("g"+rid(12)), nick: LS.get("sq-nick") || 
 if(!validAv(me.av)) me.av = AVATARS[Math.floor(Math.random()*AVATARS.length)];
 const RM = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 function avOf(pid){ if(pid===me.pid) return me.av; const p=players().find(x=>x.pid===pid); if(p && p.av) return p.av; if(S && S.avs && validAv(S.avs[pid])) return S.avs[pid]; let h=0; for(const c of String(pid)) h=(h*33+c.charCodeAt(0))>>>0; return AVATARS[h%AVATARS.length]; }
-function avatar(pid, size="", title){ return `<span class="av ${size}" style="--c:${pcol(pid)}"${title?` title="${esc(title)}"`:""} aria-hidden="true">${avSVG(avOf(pid))}</span>`; }
+function avatar(pid, size="", title){ return `<span class="av ${size}" style="--c:${pcol(pid)}"${title?` title="${esc(title)}"`:""} aria-hidden="true">${avSVG(avOf(pid),undefined,pid)}</span>`; }
 /* ---------------- avatar maker: Bitmoji-style editor in a full-screen sheet ---------------- */
 function validAv(v){ return AVATARS.includes(v) || isCustomAv(v) || isToonAv(v); }
 const MK={
@@ -5909,7 +5913,7 @@ function mkTabBody(tab){ const m=mkState(), sec=(h,b)=>`<div class="mk-sec"><div
 /* ---------- real-face photos ---------- */
 const PHOTOS={}, AVPH={};
 function mySelfie(){ const v=LS.get("sq-selfie"); return (typeof v==="string" && v.startsWith("data:image/jpeg;base64,"))?v:null; }
-function photoOf(pid, av){ const t=av&&avToon(av); if(!t || t.eyes!=="photo") return null; if(pid===me.pid) return mySelfie(); return PHOTOS[pid]||AVPH[av]||null; }
+function photoOf(pid, av){ const t=av&&avToon(av); if(!t || t.eyes!=="photo") return null; if(pid===me.pid) return mySelfie(); return PHOTOS[pid]||null; }
 /* photos travel in presence as 1000-character pieces; Claude rooms cap presence at 4 KiB, so there a small copy is sent */
 function sharePhoto(){ if(!app.phRoom) return; const t=avToon(me.av), on=t&&t.eyes==="photo"; let ph=on?(window.SQ_STANDALONE?mySelfie():(LS.get("sq-selfie-s")||null)):null;
   const patch={pid:me.pid, av:me.av, pn:0}; for(let i=0;i<40;i++) patch["p"+i]=null; if(ph){ const n=Math.ceil(ph.length/1000); patch.pn=n; for(let i=0;i<n;i++) patch["p"+i]=ph.slice(i*1000,(i+1)*1000); }
@@ -6648,7 +6652,7 @@ function goFinal(){ for(const p in (G.sp||{})){ G.scores[p]=(G.scores[p]||0)+G.s
 function nextQuestion(){
   const R=plan[G.ri]; G.qi++;
   if(G.qi>=R.qs.length && R.t==="sp"){ goFinal(); return; }
-  if(G.qi>=R.qs.length){ G.phase="roundEnd"; G.q=null; G.rev=null; G.adv=0; hostAdvAt=0; pushState(); return; }
+  if(G.qi>=R.qs.length){ G.phase="roundEnd"; G.q=null; G.rev=null; G.adv=15; hostAdvAt=Date.now()+15000; pushState(); return; } /* round scores show for 15 seconds, then the game moves on by itself */
   const Q=R.qs[G.qi];
   if(R.t==="mf"){ mfPick(R); return; }
   const pq={k:G.gid+"-"+G.ri+"-"+G.qi, t:R.t, text:Q.text, dur:durFor(R.t), n:G.qi+1, of:R.qs.length};
@@ -6794,7 +6798,7 @@ function hostTick(){
     if(now>hostQEnd || (exp.length && exp.every(p=>got[p]))) closeQuestion();
   }
   if(G.phase==="topics"){ hostTopics(); if(topicsEnd && now>topicsEnd && !players().some(p=>G.tp[p.pid]&&G.tp[p.pid].s==="gen")){ topicsEnd=0; mmBegin(); } }
-  if((G.phase==="intro"||G.phase==="reveal"||G.phase==="topics") && hostAdvAt && now>hostAdvAt){ hostAdvAt=0; hostAdvance(); }
+  if((G.phase==="intro"||G.phase==="reveal"||G.phase==="topics"||G.phase==="roundEnd") && hostAdvAt && now>hostAdvAt){ hostAdvAt=0; hostAdvance(); }
 }
 function goTopics(){ G.phase="topics"; G.tp={}; mmSets={}; mmStarting=false; G.adv=0; hostAdvAt=0; topicsEnd=Date.now()+180000; pushState(); hostTopics(); }
 function hostTopics(){
@@ -7144,7 +7148,7 @@ function revealHTML(q, rev){
     h += `<div class="bigans"><div class="eyebrow">Answer</div><b>${esc(rev.ans)}</b></div>`;
     h += `<div class="res">${row(r, r.a?`answered “${esc(r.a)}” <span class="tag ${r.ok?"good":"bad"}">${r.ok?"Correct":"Wrong"}</span>`:'<span class="muted">no answer</span>')}</div>`;
   } else if(rev.t==="est"){
-    h += scaleRevealHTML(q.min, q.max, rev.unit, rev.ans, rev.rows.map(r=>({v:r.a, color:pcol(r.p), label:nameOf(r.p), e:avOf(r.p)})));
+    h += scaleRevealHTML(q.min, q.max, rev.unit, rev.ans, rev.rows.map(r=>({v:r.a, color:pcol(r.p), label:nameOf(r.p), e:avOf(r.p), pid:r.p})));
     h += `<div class="bigans"><div class="eyebrow">Answer</div><b class="num">${esc(fmtNum(rev.ans, rev.unit))}</b> <span>${esc(rev.unit&&rev.unit!=="year"?rev.unit:"")}</span></div>`;
     h += `<div class="res">${rev.rows.map(r=>row(r, r.a==null?'<span class="muted">no valid number</span>':`<span class="num">${esc(fmtNum(r.a, rev.unit))}</span>`, r.d==null?"":`${r.d===0?"Spot on":"Off by "+fmtNum(r.d, rev.unit==="year"?"":rev.unit)}`)).join("")}${rev.rows.length?"":'<p class="muted">Nobody answered.</p>'}</div>`;
   } else if(rev.t==="ctry"){
@@ -7183,8 +7187,8 @@ function roundSummaryHTML(t){
   let h=`<div class="intro" style="padding-block:0;gap:6px"><div class="eyebrow">${RT[t].name} · round ${S.ri+1} of ${S.active.length}</div><div class="ri" style="font-size:clamp(26px,4.4vw,38px)">Scores after round ${S.ri+1}</div></div>`;
   h += `<div class="sumpod${many?" many":""}">${ps.map((x,i)=>{ const hp=Math.round(14+86*Math.max(0,x.s)/mx), d=x.r>0?`<span class="sd up">+${x.r}</span>`:x.r<0?`<span class="sd dn">−${Math.abs(x.r)}</span>`:`<span class="sd">+0</span>`;
     return `<div class="sp-col${x.p===me.pid?" me":""}" style="--h:${hp}%;--i:${i}"><div class="sp-top">${d}${avatar(x.p,"xl")}<div class="sp-nm">${esc(nameOf(x.p))}</div></div><div class="sp-bar"><span class="sp-rank">${i+1}</span><b class="num">${x.s}</b></div></div>`; }).join("")}</div>`;
-  if(app.isHost) h += `<div class="hostbar"><button class="btn primary" data-act="next">${S.ri+1<S.active.length?"Next round: "+RT[S.active[S.ri+1]].name:"See final results"}</button></div>`;
-  else h += `<p class="muted" style="margin-top:auto">Waiting for the host to continue.</p>`;
+  h += `<p class="muted" style="margin-top:auto;font-size:15px">${S.ri+1<S.active.length?"Next round: "+esc(RT[S.active[S.ri+1]].name):"Final results"} · <span data-adv>in 15s</span></p>`;
+  if(app.isHost) h += `<div class="hostbar"><button class="btn" data-act="next">${S.ri+1<S.active.length?"Start it now":"Show them now"}</button></div>`;
   return h;
 }
 function standingsHTML(title, sub, roundEnd){
@@ -7192,8 +7196,8 @@ function standingsHTML(title, sub, roundEnd){
   let h=`<div class="intro"><div class="eyebrow">${esc(sub)}</div><div class="ri">${esc(title)}</div></div><div class="res">`;
   h += ps.map((x,i)=>`<div class="res-row">${avatar(x.p)}<div><b>${i+1}. ${esc(nameOf(x.p))}${x.p===me.pid?" (you)":""}</b>${roundEnd?`<div class="note">${x.r<0?"−":"+"}${Math.abs(x.r)} this round</div>`:""}</div><span></span><span class="pts on" style="font-size:22px">${x.s}</span></div>`).join("");
   h += `</div>`;
-  if(app.isHost) h += `<div class="hostbar"><button class="btn primary" data-act="next">${S.ri+1<S.active.length?"Next round: "+RT[S.active[S.ri+1]].name:"See final results"}</button></div>`;
-  else h += `<p class="muted" style="margin-top:auto">Waiting for the host to continue.</p>`;
+  h += `<p class="muted" style="margin-top:auto;font-size:15px">${S.ri+1<S.active.length?"Next round: "+esc(RT[S.active[S.ri+1]].name):"Final results"} · <span data-adv>in 15s</span></p>`;
+  if(app.isHost) h += `<div class="hostbar"><button class="btn" data-act="next">${S.ri+1<S.active.length?"Start it now":"Show them now"}</button></div>`;
   return h;
 }
 /* seconds until the last (winning) pillar has finished rising; matches Room.setPodium's timing */
@@ -7376,12 +7380,12 @@ function afterStage(){
   if(S.phase==="q" && (S.q.t==="pin"||S.q.t==="ctry") && myAns){ const m=$("#map"); if(m){ mapView=new MapView(m,{labels:S.q.t==="ctry"?false:S.diff!=="hard"}); mapView.setPins([{...myAns.v, color:pcol(me.pid), label:"You", av:me.av}]); } }
   if(S.phase==="reveal" && S.rev && S.rev.t==="ctry"){
     const r=S.rev; mapView=new MapView($("#map"),{labels:false, hl:r.place});
-    const pins=r.rows.filter(x=>x.lat!=null).map(x=>({lat:x.lat,lng:x.lng,color:pcol(x.p),label:nameOf(x.p)+(x.in?" · inside":" · "+x.km.toLocaleString("en-GB")+" km"), av:avOf(x.p)}));
+    const pins=r.rows.filter(x=>x.lat!=null).map(x=>({lat:x.lat,lng:x.lng,color:pcol(x.p),label:nameOf(x.p)+(x.in?" · inside":" · "+x.km.toLocaleString("en-GB")+" km"), av:avOf(x.p), pid:x.p}));
     mapView.reveal(pins, {lat:r.lat,lng:r.lng,label:r.place});
   }
   if(S.phase==="reveal" && S.rev && S.rev.t==="pin"){
     const r=S.rev; mapView=new MapView($("#map"),{labels:S.diff!=="hard"});
-    const pins=r.rows.filter(x=>x.lat!=null).map(x=>({lat:x.lat,lng:x.lng,color:pcol(x.p),label:nameOf(x.p)+" · "+x.km.toLocaleString("en-GB")+" km", av:avOf(x.p)}));
+    const pins=r.rows.filter(x=>x.lat!=null).map(x=>({lat:x.lat,lng:x.lng,color:pcol(x.p),label:nameOf(x.p)+" · "+x.km.toLocaleString("en-GB")+" km", av:avOf(x.p), pid:x.p}));
     mapView.reveal(pins, {lat:r.lat,lng:r.lng,label:r.place});
   }
   if(S.phase==="q" && S.q.t==="grid"){ renderWordList(); paintTiles(); }
@@ -7512,7 +7516,7 @@ function autoSubmit(){
 setInterval(()=>{
   const now=Date.now();
   document.querySelectorAll(".timer[data-end]").forEach(t=>{ const end=+t.dataset.end, dur=+t.dataset.dur; const left=Math.max(0,(end-now)/1000); t.querySelector(".tt").textContent=Math.ceil(left); const fg=t.querySelector(".fg"); fg.setAttribute("stroke-dashoffset", String(119.4*(1-left/dur))); t.classList.toggle("low", left<=5); });
-  const adv=$("[data-adv]"); if(adv && S && advLocalEnd){ const s=Math.max(0,Math.ceil((advLocalEnd-now)/1000)); adv.textContent = s ? `Continuing in ${s}s` : ""; }
+  const adv=$("[data-adv]"); if(adv && S && advLocalEnd){ const s=Math.max(0,Math.ceil((advLocalEnd-now)/1000)); adv.textContent = S.phase==="roundEnd" ? (s?`in ${s}s`:"starting…") : (s ? `Continuing in ${s}s` : ""); }
   if(app.view==="party" && S && S.phase==="q" && S.q && S.q.t!=="mf" && !S.q.sim && !myAns && now>qLocalEnd) autoSubmit();
   if(app.view==="party" && S && S.phase==="q" && S.q && S.q.sim){ const m=S.mm&&S.mm[me.pid]; if(m && m.i<m.n && mmMyAnsK!==mmKey(m.i) && now>mmLocalEnd){ const i=$("#ansin"); submitMM(i?i.value.trim():""); } }
   if(app.view==="party" && !app.isHost && S && !app.party.local){ const hp=partyPeers().some(p=>p.presence&&p.presence.role==="host"); if(hp) hostLastSeen=now; else if(!hostGone && hostLastSeen && now-hostLastSeen>8000){ hostGone=true; stageKey=""; renderStage(); } }
@@ -7723,7 +7727,7 @@ class MapView{
       if(!n){ n=document.createElement("div"); n.className="mpin"+(p.target?" target":""); this.ov.appendChild(n); if(!RM) n.classList.add("drop"); }
       else if(moved && !RM){ n.classList.remove("drop"); void n.offsetWidth; n.classList.add("drop"); }
       n.style.setProperty("--c", p.target ? cssv("--spot") : (p.color||"#888"));
-      const html=`<span class="lb">${esc(p.label||"")}</span><div class="hd">${p.target?STAR_SVG:(p.av?avSVG(p.av):"")}</div><div class="tl"></div><div class="sh"></div>`;
+      const html=`<span class="lb">${esc(p.label||"")}</span><div class="hd">${p.target?STAR_SVG:(p.av?avSVG(p.av,undefined,p.pid):"")}</div><div class="tl"></div><div class="sh"></div>`;
       if(n._html!==html){ n.innerHTML=html; n._html=html; }
       n._p=p; keep.set(p.key, n);
     }
