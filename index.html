@@ -3296,6 +3296,18 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -5976,7 +5988,7 @@ function kmToFeature(f, p){ let best=1e9; for(const r of f.rings) for(let i=0;i<
   for(const r of f.rings) for(let i=0,j=r.length-1;i<r.length;j=i++){ const a={lat:r[j][1],lng:r[j][0]}, b={lat:r[i][1],lng:r[i][0]}; for(const t of [.25,.5,.75]){ const d=km(p,{lat:a.lat+(b.lat-a.lat)*t, lng:a.lng+(b.lng-a.lng)*t}); if(d<best) best=d; } }
   return best; }
 function ctryPick(n){
-  const hard=G && G.diff==="hard", pool0=CTRY.filter(c=>hard ? c[3]>=2 : c[3]<=2), pool1=pool0.filter(c=>!qClash(qFacts("Where is "+c[0], c[0]))), pool=pool1.length>=n?pool1:pool0;
+  const hard=G && G.diff==="hard", pool0=CTRY.filter(c=>(hard ? c[3]>=2 : c[3]<=2) && !dailyOnly(c[0])), pool1=pool0.filter(c=>!qClash(qFacts("Where is "+c[0], c[0]))), pool=pool1.length>=n?pool1:pool0;
   const k=c=>"ctry:"+c[0], fresh=shuffle(pool.filter(c=>!seenAt[k(c)])), old=pool.filter(c=>seenAt[k(c)]).sort((a,b)=>seenAt[k(a)]-seenAt[k(b)]);
   const pick=fresh.concat(old).slice(0,n); pick.forEach(c=>{ seenAt[k(c)]=Date.now(); qClaim(qFacts("Where is "+c[0], c[0])); }); saveSeen();
   return pick.map(c=>({text:"Where is "+c[0]+"?", place:c[0], lat:c[1], lng:c[2]}));
@@ -6005,8 +6017,11 @@ function qClaim(f){ if(gameQ) gameQ.push(f); }
 function bankFacts(type, x){ const b=type.replace(/_(pop|hard)$/,"");
   if(b==="gk"||b==="est") return qFacts(x[0], x[1]); if(b==="pin") return qFacts("Where is "+x[0], x[0]); if(b==="rank") return qFacts(x[0]+" "+(x[1]||[]).join(" "), ""); return qFacts(x[0], ""); }
 function qFactsOf(q){ return qFacts(q.text+(q.items?" "+q.items.join(" "):""), q.place!=null?q.place : (q.opts&&q.ans!=null)?q.opts[q.ans] : q.ans); }
+/* a quarter of the question bank is kept back for the daily quiz only, so party games never repeat a daily question (and vice versa) */
+function dailyOnly(text){ return hashStr("dq|"+norm(String(text||"")))%4===0; }
+const DAILY_TYPES=new Set(["gk","gk_pop","est","est_pop","est_hard","rank","rank_pop"]);
 function bankPick(type, n, rnd=Math.random, track=true, keep=null){
-  let all = BANK[type].map((x,i)=>({x,i,k:qKey(type,x)})).filter(o=>!keep || keep(o.x));
+  let all = BANK[type].map((x,i)=>({x,i,k:qKey(type,x)})).filter(o=>(!keep || keep(o.x)) && !(DAILY_TYPES.has(type) && dailyOnly(o.x[0])));
   if(track && gameQ){ all.forEach(o=>{ o.f=bankFacts(type,o.x); o.c=qClash(o.f); }); const ok=all.filter(o=>!o.c); if(ok.length>=n) all=ok; }
   let pick;
   if(!track) pick=shuffle(all,rnd).slice(0,n);
@@ -6410,8 +6425,8 @@ async function loadHomeDaily(){
     gi.innerHTML = (g ? `<div class="row"><div class="scoreline num">${Number(g.score||0).toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts · ${g.n} word${g.n===1?"":"s"}</span></div></div><div class="row"><button class="btn" data-act="dgrid">See results</button></div>` : `<div class="row"><button class="btn spot" data-act="dgrid">Play today's grid</button></div>`) + `<div id="homegridlb"></div>`;
     if(app.db) subscribeLB(`${DG_DB}/${key}/scores`, "#homegridlb", 5, "Today's grid leaderboard"); }
 }
-const DQ_LS="sq-dq4-", DG_LS="sq-grid2-", DQ_DB="dq4", DG_DB="dg2", DQ_RESET_DAY="2026-11-14"; /* daily questions replaced on 14 Nov 2026 */ /* fresh keys: the daily quiz and grid were reset on 14 Nov 2026 */
-function calcStreak(){ let n=0; const d=new Date(); for(let i=0;i<400;i++){ const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); if(LS.get(DQ_LS+k)||LS.get("sq-dq3-"+k)||LS.get("sq-dq2-"+k)||LS.get("sq-daily-"+k)) n++; else if(i>0) break; d.setDate(d.getDate()-1); } return n; }
+const DQ_LS="sq-dq7-", DG_LS="sq-grid2-", DQ_DB="dq7", DG_DB="dg2", DQ_RESET_DAY="2026-11-16"; /* 16 Nov 2026: fresh keys for the new 15-question daily */ /* daily questions replaced on 14 Nov 2026 */ /* fresh keys: the daily quiz and grid were reset on 14 Nov 2026 */
+function calcStreak(){ let n=0; const d=new Date(); for(let i=0;i<400;i++){ const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); if(LS.get(DQ_LS+k)||LS.get("sq-dq6-"+k)||LS.get("sq-dq5-"+k)||LS.get("sq-dq4-"+k)||LS.get("sq-dq3-"+k)||LS.get("sq-dq2-"+k)||LS.get("sq-daily-"+k)) n++; else if(i>0) break; d.setDate(d.getDate()-1); } return n; }
 
 /* ---------------- party join / host ---------------- */
 function localParty(){
@@ -6910,7 +6925,7 @@ const SP_POP_BANK=["Pop Music","Disney and Pixar","Superheroes","Sitcoms","The O
   for(const k in MORE){ const L=BANK[k]||(BANK[k]=[]); for(const x of MORE[k]){ const n=norm(x[0]); if(has.has(n)) continue; if(k.startsWith("pin") && near(x)) continue; has.add(n); L.push(x); if(k.startsWith("pin")) pins.push(x); } }
 })();
 function spFromBank(topic, n){
-  if(SP_BANK[topic]){ const all=SP_BANK[topic], key=q=>"sp:"+(hashStr(norm(q))%1e9).toString(36);
+  if(SP_BANK[topic]){ const all0=SP_BANK[topic].filter(x=>!dailyOnly(x[0])), all=all0.length>=n?all0:SP_BANK[topic], key=q=>"sp:"+(hashStr(norm(q))%1e9).toString(36);
     const cand=all.map(x=>({x, s:seenAt[key(x[0])]||0, c:qClash(qFacts(x[0],x[1]))})), okc=cand.filter(o=>!o.c);
     return (okc.length>=n?okc:cand).sort((a,b)=>a.s-b.s||Math.random()-.5).slice(0,n).map(o=>o.x).map(([q,r,...w])=>{ seenAt[key(q)]=Date.now(); qClaim(qFacts(q,r)); noteText("sp", q); const opts=shuffle([r,...w]); return {text:q, opts, ans:opts.indexOf(r)}; }); }
   const all=BANK.mm[topic].map(([q,a])=>({q, a:a.split("|")[0]}));
@@ -7503,8 +7518,8 @@ function rankAreaHTML(q, done, late){
   if(done) return h+`<div class="locked">Order locked in.</div></div>`;
   return h+`<div class="row" style="gap:8px;align-items:center"><span class="rk-hint muted grow">Drag the items into order, then lock in.</span><button class="btn primary" data-act="rklock" ${late?"disabled":""}>Lock in order</button></div></div>`;
 }
-function rkRenumber(list){ [...list.children].forEach((r,i)=>{ const n=r.querySelector(".rk-n"); if(n) n.textContent=i+1; }); draft=[...list.children].map(r=>+r.dataset.i); if(S&&S.q) rkMoved=S.q.k; }
-function rkActive(){ return S && S.phase==="q" && S.q && S.q.t==="rank" && !myAns && Date.now()<=qLocalEnd; }
+function rkRenumber(list){ [...list.children].forEach((r,i)=>{ const n=r.querySelector(".rk-n"); if(n) n.textContent=i+1; }); draft=[...list.children].map(r=>+r.dataset.i); if(app.view==="daily") rkMoved="daily-"+D.i; else if(S&&S.q) rkMoved=S.q.k; }
+function rkActive(){ if(app.view==="daily") return D.phase==="q" && D.qs && D.qs[D.i] && D.qs[D.i].t==="rank"; return S && S.phase==="q" && S.q && S.q.t==="rank" && !myAns && Date.now()<=qLocalEnd; }
 document.addEventListener("pointerdown", e=>{
   const row=e.target.closest && e.target.closest("#rklist .rk-drag"); if(!row || row.classList.contains("locked") || !rkActive()) return;
   if(e.button!=null && e.button>0) return;
@@ -7575,7 +7590,7 @@ function hlFmt(fam, v){ if(fam==="money") return v>=1e9?`$${(v/1e9).toFixed(2).r
   return v>=1e6 ? `${(v/1e6).toFixed(v>=1e8?0:1).replace(/\.0$/,"")} million` : v.toLocaleString("en-GB"); }
 function hlBuild(n){
   const fams=Object.keys(HL_BANK), last=LS.get("sq-hl-last")||""; const pool=fams.filter(f=>f!==last); const fam=pool[Math.floor(Math.random()*pool.length)]; LS.set("sq-hl-last",fam);
-  const items=HL_BANK[fam].items.map(x=>({x, s:seenAt["hl:"+norm(x[0])]||0})).sort((a,b)=>a.s-b.s||Math.random()-.5).map(o=>o.x);
+  const items=HL_BANK[fam].items.filter(x=>!dailyOnly(x[0])).map(x=>({x, s:seenAt["hl:"+norm(x[0])]||0})).sort((a,b)=>a.s-b.s||Math.random()-.5).map(o=>o.x);
   const chain=[items[0]]; for(const it of items.slice(1)){ if(chain.length>n) break; if(it[1]!==chain[chain.length-1][1]) chain.push(it); }
   const c=shuffle(chain); for(let i=1;i<c.length;i++) if(c[i][1]===c[i-1][1]){ const j=(i+1)%c.length; [c[i],c[j]]=[c[j],c[i]]; }
   c.forEach(x=>{ seenAt["hl:"+norm(x[0])]=Date.now(); }); saveSeen();
@@ -8298,19 +8313,55 @@ const Pong={mount(){}, board(){}};
 
 /* ---------------- daily quiz ---------------- */
 const D = { key:null, qs:null, src:null, i:0, phase:"intro", answers:[], pts:[], end:0, start:0, draft:null, loading:false, lbUnsub:null };
-const DORDER=["gk","gk","est","pin","gk","ctry","gk","est","gk","pin"];
-function dailyCtry(key){ const rnd=mulberry(hashStr("ctry-"+key)); const pool=CTRY.filter(c=>c[3]<=2); const c=pool[Math.floor(rnd()*pool.length)]; return {t:"ctry", text:"Find "+c[0]+" on the map", place:c[0], lat:c[1], lng:c[2]}; }
-function dailyAssemble(gk, est, pin, key){ const q={gk:gk.slice(), est:est.slice(), pin:pin.slice(), ctry:[dailyCtry(key)]}; return DORDER.map(t=>q[t].shift()); }
+/* ---------- the daily quiz: 15 questions, a different spread of topics every day, easy to hard ---------- */
+const DORDER=["gk","gk","est","gk","hl","gk","rank","gk","gk","ctry","gk","est","gk","gk","gk"];
+const DCATS=[
+  {ai:"Sport", topics:["Sport","Tennis","The Olympics","Formula 1","Cricket","Rugby","Boxing","Golf","Darts and Snooker","Horse Racing"]},
+  {ai:"Football", topics:["Football","Football Legends","Premier League","The World Cup"]},
+  {ai:"Music", topics:["Music","Pop Music","The Beatles","Eurovision","Musicals","Rap and Hip Hop"]},
+  {ai:"Film & TV", topics:["Films","TV Shows","Sitcoms","Disney and Pixar","Marvel","James Bond","The Simpsons","Friends","Doctor Who","Soap Operas","Star Wars","Horror Films","Cartoons","Comedy","Harry Potter","The Lord of the Rings"]},
+  {ai:"Pop Culture & Games", topics:["Reality TV","Game Shows","Video Games","Nintendo","Pokémon","Board Games","Brands and Logos","Superheroes","The 1980s","The 1990s"]},
+  {ai:"History", topics:["British History","Kings and Queens","The Romans","Ancient Egypt","World War Two","Royal Family","Pirates"]},
+  {ai:"Science & Nature", topics:["Science","Space","Animals","The Human Body","Inventions","Dinosaurs","Weather","Birds","Insects","Volcanoes and Earthquakes"]},
+  {ai:"Geography", topics:["World Geography","Capital Cities","Flags","Famous Landmarks","Oceans and Seas"]},
+  {ai:"Food & Drink", topics:["Food and Drink","Fast Food","Chocolate and Sweets","Cheese","Coffee and Tea"]},
+  {ai:"In the News", bank:"Wildcard", topics:["Books and Authors","Art and Artists","Shakespeare","Mythology","Languages","Cars","Trains and Railways","Christmas"]}
+];
+/* today's order of topics, and how hard each slot is: two easy openers, a medium middle, two hard closers */
+function dailyPlan(key){ const rnd=mulberry(hashStr("dcats-"+key)); const cats=shuffle(DCATS.slice(), rnd);
+  /* keep the news question out of the very first and last slots */
+  const ni=cats.findIndex(c=>c.ai==="In the News"); if(ni===0||ni===9){ const j=4; [cats[ni],cats[j]]=[cats[j],cats[ni]]; }
+  return cats.map((c,i)=>({c, diff: i<2?"easy":i<4?"medium":"hard"})); } /* two easy openers, two medium, then six hard ones */
+/* the bank-built daily walks through each pool in a fixed shuffled order, one step a day, so nothing repeats until a pool runs out */
+function dayNum(key){ const [y,m,d]=String(key).split("-").map(Number); return Math.floor(Date.UTC(y||2026,(m||1)-1,d||1)/864e5) || hashStr(String(key)); }
+function rotPick(pool, seed, step){ if(!pool.length) return null; const order=shuffle(pool.slice(), mulberry(hashStr(seed))); return order[((step%order.length)+order.length)%order.length]; }
+function dailyCtry(key){ const pool=CTRY.filter(c=>c[3]>=2 && dailyOnly(c[0])); const c=rotPick(pool,"rot-ctry",dayNum(key)); return {t:"ctry", text:"Find "+c[0]+" on the map", place:c[0], lat:c[1], lng:c[2]}; }
+function dailyHL(key){ const dn=dayNum(key), fams=Object.keys(HL_BANK).filter(f=>new Set(HL_BANK[f].items.filter(x=>dailyOnly(x[0])).map(x=>x[1])).size>=2), fam=fams[dn%fams.length], step=Math.floor(dn/fams.length);
+  const it=shuffle(HL_BANK[fam].items.filter(x=>dailyOnly(x[0])), mulberry(hashStr("rot-hl-"+fam))), A=it[step%it.length], B=it[(step+1)%it.length][1]!==A[1]?it[(step+1)%it.length]:it.find(x=>x[1]!==A[1]), yr=fam==="year";
+  return {t:"hl", text: yr?"Did this happen later or earlier?":"Higher or lower?", fam, famName:HL_BANK[fam].name, opts: yr?["Later","Earlier"]:["Higher","Lower"], a:{l:A[0], v:A[1], f:hlFmt(fam,A[1])}, b:{l:B[0], v:B[1], f:hlFmt(fam,B[1])}, ans: B[1]>A[1]?0:1}; }
+function dailyAssemble(gk, est, rank, key){ const q={gk:gk.slice(), est:est.slice(), rank:rank.slice(), ctry:[dailyCtry(key)], hl:[dailyHL(key)]}; return DORDER.map(t=>q[t].shift()); }
+/* is this question (nearly) the same as one in the party-game bank? */
+let PARTY_TX=null;
+function partyLike(text){
+  if(!PARTY_TX){ PARTY_TX={exact:new Set(), toks:[]}; const add=t=>{ if(dailyOnly(t)) return; const n=norm(t); PARTY_TX.exact.add(n); PARTY_TX.toks.push(new Set(n.split(" ").filter(w=>w.length>2))); };
+    for(const k of ["gk","gk_pop","gk_hard","est","est_pop","est_hard","rank","rank_pop"]) (BANK[k]||[]).forEach(x=>add(x[0])); for(const t in SP_BANK) SP_BANK[t].forEach(x=>add(x[0])); }
+  const n=norm(String(text||"")); if(PARTY_TX.exact.has(n)) return true;
+  const a=new Set(n.split(" ").filter(w=>w.length>2)); if(a.size<3) return false;
+  for(const b of PARTY_TX.toks){ let i=0; for(const w of a) if(b.has(w)) i++; if(i/(a.size+b.size-i)>=.7) return true; }
+  return false; }
 function bankDaily(key){
-  const rnd=mulberry(hashStr("spotlight-v4-"+key));
-  const pick=(type,n)=>{ const B=BANK[type]; const base=type.replace(/_pop$/,""); return shuffle(B.map((x,i)=>i), rnd).slice(0,n).map(i=>({t:base, ...fromBank(base, B[i], rnd)})); };
-  const pop=BANK.gk_pop?pick("gk_pop",4):[], gk=pick("gk",6-pop.length);
-  const gks=[pop[0],gk[0],pop[1],gk[1],pop[2],pop[3]].filter(Boolean).concat(gk.slice(2)).slice(0,6);
-  const est=BANK.est_pop?[...pick("est_pop",1),...pick("est",1)]:pick("est",2), pin=BANK.pin_pop?[...pick("pin_pop",1),...pick("pin",1)]:pick("pin",2);
-  return dailyAssemble(gks, est, pin, key);
+  const rnd=mulberry(hashStr("spotlight-v5-"+key)), used=new Set();
+  const dn=dayNum(key), base=t=>t.replace(/_(pop|hard)$/,"");
+  const pick=(type,n,step)=>{ const B=BANK[type]; const pool=B.filter(x=>dailyOnly(x[0])); const out=[]; for(let k=0;k<n;k++){ const x=rotPick(pool,"rot-"+type,(step==null?dn:step)*n+k); if(x) out.push({t:base(type), ...fromBank(base(type), x, rnd)}); } return out; };
+  /* one question from each topic, taken from the topic banks so the spread is real */
+  const gks=dailyPlan(key).map(({c,diff})=>{ const all=c.topics.flatMap(t=>(SP_BANK[t]||[]).map((x,i)=>({x,t,deep:i>=9})).filter(o=>dailyOnly(o.x[0]))), want=all.filter(o=>diff==="easy"?!o.deep:o.deep), pool=(want.length>=4?want:all);
+    for(let k=0;k<pool.length;k++){ const o=rotPick(pool,"rot-cat-"+c.ai,dn+k), x=o.x; const n=norm(x[0]); if(used.has(n)) continue; used.add(n); const opts=shuffle(x.slice(1), rnd); /* the topic name stays with the question, because some only make sense with it */ return {t:"gk", text:x[0], opts, ans:opts.indexOf(x[1]), cat:(norm(o.t.replace(/&/g,"and"))===norm((c.bank||c.ai).replace(/&/g,"and"))?(c.bank||c.ai):`${c.bank||c.ai} · ${o.t}`)}; }
+    const g=pick("gk",1)[0]; return Object.assign(g,{cat:"General knowledge"}); });
+  const est=BANK.est_hard?[...pick("est_hard",1),...pick("est",1)]:pick("est",2), rank=(dn%3!==0&&BANK.rank_pop)?pick("rank_pop",1,dn):pick("rank",1,Math.floor(dn/3)); /* pop-culture Rank It two days in three */
+  return dailyAssemble(gks, est, rank, key);
 }
 async function getDaily(key){
-  const ok=d=>d && Array.isArray(d.qs) && d.qs.length>=10;
+  const ok=d=>d && Array.isArray(d.qs) && d.qs.length>=15;
   if(app.db){ try{ const s=await app.db.doc(DQ_DB+"/"+key).get(); const d=s.exists&&s.data(); if(ok(d)) return {qs:d.qs, src:d.src||"ai"}; }catch(e){} }
   if(app.db && aiOn() && app.canWrite!==false){
     const ref=app.db.doc(DQ_DB+"/"+key);
@@ -8318,17 +8369,28 @@ async function getDaily(key){
     if(lease && lease.acquired){
       try{
         const web=!!window.SQ_STANDALONE;
-        const arr=await ask(`Write today's daily quiz for a British audience who love sport and pop culture. Write exactly 5 multiple-choice questions, 2 guesstimate questions and 2 "where in the world" pin-drop questions.
-The 5 multiple-choice questions, in this order: 1 sport, 1 pop culture, 1 recent news, 1 sport, 1 pop culture. Sport means football, cricket, rugby, tennis, F1, golf, darts, boxing, the Olympics and so on. Pop culture means music, film, TV, celebrities, video games and viral moments. The news question is about a story from ${web?"the last week or two: search the web for this week's biggest news first":"the last few months that you are sure about"}, and must have a clear, settled answer. Make half easy (most adults would know) and half genuinely hard.
-Both guesstimates are about sport or pop culture, such as stadium capacities, transfer fees, box office takings, chart records or career totals. Each guesstimate answer is a single number; min and max can be any rough range, the game sets its own scale.
-Pins: one instantly recognisable stadium, landmark or city, and one harder place that is still findable on a map; famous sports venues and film or TV locations are ideal.
-Facts must be accurate. News questions must be about something that has already happened, so the answer won't change. Keep questions under 140 characters. British English.
+        const plan=dailyPlan(key), slots=plan.map((x,i)=>`${i+1}. ${x.c.ai} (${x.diff})`).join("\n");
+        const arr=await ask(`Write today's daily quiz for a British audience who mostly love sport and pop culture, but who also enjoy a proper general knowledge challenge. Lean towards sport, music, film, TV and pop culture, while still covering other subjects.
+Write exactly 10 multiple-choice questions, 2 guesstimate questions and 1 "rank it" question.
+The 10 multiple-choice questions must follow these topics and difficulties, in this exact order:
+${slots}
+Easy means most adults would know it. Medium is a proper pub-quiz question that a good quizzer gets. Hard is the bulk of this quiz: it should stump most people, rewarding real knowledge rather than guessing. Use specific, less obvious facts rather than headline ones, and make the three wrong options plausible so the answer can't be guessed by elimination. Hard must still be fair: one clear right answer that a well-read person could know.
+Both guesstimates should be tricky: things people won't know offhand. The rank it should need real knowledge, with items that are close enough to make people think (but never debatable).
+"In the News" is about a story from ${web?"the last week or two: search the web for this week's biggest news first":"the last few months that you are sure about"}, with a clear, settled answer.
+Across the 10: at least two questions about something from before 1990, at least two from the last five years, and at least three that don't need British knowledge. Football only in the Football slot.
+Guesstimates: one about sport or pop culture (stadium capacities, box office, chart records, career totals) and one about anything else (history, nature, geography, science). Each answer is a single number; min and max can be any rough range, the game sets its own scale.
+Rank it: exactly 5 well-known items that must be put in order by one clear, measurable property (size, height, date, population, speed and so on), far enough apart that the order isn't debatable. List "items" in the correct order from first to last, with a short "values" label for each and "first"/"last" labels for the two ends.
+Facts must be accurate. Keep questions under 140 characters. British English. Give four options each with only one right answer.
 Date code: ${key}
-Reply with only JSON: {"gk":[{"q":"...","options":["a","b","c","d"],"answer":0}],"est":[{"q":"How tall is the Eiffel Tower to its tip, in metres?","answer":330,"unit":"m","min":0,"max":600}],"pin":[{"q":"Where is Machu Picchu?","place":"Machu Picchu, Peru","lat":-13.1631,"lng":-72.545}]}`, "default", web?180000:100000, {web});
-        const gk=cleanQs("gk", arr&&arr.gk).slice(0,5), est=cleanQs("est", arr&&arr.est).slice(0,2), pin=cleanQs("pin", arr&&arr.pin).slice(0,2);
-        if(gk.length===5 && est.length===2 && pin.length===2){
+Reply with only JSON: {"gk":[{"q":"...","options":["a","b","c","d"],"answer":0}],"est":[{"q":"How tall is the Eiffel Tower to its tip, in metres?","answer":330,"unit":"m","min":0,"max":600}],"rank":[{"q":"Put these animals in order of weight","items":["Mouse","Cat","Lion","Horse","Elephant"],"values":["about 20 g","about 4 kg","about 190 kg","about 500 kg","about 6 tonnes"],"first":"Lightest","last":"Heaviest"}]}`, "default", web?180000:100000, {web});
+        const gk=cleanQs("gk", arr&&arr.gk).slice(0,10), est=cleanQs("est", arr&&arr.est).slice(0,2), rank=cleanQs("rank", arr&&arr.rank).slice(0,1);
+        gk.forEach((q,i)=>{ q.cat=plan[i]?plan[i].c.ai:"General knowledge"; });
+        { const fb=bankDaily(key), fbG=fb.filter(q=>q.t==="gk"), fbE=fb.filter(q=>q.t==="est"), fbR=fb.filter(q=>q.t==="rank");
+          gk.forEach((q,i)=>{ if(partyLike(q.text)){ const r=fbG.find(x=>x.cat===q.cat)||fbG[i]; if(r) gk[i]=Object.assign({},r,{cat:q.cat}); } });
+          est.forEach((q,i)=>{ if(partyLike(q.text) && fbE[i]) est[i]=fbE[i]; }); rank.forEach((q,i)=>{ if(partyLike(q.text) && fbR[i]) rank[i]=fbR[i]; }); }
+        if(gk.length===10 && est.length===2 && rank.length===1){
           const T=x=>t=>({t:x, ...t});
-          const qs=dailyAssemble(gk.map(T("gk")), est.map(T("est")), pin.map(T("pin")), key);
+          const qs=dailyAssemble(gk.map(T("gk")), est.map(T("est")), rank.map(T("rank")), key);
           await ref.set({qs, src:"ai", at:Date.now()});
           return {qs, src:"ai"};
         }
@@ -8349,7 +8411,7 @@ async function startDaily(){
   GeoData.load();
   const r=await getDaily(D.key);
   if(app.view!=="daily") return;
-  D.qs=r.qs.slice(0,10); D.src=r.src;
+  D.qs=r.qs.slice(0,15); D.src=r.src;
   D.qs.forEach(q=>{ if(q.t==="est") Object.assign(q, estRange(q.ans, q.unit, mulberry(hashStr(D.key+q.text)))); }); D.i=0; D.pts=[]; D.answers=[]; D.secs=[]; D.phase="intro"; renderDaily();
   if(D.qs.some(q=>q.t==="pin"||q.t==="ctry")) loadMap();
 }
@@ -8357,16 +8419,17 @@ async function startDaily(){
 function dailyAvail(q, ms){ const f=Math.max(0, Math.min(1, ms/(DDUR[q.t]*1000))); return Math.round(100-90*f); }
 function dailyAcc(q, v){
   if(v==null) return 0;
-  if(q.t==="gk") return Number(v)===q.ans ? 1 : 0;
+  if(q.t==="gk"||q.t==="hl") return Number(v)===q.ans ? 1 : 0;
+  if(q.t==="rank"){ const a=String(v).split(",").map(Number); if(a.length!==q.correct.length) return 0; const n=a.filter((x,i)=>x===q.correct[i]).length; return n===a.length?1:n*.15; }
   if(q.t==="est"){ const n=typeof v==="number"?v:parseNum(v); if(n==null) return 0; const r=Math.abs(n-q.ans)/Math.max(1e-9,(q.max-q.min)); return r<=0.01?1:Math.max(0, 1-(r-0.01)/0.19); }
   if(q.t==="pin"){ if(!v||!isFinite(v.lat)) return 0; const d=km(v,q); return d<=15?1:Math.exp(-(d-15)/1200); }
   if(q.t==="ctry"){ if(!v||!isFinite(v.lat)) return 0; const f=ctryFeature(q.place); const inside=f?inRings(f,v):km(v,q)<200; if(inside) return 1; const d=f?kmToFeature(f,v):Math.max(0,km(v,q)-200); return d<=150?.7:d<=400?.5:d<=800?.3:d<=1500?.1:0; }
   return 0;
 }
-function dailyScore(q, v, ms){ const a=dailyAcc(q,v); return q.t==="gk" ? Math.round(a*dailyAvail(q, ms==null?DDUR[q.t]*1000:ms)) : Math.round(a*100); }
-const DDUR={gk:20, est:30, pin:30, ctry:30};
-const DMAX={gk:100, est:100, pin:100, ctry:100};
-const DNAME={gk:"Question", est:"Guesstimate", pin:"Pin drop", ctry:"Find the country"};
+function dailyScore(q, v, ms){ const a=dailyAcc(q,v); return (q.t==="gk"||q.t==="hl") ? Math.round(a*dailyAvail(q, ms==null?DDUR[q.t]*1000:ms)) : Math.round(a*100); }
+const DDUR={gk:20, hl:15, est:30, pin:30, ctry:30, rank:30};
+const DMAX={gk:100, hl:100, est:100, pin:100, ctry:100, rank:100};
+const DNAME={gk:"Question", hl:"Higher or lower", est:"Guesstimate", pin:"Pin drop", ctry:"Find the country", rank:"Rank it"};
 function dailyMax(qs){ return (qs||[]).reduce((a,q)=>a+(DMAX[q.t]||0),0)||30; }
 function resMax(r){ return (r&&r.max)||30; }
 function tier(p,m){ const f=m?p/m:0; return f>=0.75?3:f>=0.4?2:f>0?1:0; }
@@ -8374,7 +8437,7 @@ function playFlags(){ return {acct:app.acct?app.acct.id:null, guest:ACCT.on&&!ap
 function dailyBegin(){
   if(D.i===0 && !LS.get(DQ_LS+D.key)){ /* counts as your go from the first question: refreshing doesn't give a fresh start */
     LS.set(DQ_LS+D.key, {inProgress:1, score:0, pts:[], at:Date.now(), ...playFlags()});
-    if(app.acct) window.SQ_AUTH.saveProfile({dq:{[D.key]:{score:0}}}).catch(()=>{}); }
+    if(app.acct) window.SQ_AUTH.saveProfile({dq:{[D.key]:{score:0, v7:1}}}).catch(()=>{}); }
   D.phase="q"; D.end=Date.now()+DDUR[D.qs[D.i].t]*1000; D.start=Date.now(); D.draft=null; renderDaily(); }
 function dailyGeoTag(q){ return q.t==="pin"?"Where in the world":q.t==="ctry"?"No names on the map":""; }
 function dailyAnswer(v){
@@ -8387,7 +8450,7 @@ async function dailyFinishStale(prev){ /* left part-way through: it ends with th
   const pts=(prev.pts||[]).map(x=>x||0), score=pts.reduce((a,b)=>a+b,0);
   const res={score, pts, at:prev.at||Date.now(), acct:prev.acct||null, guest:prev.guest||0, unfinished:1};
   LS.set(DQ_LS+D.key, res);
-  if(app.acct && res.acct===app.acct.id){ window.SQ_AUTH.saveProfile({dq:{[D.key]:{score}}}).catch(()=>{}); await postScore("dq", D.key, res); }
+  if(app.acct && res.acct===app.acct.id){ window.SQ_AUTH.saveProfile({dq:{[D.key]:{score, v7:1}}}).catch(()=>{}); await postScore("dq", D.key, res); }
   return res;
 }
 async function postScore(kind, key, res){
@@ -8403,14 +8466,14 @@ async function dailyFinish(){
   const st=LS.get(DQ_LS+D.key)||{}, fl=st.inProgress?{acct:st.acct||null, guest:st.guest||0}:playFlags();
   const res={score, max:dailyMax(D.qs), pts:D.pts, pmax:D.qs.map(q=>DMAX[q.t]||3), src:D.src, at:Date.now(), ...fl};
   LS.set(DQ_LS+D.key, res); D.result=res; D.phase="done"; renderDaily();
-  if(app.acct) window.SQ_AUTH.saveProfile({dq:{[D.key]:{score}}}).catch(()=>{});
+  if(app.acct) window.SQ_AUTH.saveProfile({dq:{[D.key]:{score, v7:1}}}).catch(()=>{});
   await postScore("dq", D.key, res); return;
 }
 function safeSeg(s){ return String(s).replace(/[^A-Za-z0-9_\-.~:@+]/g,"_").slice(0,120); }
 function dailyTick(now){
   if(D.phase!=="q") return;
-  const pa=$("#dpav"); if(pa){ const q=D.qs[D.i]; if(q.t==="gk") pa.textContent=dailyAvail(q, now-D.start); }
-  if(now>D.end){ const q=D.qs[D.i]; let v=null; if(q.t==="pin"||q.t==="ctry"||q.t==="est") v=D.draft; dailyAnswer(v); }
+  const pa=$("#dpav"); if(pa){ const q=D.qs[D.i]; if(q.t==="gk"||q.t==="hl") pa.textContent=dailyAvail(q, now-D.start); }
+  if(now>D.end){ const q=D.qs[D.i]; let v=null; if(q.t==="pin"||q.t==="ctry"||q.t==="est") v=D.draft; if(q.t==="rank" && rkMoved==="daily-"+D.i && Array.isArray(draft)) v=draft.join(","); dailyAnswer(v); }
 }
 function shareText(res){ const sq=(res.pts||[]).map((p,i)=>["⬜","🟧","🟨","🟩"][res.pmax?tier(p,res.pmax[i]):p]||"⬜").join(""); return `Spotlight Quiz · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}\n${sq}\n${res.score.toLocaleString("en-GB")} points`; }
 function renderDaily(){
@@ -8419,11 +8482,16 @@ function renderDaily(){
   const prog = D.qs ? `<div class="progress">${D.qs.map((_,i)=>`<i class="${i<D.i||(i===D.i&&D.phase==="fb")?"done":i===D.i&&D.phase==="q"?"cur":""}"></i>`).join("")}</div>` : "";
   let h="";
   if(D.phase==="loading") h=`<div class="intro"><div class="spinner"></div><h2>Loading today's quiz</h2><p>If you're the first player today, Claude is writing the questions. Everyone else gets the same set.</p></div>`;
-  else if(D.phase==="intro") h=`${prog}<div class="intro"><div class="eyebrow">Daily quiz · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}))}</div><div class="ri">${D.qs.length} questions</div><p>Multiple-choice questions start at <b>100 points</b> and count down, so be quick. Maps and guesstimates score up to 100 for how close you get. One go per day.</p>${acctPromptHTML()}<div class="row"><button class="btn spot" data-act="dbegin">Start</button></div></div>`;
+  else if(D.phase==="intro") h=`${prog}<div class="intro"><div class="eyebrow">Daily quiz · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}))}</div><div class="ri">${D.qs.length} questions</div><p>Ten questions on ten different topics, from easy to tough, plus two guesstimates, a rank it, a country to find and a higher-or-lower. Multiple-choice and higher-or-lower questions start at <b>100 points</b> and count down, so be quick. Maps and guesstimates score up to 100 for how close you get. One go per day.</p>${acctPromptHTML()}<div class="row"><button class="btn spot" data-act="dbegin">Start</button></div></div>`;
   else if(D.phase==="q"||D.phase==="fb"){
     const q=D.qs[D.i]; const fb=D.phase==="fb";
-    h = prog + `<div class="stagehead"><div><div class="eyebrow">${DNAME[q.t]||"Question"}</div><div class="muted num" style="font-size:14px">Question ${D.i+1} of ${D.qs.length}</div></div>${fb?`<span class="pts on" style="font-size:28px">+${D.pts[D.i]}<span class="muted" style="font-size:.45em;display:block;text-align:right">${D.answers[D.i]==null?"no answer":"in "+D.secs[D.i].toFixed(1)+"s"}</span></span>`:`<div class="row" style="gap:12px;flex-wrap:nowrap">${q.t==="gk"?`<span class="pts on num" style="font-size:28px;min-width:2.4em;text-align:right" title="Points available"><span id="dpav">100</span><span class="muted" style="font-size:.4em;display:block">pts left</span></span>`:""}${timerHTML(D.end, DDUR[q.t])}</div>`}</div><div class="qtext">${esc(q.text)}</div>`;
-    if(q.t==="gk") h += `<div class="opts">${q.opts.map((o,i)=>`<button class="opt ${fb?(i===q.ans?"right":(Number(D.answers[D.i])===i?"wrong mine":"")):""}" data-act="dopt" data-i="${i}" ${fb?"disabled":""}><span class="k">${"ABCD"[i]}</span><span>${esc(o)}</span></button>`).join("")}</div>`;
+    h = prog + `<div class="stagehead"><div><div class="eyebrow">${esc(q.cat||DNAME[q.t]||"Question")}</div><div class="muted num" style="font-size:14px">Question ${D.i+1} of ${D.qs.length}${q.t==="gk"&&D.i>=5&&D.src==="ai"?" · hard":""}</div></div>${fb?`<span class="pts on" style="font-size:28px">+${D.pts[D.i]}<span class="muted" style="font-size:.45em;display:block;text-align:right">${D.answers[D.i]==null?"no answer":"in "+D.secs[D.i].toFixed(1)+"s"}</span></span>`:`<div class="row" style="gap:12px;flex-wrap:nowrap">${(q.t==="gk"||q.t==="hl")?`<span class="pts on num" style="font-size:28px;min-width:2.4em;text-align:right" title="Points available"><span id="dpav">100</span><span class="muted" style="font-size:.4em;display:block">pts left</span></span>`:""}${timerHTML(D.end, DDUR[q.t])}</div>`}</div><div class="qtext">${esc(q.text)}</div>`;
+    if(q.t==="hl") h += hlCardsHTML(q, fb?{ans:q.ans,b:q.b}:null)+`<div class="hl-btns">${q.opts.map((o,i)=>`<button class="opt hl-b ${i?"dn":"up"} ${fb?(i===q.ans?"right":(Number(D.answers[D.i])===i?"wrong mine":"")):""}" data-act="dopt" data-i="${i}" ${fb?"disabled":""}><span class="hl-ar" aria-hidden="true">${i?"▼":"▲"}</span><span>${esc(o)}</span></button>`).join("")}</div>`;
+    else if(q.t==="rank"){ const fbA=fb&&D.answers[D.i]!=null?String(D.answers[D.i]).split(",").map(Number):null;
+      if(!fb){ if(!(Array.isArray(draft) && draft.length===q.items.length && rkMoved==="daily-"+D.i)) draft=q.items.map((_,i)=>i);
+        h += `<div class="rk"><div class="rk-end">▲ ${esc(q.lo)}</div><div class="rk-list" id="rklist">${draft.map((it,pos)=>`<div class="rk-drag" data-i="${it}" tabindex="0" aria-label="${esc(q.items[it])}, position ${pos+1}"><span class="rk-n">${pos+1}</span><span class="rk-t">${esc(q.items[it])}</span><span class="rk-grip" aria-hidden="true"><i></i><i></i><i></i></span></div>`).join("")}</div><div class="rk-end">▼ ${esc(q.hi)}</div><div class="row" style="gap:8px;align-items:center"><span class="rk-hint muted grow">Drag the items into order, then lock in.</span><button class="btn primary" data-act="drklock">Lock in order</button></div></div>`; }
+      else h += `<div class="rk-ans"><div class="eyebrow">Correct order · ${esc(q.lo)} to ${esc(q.hi.toLowerCase())}</div>${q.correct.map((it,pos)=>`<div class="rk-row"><span class="rk-n">${pos+1}</span><b>${esc(q.items[it])}</b><span class="muted num">${esc((q.vals||[])[pos]||"")}</span></div>`).join("")}</div>${fbA?`<div class="res" style="margin-top:10px"><div class="eyebrow" style="margin-bottom:6px">Your order</div><span class="rk-mini">${fbA.map((it,pos)=>`<i class="${it===q.correct[pos]?"y":"n"}">${esc(q.items[it])}</i>`).join("")}</span></div>`:""}`; }
+    else if(q.t==="gk") h += `<div class="opts">${q.opts.map((o,i)=>`<button class="opt ${fb?(i===q.ans?"right":(Number(D.answers[D.i])===i?"wrong mine":"")):""}" data-act="dopt" data-i="${i}" ${fb?"disabled":""}><span class="k">${"ABCD"[i]}</span><span>${esc(o)}</span></button>`).join("")}</div>`;
     else if(q.t==="est") h += fb ? scaleRevealHTML(q.min, q.max, q.unit, q.ans, D.answers[D.i]==null?[]:[{v:D.answers[D.i], color:pcol(me.pid), label:"You", e:me.av}]) + `<div class="bigans"><div class="eyebrow">Answer</div><b class="num">${esc(fmtNum(q.ans,q.unit))}</b>${esc(unitTxt(q.unit))}</div>` : scaleInputHTML("destr", q) + `<div class="row"><span class="maphint grow">Drag the marker along the scale, then lock it in.</span><button class="btn primary" data-act="dlockest" id="dlockest" disabled>Lock in</button></div>`;
     else if(q.t==="pin") h += (fb?`<div class="bigans"><div class="eyebrow">Answer</div><b>${esc(q.place)}</b> ${D.answers[D.i]?`<span class="num">· ${Math.round(km(D.answers[D.i],q)).toLocaleString("en-GB")} km from your pin</span>`:""}</div>`:"") + `<div class="map" id="map"></div>` + (fb?"":`<div class="row"><span class="maphint grow">Tap the map to drop your pin. Drag to move the map, and pinch or use + and − to zoom.</span><button class="btn primary" data-act="dlockpin" id="dlockpin" disabled>Lock in pin</button></div>`);
     else if(q.t==="ctry"){ const a=D.answers[D.i]; let note=""; if(fb && a){ const f=ctryFeature(q.place); const inside=f?inRings(f,a):km(a,q)<200; note=inside?`<span class="num ctry-in">· inside</span>`:`<span class="num">· ${Math.round(f?kmToFeature(f,a):km(a,q)).toLocaleString("en-GB")} km off</span>`; }
@@ -8552,7 +8620,7 @@ function acctApply(p, quiet){
   app.acct=p;
   if(p.name){ me.nick=p.name; LS.set("sq-nick",p.name); const ni=$("#nick"); if(ni) ni.value=p.name; }
   if(p.av && validAv(p.av) && p.av!==me.av){ me.av=p.av; LS.set("sq-av",p.av); if(isToonAv(p.av)) LS.set("sq-av-custom",p.av); }
-  for(const [d,v] of Object.entries(p.dq||{})) if(!LS.get(DQ_LS+d) && !(d===DQ_RESET_DAY && !v.v4)) LS.set(DQ_LS+d,{score:v.score, pts:[], posted:1, acct:p.id, guest:v.guest||0});
+  for(const [d,v] of Object.entries(p.dq||{})) if(!LS.get(DQ_LS+d) && !(d===DQ_RESET_DAY && !v.v7)) LS.set(DQ_LS+d,{score:v.score, pts:[], posted:1, acct:p.id, guest:v.guest||0});
   for(const [d,v] of Object.entries(p.dg||{})) if(!LS.get(DG_LS+d)) LS.set(DG_LS+d,{score:v.score, n:v.n, words:[], posted:1, acct:p.id, guest:v.guest||0});
   const up={dq:{},dg:{}}; let any=false; /* results from before logging in, so streaks follow you */
   for(let i=0;i<60;i++){ const k=dayKeyBack(i); const a=LS.get(DQ_LS+k), g=LS.get(DG_LS+k);
@@ -8678,6 +8746,7 @@ document.addEventListener("click", async e=>{
   if(a==="lockpin"){ if(draft) submitAnswer(draft); return; }
   if(a==="dbegin"){ if($("#nick") && !readNick()) return; dailyBegin(); return; }
   if(a==="dopt"){ dailyAnswer(+b.dataset.i); return; }
+  if(a==="drklock"){ if(app.view==="daily" && D.phase==="q" && D.qs[D.i].t==="rank" && Array.isArray(draft)) dailyAnswer(draft.join(",")); return; }
   if(a==="dlockpin"){ if(D.draft) dailyAnswer(D.draft); return; }
   if(a==="dnext"){ dailyNext(); return; }
 });
