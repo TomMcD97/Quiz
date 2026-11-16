@@ -3310,6 +3310,7 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -8136,11 +8137,16 @@ const STAR_SVG=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.8
 
 /* ---------------- country borders (loaded on demand from the jsDelivr CDN; falls back to the built-in outline) ---------------- */
 const GeoData={ list:null, p:null, failed:false, hiTried:false,
-  loadHigh(){ if(this.hiTried) return Promise.resolve(false); this.hiTried=true; return import("https://cdn.jsdelivr.net/npm/@amcharts/amcharts5-geodata@5.1.4/worldHigh.js").then(m=>{ const L=parseGeo(m.default||m); if(L.length>100){ this.list=L; return true; } return false; }).catch(()=>false); },
+  loadHigh(){ if(this.hiTried) return Promise.resolve(false); this.hiTried=true;
+    const own=()=>fetch("/geo/high.json").then(r=>{ if(!r.ok) throw 0; return r.json(); }), cdn=v=>()=>import(`https://cdn.jsdelivr.net/npm/@amcharts/amcharts5-geodata@${v}/worldHigh.js`).then(m=>m.default||m);
+    return (async()=>{ for(const f of [own,cdn("5.1.4"),cdn("5")]){ try{ const L=parseGeo(await f()); if(L.length>100){ this.list=L; return true; } }catch(e){} } return false; })(); },
   load(){ if(this.p) return this.p;
     const amc=v=>()=>import(`https://cdn.jsdelivr.net/npm/@amcharts/amcharts5-geodata@${v}/worldLow.js`).then(m=>m.default||m);
     const ech=()=>new Promise((res,rej)=>{ const prev=window.echarts; let got=null; window.echarts={registerMap:(n,j)=>{ got=j; }}; const sc=document.createElement("script"); sc.src="https://cdn.jsdelivr.net/npm/echarts@4.9.0/map/js/world.js"; sc.onload=()=>{ window.echarts=prev; got?res(got):rej(new Error("no map")); }; sc.onerror=()=>{ window.echarts=prev; rej(new Error("load failed")); }; document.head.appendChild(sc); });
-    const srcs=[amc("5.1.4"),amc("5.1.1"),ech];
+    /* our own server first (it keeps a cached copy), then the public CDNs */
+    const own=()=>fetch("/geo/low.json").then(r=>{ if(!r.ok) throw new Error("no map"); return r.json(); });
+    const unp=()=>import("https://unpkg.com/@amcharts/amcharts5-geodata@5/worldLow.js").then(m=>m.default||m);
+    const srcs=[own,amc("5.1.4"),amc("5"),unp,ech];
     this.p=(async()=>{ for(const f of srcs){ try{ const g=await f(); const L=parseGeo(g); if(L.length>100){ this.list=L; return L; } }catch(e){ } } this.failed=true; return null; })();
     return this.p; } };
 function decodeRing(s, off, scale){ const r=[]; let px=off[0], py=off[1]; for(let i=0;i<s.length;i+=2){ let x=s.charCodeAt(i)-64, y=s.charCodeAt(i+1)-64; x=(x>>1)^(-(x&1)); y=(y>>1)^(-(y&1)); x+=px; y+=py; px=x; py=y; r.push([x/scale,y/scale]); } return r; }

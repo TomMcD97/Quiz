@@ -233,6 +233,56 @@ function readBody(req, max) {
 const json = (res, code, o) => { res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }); res.end(JSON.stringify(o)); };
 const ipOf = req => String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim();
 
+/* ---------------- world map data ----------------
+   Fetched once from public map sources by the server, slimmed down, cached and served from this site,
+   so phones never depend on a third-party CDN to draw the country borders. */
+const zlib = require("zlib");
+const GEO_SRC = {
+  low: [
+    "https://cdn.jsdelivr.net/npm/@amcharts/amcharts5-geodata@5/json/worldLow.json",
+    "https://unpkg.com/@amcharts/amcharts5-geodata@5/json/worldLow.json",
+    "https://cdn.jsdelivr.net/npm/@amcharts/amcharts5-geodata@5/worldLow.js",
+    "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson",
+    "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson"
+  ],
+  high: [
+    "https://cdn.jsdelivr.net/npm/@amcharts/amcharts5-geodata@5/json/worldHigh.json",
+    "https://unpkg.com/@amcharts/amcharts5-geodata@5/json/worldHigh.json",
+    "https://cdn.jsdelivr.net/npm/@amcharts/amcharts5-geodata@5/worldHigh.js",
+    "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson"
+  ]
+};
+const geoCache = {}, geoWait = {};
+function geoSlim(j) {
+  const r = n => Math.round(n * 1000) / 1000;
+  const ring = a => Array.isArray(a[0]) ? a.map(ring) : [r(a[0]), r(a[1])];
+  const features = (j.features || []).filter(f => f && f.geometry).map(f => {
+    const p = f.properties || {};
+    return { type: "Feature", properties: { name: p.name || p.ADMIN || p.NAME || p.admin || "" }, geometry: { type: f.geometry.type, coordinates: ring(f.geometry.coordinates) } };
+  });
+  return { type: "FeatureCollection", features };
+}
+async function geoFetch(kind) {
+  for (const u of GEO_SRC[kind]) {
+    try {
+      const r = await fetch(u, { headers: { "user-agent": "spotlight-quiz" } }); if (!r.ok) continue;
+      let t = await r.text(), j = null;
+      try { j = JSON.parse(t); } catch (e) { const a = t.indexOf("{"), b = t.lastIndexOf("}"); if (a >= 0 && b > a) { try { j = JSON.parse(t.slice(a, b + 1)); } catch (e2) { try { j = Function('"use strict";return (' + t.slice(a, b + 1) + ")")(); } catch (e3) {} } } }
+      if (!j || !Array.isArray(j.features) || j.features.length < 100) continue;
+      const body = Buffer.from(JSON.stringify(geoSlim(j)));
+      console.log(`Map data (${kind}) loaded from ${u}: ${j.features.length} countries, ${Math.round(body.length / 1024)} KB`);
+      return { body, gz: zlib.gzipSync(body), src: u };
+    } catch (e) {}
+  }
+  return null;
+}
+function geoGet(kind) {
+  if (geoCache[kind]) return Promise.resolve(geoCache[kind]);
+  if (!geoWait[kind]) geoWait[kind] = geoFetch(kind).then(d => { geoWait[kind] = null; if (d) geoCache[kind] = d; return d; });
+  return geoWait[kind];
+}
+setTimeout(() => { geoGet("low").then(() => geoGet("high")); }, 1500); /* warm the cache at start-up */
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   try {
@@ -241,6 +291,13 @@ const server = http.createServer(async (req, res) => {
       return fs.createReadStream(PAGE).pipe(res);
     }
     if (url.pathname === "/healthz") return json(res, 200, { ok: true });
+    if (req.method === "GET" && (url.pathname === "/geo/low.json" || url.pathname === "/geo/high.json")) {
+      const d = await geoGet(url.pathname.includes("high") ? "high" : "low");
+      if (!d) return json(res, 503, { error: "map data unavailable" });
+      const gz = /\bgzip\b/.test(req.headers["accept-encoding"] || "");
+      res.writeHead(200, Object.assign({ "content-type": "application/json", "cache-control": "public, max-age=604800", "access-control-allow-origin": "*" }, gz ? { "content-encoding": "gzip" } : {}));
+      return res.end(gz ? d.gz : d.body);
+    }
     if (url.pathname === "/api/config") return json(res, 200, { ai: !!API_KEY, auth: SB_ON });
     if (url.pathname.startsWith("/api/auth/")) { await ready; return authRoute(req, res, url); }
     if (url.pathname === "/api/sample" && req.method === "POST") {
