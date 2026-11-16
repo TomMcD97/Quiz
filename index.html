@@ -3316,6 +3316,7 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -6433,9 +6434,9 @@ async function loadHomeDaily(){
     gi.innerHTML = (g ? `<div class="row"><div class="scoreline num">${Number(g.score||0).toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts · ${g.n} word${g.n===1?"":"s"}</span></div></div><div class="row"><button class="btn" data-act="dgrid">See results</button></div>` : `<div class="row"><button class="btn spot" data-act="dgrid">Play today's grid</button></div>`) + `<div id="homegridlb"></div>`;
     if(app.db) subscribeLB(`${DG_DB}/${key}/scores`, "#homegridlb", 5, "Today's grid leaderboard"); }
 }
-const DQ_SALT=71; const DAY0=Math.floor(Date.UTC(2026,10,16)/864e5)+DQ_SALT; /* 16 Nov 2026: start of the current daily pack order */ /* moves every pool's daily position on, so a reset gives a completely fresh set */
-const DQ_LS="sq-dq10-", DG_LS="sq-grid2-", DQ_DB="dq10", DG_DB="dg2", DQ_RESET_DAY="2026-11-16"; /* 16 Nov 2026: fresh keys for the new 15-question daily */ /* daily questions replaced on 14 Nov 2026 */ /* fresh keys: the daily quiz and grid were reset on 14 Nov 2026 */
-function calcStreak(){ let n=0; const d=new Date(); for(let i=0;i<400;i++){ const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); if(LS.get(DQ_LS+k)||LS.get("sq-dq9-"+k)||LS.get("sq-dq8-"+k)||LS.get("sq-dq7-"+k)||LS.get("sq-dq6-"+k)||LS.get("sq-dq5-"+k)||LS.get("sq-dq4-"+k)||LS.get("sq-dq3-"+k)||LS.get("sq-dq2-"+k)||LS.get("sq-daily-"+k)) n++; else if(i>0) break; d.setDate(d.getDate()-1); } return n; }
+const DQ_SALT=113; const DAY0=Math.floor(Date.UTC(2026,10,16)/864e5)+DQ_SALT-1; /* -1: the 16 Nov afternoon reset moves every pool on one step */ /* 16 Nov 2026: start of the current daily pack order */ /* moves every pool's daily position on, so a reset gives a completely fresh set */
+const DQ_LS="sq-dq11-", DG_LS="sq-grid2-", DQ_DB="dq11", DG_DB="dg2", DQ_RESET_DAY="2026-11-16"; /* 16 Nov 2026: fresh keys for the new 15-question daily */ /* daily questions replaced on 14 Nov 2026 */ /* fresh keys: the daily quiz and grid were reset on 14 Nov 2026 */
+function calcStreak(){ let n=0; const d=new Date(); for(let i=0;i<400;i++){ const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); if(LS.get(DQ_LS+k)||LS.get("sq-dq10-"+k)||LS.get("sq-dq9-"+k)||LS.get("sq-dq8-"+k)||LS.get("sq-dq7-"+k)||LS.get("sq-dq6-"+k)||LS.get("sq-dq5-"+k)||LS.get("sq-dq4-"+k)||LS.get("sq-dq3-"+k)||LS.get("sq-dq2-"+k)||LS.get("sq-daily-"+k)) n++; else if(i>0) break; d.setDate(d.getDate()-1); } return n; }
 
 /* ---------------- party join / host ---------------- */
 function localParty(){
@@ -8467,7 +8468,7 @@ function playFlags(){ return {acct:app.acct?app.acct.id:null, guest:ACCT.on&&!ap
 function dailyBegin(){
   if(D.i===0 && !LS.get(DQ_LS+D.key)){ /* counts as your go from the first question: refreshing doesn't give a fresh start */
     LS.set(DQ_LS+D.key, {inProgress:1, score:0, pts:[], at:Date.now(), ...playFlags()});
-    if(app.acct) window.SQ_AUTH.saveProfile({dq:{[D.key]:{score:0, v10:1}}}).catch(()=>{}); }
+    if(app.acct) window.SQ_AUTH.saveProfile({dq:{[D.key]:{score:0, v11:1}}}).catch(()=>{}); }
   D.phase="q"; D.end=Date.now()+DDUR[D.qs[D.i].t]*1000; D.start=Date.now(); D.draft=null; renderDaily(); }
 function dailyGeoTag(q){ return q.t==="pin"?"Where in the world":q.t==="ctry"?"No names on the map":""; }
 function dailyAnswer(v){
@@ -8480,7 +8481,7 @@ async function dailyFinishStale(prev){ /* left part-way through: it ends with th
   const pts=(prev.pts||[]).map(x=>x||0), score=pts.reduce((a,b)=>a+b,0);
   const res={score, pts, at:prev.at||Date.now(), acct:prev.acct||null, guest:prev.guest||0, unfinished:1};
   LS.set(DQ_LS+D.key, res);
-  if(app.acct && res.acct===app.acct.id){ window.SQ_AUTH.saveProfile({dq:{[D.key]:{score, v10:1}}}).catch(()=>{}); await postScore("dq", D.key, res); }
+  if(app.acct && res.acct===app.acct.id){ window.SQ_AUTH.saveProfile({dq:{[D.key]:{score, v11:1}}}).catch(()=>{}); await postScore("dq", D.key, res); }
   return res;
 }
 async function postScore(kind, key, res){
@@ -8496,7 +8497,7 @@ async function dailyFinish(){
   const st=LS.get(DQ_LS+D.key)||{}, fl=st.inProgress?{acct:st.acct||null, guest:st.guest||0}:playFlags();
   const res={score, max:dailyMax(D.qs), pts:D.pts, pmax:D.qs.map(q=>DMAX[q.t]||3), src:D.src, at:Date.now(), ...fl};
   LS.set(DQ_LS+D.key, res); D.result=res; D.phase="done"; renderDaily();
-  if(app.acct) window.SQ_AUTH.saveProfile({dq:{[D.key]:{score, v10:1}}}).catch(()=>{});
+  if(app.acct) window.SQ_AUTH.saveProfile({dq:{[D.key]:{score, v11:1}}}).catch(()=>{});
   await postScore("dq", D.key, res); return;
 }
 function safeSeg(s){ return String(s).replace(/[^A-Za-z0-9_\-.~:@+]/g,"_").slice(0,120); }
@@ -8650,7 +8651,7 @@ function acctApply(p, quiet){
   app.acct=p;
   if(p.name){ me.nick=p.name; LS.set("sq-nick",p.name); const ni=$("#nick"); if(ni) ni.value=p.name; }
   if(p.av && validAv(p.av) && p.av!==me.av){ me.av=p.av; LS.set("sq-av",p.av); if(isToonAv(p.av)) LS.set("sq-av-custom",p.av); }
-  for(const [d,v] of Object.entries(p.dq||{})) if(!LS.get(DQ_LS+d) && !(d===DQ_RESET_DAY && !v.v10)) LS.set(DQ_LS+d,{score:v.score, pts:[], posted:1, acct:p.id, guest:v.guest||0});
+  for(const [d,v] of Object.entries(p.dq||{})) if(!LS.get(DQ_LS+d) && !(d===DQ_RESET_DAY && !v.v11)) LS.set(DQ_LS+d,{score:v.score, pts:[], posted:1, acct:p.id, guest:v.guest||0});
   for(const [d,v] of Object.entries(p.dg||{})) if(!LS.get(DG_LS+d)) LS.set(DG_LS+d,{score:v.score, n:v.n, words:[], posted:1, acct:p.id, guest:v.guest||0});
   const up={dq:{},dg:{}}; let any=false; /* results from before logging in, so streaks follow you */
   for(let i=0;i<60;i++){ const k=dayKeyBack(i); const a=LS.get(DQ_LS+k), g=LS.get(DG_LS+k);
