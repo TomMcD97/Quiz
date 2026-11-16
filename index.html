@@ -1177,6 +1177,25 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .rdy-p.on i{display:grid}
 .rdy-count{font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;color:var(--muted)}.rdy-count b{color:var(--ink);font-size:15px}
 .rdy-act{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* Higher or Lower */
+.hl-wrap{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:12px;align-items:stretch;margin:6px 0 14px}
+.hl-card{display:grid;align-content:start;gap:8px;padding:18px;border:1px solid var(--line);background:rgba(255,255,255,.03);min-width:0}
+.hl-card.a{border-color:var(--line2,var(--line))}
+.hl-card.b{border-style:dashed}
+.hl-card.b.shown{border-style:solid;border-color:var(--acc);box-shadow:0 0 26px -10px var(--acc-glow)}
+.hl-l{font-family:var(--f-display);font-size:clamp(17px,2.4vw,22px);line-height:1.2;text-wrap:balance}
+.hl-v{font-family:var(--f-display);font-size:clamp(28px,5vw,44px);line-height:1;color:var(--ink);margin-top:auto}
+.hl-card.b .hl-v{color:var(--muted)}.hl-card.b.shown .hl-v{color:var(--acc);animation:hlPop .5s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes hlPop{from{transform:scale(.6);opacity:0}}
+.hl-vs{align-self:center;font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.hl-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hl-b{justify-content:center;gap:10px;font-size:18px;font-weight:700;min-height:60px}
+.hl-ar{font-size:14px}
+.hl-b.hl-rv{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px 10px;min-width:0}
+.hl-lab{display:inline-flex;align-items:center;gap:10px}
+.hl-who{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;max-width:100%}.hl-b.up .hl-ar{color:var(--good,#3BCF86)}.hl-b.dn .hl-ar{color:#ff6b6b}
+@media (max-width:620px){.hl-wrap{grid-template-columns:minmax(0,1fr)}.hl-vs{justify-self:center}.hl-card{padding:14px}}
 </style>
 <style id="sq-fixes">
 /* clear right / wrong colours */
@@ -3275,6 +3294,8 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -4346,6 +4367,7 @@ function parseNum(s){ s=String(s||"").trim().toLowerCase().replace(/,/g,"").repl
 
 /* ---------------- rounds ---------------- */
 const ICON = {
+  hl:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 14V4M3.5 7.5 7 4l3.5 3.5"/><path d="M17 10v10M13.5 16.5 17 20l3.5-3.5"/></svg>',
   mm:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21v-4m10 4v-4M5 17h14M7 17V9a5 5 0 0 1 10 0v8"/><path d="M12 2v2"/></svg>',
   gk:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"/></svg>',
   rank:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h3v-4H4zM10.5 18h3V10h-3zM17 18h3V5h-3z"/><path d="M3 21h18"/></svg>',
@@ -4370,11 +4392,12 @@ const RT = {
 };
 RT.sp={name:"Speed Round", desc:"The grand finale. Four topics, three quick-fire questions each. Scores are hidden until the end. A right answer is worth 150 points the moment the question appears, and the points count down as the clock runs. A wrong answer loses 50, so don't guess wildly.", def:12, min:12, max:12, dur:10, last:true};
 RT.lead={name:"Beat the Leader", desc:"Whoever's top of the scores plays alone against everyone else as one team. Three questions on each topic, and the first answer in decides each one: a right answer wins it for that side, a wrong answer hands it to the other side. The leader scores 150; the team scores 100 each. Needs 2+ players.", def:9, min:6, max:12, dur:15, minPlayers:2};
+RT.hl={name:"Higher or Lower", desc:"One thing is shown with its number. Is the next one higher or lower? Each answer becomes the next thing to beat. 100 points if right, plus 50 for the fastest right answer.", def:8, min:3, max:15, dur:15};
 RT.mf={name:"Minefield", desc:"Take turns picking from a grid of 12 answers. Most fit the category but some are traps. Right picks score 100, traps lose 50.", def:3, min:1, max:5, dur:15};
 
 /* one-line summaries for the game setup list (the full rules show at the start of each round) */
-RT.mm.short="Everyone picks their own subject and answers questions on it."; RT.gk.short="Multiple choice. Bonus for the fastest right answer."; RT.rank.short="Put five things in the right order."; RT.est.short="Slide to your best guess. Closest wins."; RT.uniq.short="Give a right answer nobody else gives. 3+ players."; RT.ctry.short="Tap the country on a map with no names."; RT.pin.short="Drop a pin on the world map. Closest wins."; RT.grid.short="Find words by joining touching letters."; RT.sp.short="The finale: quick-fire topics. Points count down from 150, scores hidden till the end."; RT.lead.short="The leader plays alone against everyone else. 2+ players."; RT.mf.short="Take turns picking answers. Avoid the traps."; 
-const ROUND_ORDER = ["gk","est","rank","pin","ctry","mf","grid","uniq","lead","sp"]; /* Specialist Subject ("mm") switched off for now */
+RT.hl.short="Is the next one higher or lower? A chain of comparisons.";RT.mm.short="Everyone picks their own subject and answers questions on it."; RT.gk.short="Multiple choice. Bonus for the fastest right answer."; RT.rank.short="Put five things in the right order."; RT.est.short="Slide to your best guess. Closest wins."; RT.uniq.short="Give a right answer nobody else gives. 3+ players."; RT.ctry.short="Tap the country on a map with no names."; RT.pin.short="Drop a pin on the world map. Closest wins."; RT.grid.short="Find words by joining touching letters."; RT.sp.short="The finale: quick-fire topics. Points count down from 150, scores hidden till the end."; RT.lead.short="The leader plays alone against everyone else. 2+ players."; RT.mf.short="Take turns picking answers. Avoid the traps."; 
+const ROUND_ORDER = ["gk","hl","est","rank","pin","ctry","mf","grid","uniq","lead","sp"]; /* Specialist Subject ("mm") switched off for now */
 
 /* ---------------- built-in question bank ---------------- */
 const BANK = {
@@ -6468,6 +6491,7 @@ function botGridWords(grid){ if(!DSORT) return []; const L=grid.map(c=>c.toLower
   for(let i=0;i<16;i++) go(i,L[i],1<<i); return [...out]; }
 function botAnswer(t, Q, q, L){
   const r=Math.random;
+  if(t==="hl") return r()<Math.min(.95,L.acc+.1) ? Q.ans : 1-Q.ans;
   if(t==="gk"||t==="sp"||t==="lead"){ if(r()<L.acc) return Q.ans; const w=[0,1,2,3].filter(i=>i!==Q.ans); return w[Math.floor(r()*w.length)]; }
   if(t==="est"){ const g=(r()+r()+r()-1.5)*1.6; let v=Q.ans*(1+g*L.err*2); v=Math.max(q.min, Math.min(q.max, v)); return q.int?Math.round(v):+v.toPrecision(3); }
   if(t==="rank"){ const a=[...Q.correct], sw=r()<L.acc?0:1+Math.floor(r()*3); for(let k=0;k<sw;k++){ const i=Math.floor(r()*(a.length-1)); [a[i],a[i+1]]=[a[i+1],a[i]]; } return a.join(","); }
@@ -6569,6 +6593,7 @@ async function buildRound(r, ps){
   if(r.t==="sp") return {t:"sp", qs:await buildSpeed()};
   if(r.t==="lead") return {t:"lead", qs:(await buildSpeed(Math.max(2,Math.ceil(r.n/3)))).slice(0,r.n)};
   if(r.t==="ctry"){ GeoData.load(); return {t:"ctry", qs:ctryPick(r.n)}; }
+  if(r.t==="hl") return {t:"hl", qs:hlBuild(r.n)};
   let qs=[];
   /* Great Minds: there must be plenty more valid answers than players, so a clash isn't forced */
   const uMin=Math.max(6, (ps&&ps.length||players().length)*2), keep=r.t==="uniq"?(x=>Array.isArray(x[1]) && x[1].length>=uMin):null;
@@ -6955,6 +6980,7 @@ function nextQuestion(){
   if((R.t==="sp"||R.t==="lead") && Q.tq===1 && G.tcard!==G.ri+"-"+G.qi){ G.tcard=G.ri+"-"+G.qi; G.qi--; G.phase="tcard"; G.q=null; G.rev=null; G.tc={t:R.t, topic:Q.topic, tn:Q.tn, tof:Q.tof||4}; G.adv=3; hostAdvAt=Date.now()+3200; pushState(); return; }
   const pq={k:G.gid+"-"+G.ri+"-"+G.qi, t:R.t, text:Q.text, dur:durFor(R.t), n:G.qi+1, of:R.qs.length};
   if(R.t==="gk") pq.opts=Q.opts;
+  if(R.t==="hl"){ pq.opts=Q.opts; pq.fam=Q.fam; pq.famName=Q.famName; pq.a=Q.a; pq.b={l:Q.b.l}; }
   if(R.t==="sp"||R.t==="lead"){ pq.opts=Q.opts; pq.topic=Q.topic; pq.tn=Q.tn; pq.tq=Q.tq; pq.tof=Q.tof||4; }
   if(R.t==="lead") pq.lead=G.lead&&G.lead.p;
   if(R.t==="est"){ pq.unit=Q.unit; pq.min=Q.min; pq.max=Q.max; pq.int=!!Q.int; }
@@ -6976,7 +7002,7 @@ function gsRoundEnd(t, pts){ const g=gsOf(), st=G.st||{}; const m=g.pts[t]||(g.p
   const snap={}; for(const p of Object.keys(G.scores||{})) snap[p]=(G.scores[p]||0)+(t==="sp"?((G.sp||{})[p]||0):0); (g.hist||(g.hist=[])).push([t, snap]);
   if(st.pin && (!g.pin || st.pin.km<g.pin.km)) g.pin=st.pin; if(st.est && (!g.est || st.est.rel<g.est.rel)) g.est=st.est; if(st.word && (!g.word || st.word.w.length>g.word.w.length)) g.word=st.word; }
 function updStats(t, Q, A, rev){
-  if(["gk","sp","ctry","uniq","lead"].includes(t)){ for(const p of Object.keys(G.scores||{})){ const r=rev.rows.find(x=>x.p===p), a=A[p], ms=a && typeof a.t==="number" ? Math.max(0,a.t) : null; gsAns(p, !!(r && r.pts>0), ms, t); } }
+  if(["gk","hl","sp","ctry","uniq","lead"].includes(t)){ for(const p of Object.keys(G.scores||{})){ const r=rev.rows.find(x=>x.p===p), a=A[p], ms=a && typeof a.t==="number" ? Math.max(0,a.t) : null; gsAns(p, !!(r && r.pts>0), ms, t); } }
   const st=G.st||(G.st={c:{}, n:0, at:{}}); st.n++;
   for(const r of rev.rows){
     const a=A[r.p], ms=a && typeof a.t==="number" ? Math.max(0, a.t) : null;
@@ -6998,7 +7024,7 @@ async function closeQuestion(){
   if(R.t==="sp"){ G.sp=G.sp||{}; for(const r of rev.rows){ if(r.pts) G.sp[r.p]=(G.sp[r.p]||0)+r.pts; } }
   else for(const r of rev.rows){ if(r.pts){ G.scores[r.p]=(G.scores[r.p]||0)+r.pts; G.rs[r.p]=(G.rs[r.p]||0)+r.pts; } }
   try{ updStats(R.t, Q, A, rev); }catch(e){ console.warn("stats", e); }
-  G.rev=rev; G.phase="reveal"; G.adv = (R.t==="pin"||R.t==="ctry"||R.t==="rank") ? 7 : (R.t==="est"||R.t==="uniq") ? 7 : 3; hostAdvAt=Date.now()+G.adv*1000; /* 3 seconds on the answer (7 for map and ranking results), then straight on */
+  G.rev=rev; G.phase="reveal"; G.adv = (R.t==="pin"||R.t==="ctry"||R.t==="rank") ? 7 : (R.t==="est"||R.t==="uniq") ? 7 : R.t==="hl" ? 5 : 3; hostAdvAt=Date.now()+G.adv*1000; /* 3 seconds on the answer (7 for map and ranking results), then straight on */
   pushState();
 }
 async function scoreQuestion(t, Q, A){
@@ -7013,14 +7039,14 @@ async function scoreQuestion(t, Q, A){
     rows.forEach(r=>delete r.ms);
     return {t, items:Q.items, correct:Q.correct, vals:Q.vals, lo:Q.lo, hi:Q.hi, rows};
   }
-  if(t==="gk"){
+  if(t==="gk"||t==="hl"){
     const rows=players().map(p=>({p:p.pid, a: A[p.pid] ? Number(A[p.pid].v) : null, ms: A[p.pid] ? A[p.pid].t : null}));
     for(const pid of ps) if(!rows.find(r=>r.p===pid)) rows.push({p:pid, a:Number(A[pid].v), ms:A[pid].t});
     const right=rows.filter(r=>r.a===Q.ans).sort((a,b)=>a.ms-b.ms);
     rows.forEach(r=>{ r.ok = r.a===Q.ans; r.pts = r.ok?100:0; });
     if(right.length && rows.length>1){ right[0].pts+=50; right[0].fast=true; }
     rows.forEach(r=>delete r.ms);
-    return {t, ans:Q.ans, opts:Q.opts, rows};
+    return t==="hl" ? {t, ans:Q.ans, opts:Q.opts, b:Q.b, rows} : {t, ans:Q.ans, opts:Q.opts, rows};
   }
   if(t==="lead"){
     const L=G.lead&&G.lead.p, rows=players().map(p=>({p:p.pid, a: A[p.pid] ? Number(A[p.pid].v) : null, ms: A[p.pid] ? A[p.pid].t : null}));
@@ -7426,7 +7452,7 @@ function lobbyHTML(){
   } else h+=`<div class="lb-go"><div class="lb-go-meta"><span class="eyebrow">Ready up</span><span class="num" id="lbgo">${rdyCounts().r} of ${ps.length} ready</span></div><span data-rdybtn>${rdyBtnHTML("I'm ready")}</span><button class="btn ghost small" data-act="leave">Leave party</button></div>`;
   return h;
 }
-const LEN={short:{gk:5,est:3,rank:3,pin:3,ctry:3,uniq:3,mm:5,grid:1,mf:2,sp:12},medium:{gk:8,est:5,rank:4,pin:5,ctry:5,uniq:5,mm:8,grid:1,mf:3,sp:12},long:{gk:12,est:8,rank:6,pin:8,ctry:8,uniq:8,mm:10,grid:2,mf:4,sp:12}};
+const LEN={short:{gk:5,hl:5,est:3,rank:3,pin:3,ctry:3,uniq:3,mm:5,grid:1,mf:2,sp:12},medium:{gk:8,hl:8,est:5,rank:4,pin:5,ctry:5,uniq:5,mm:8,grid:1,mf:3,sp:12},long:{gk:12,hl:12,est:8,rank:6,pin:8,ctry:8,uniq:8,mm:10,grid:2,mf:4,sp:12}};
 function lenOf(rounds){ for(const k in LEN){ if(rounds.every(r=>r.n===Math.max(RT[r.t].min,Math.min(RT[r.t].max,LEN[k][r.t])))) return k; } return "custom"; }
 function estMinutes(rounds, np){ let sec=0; for(const r of rounds){ if(!r.on) continue; const T=RT[r.t]; if(r.t==="mf") sec+=r.n*110; else if(r.t==="grid") sec+=r.n*50; else sec+=r.n*(durFor(r.t)*.7+4); sec+=25; } return Math.max(1,Math.round(sec/60)); }
 function diffPickHTML(){ const cur=S.diff==="hard"?"hard":"easy", lab={easy:"Easy",hard:"Hard"}, note=cur==="hard"?"No country names on the map, shorter timers, tougher questions":"Country names on the map, more time, friendlier questions";
@@ -7507,11 +7533,65 @@ document.addEventListener("keydown", e=>{
   else if(e.key==="ArrowDown" && row.nextElementSibling) list.insertBefore(row.nextElementSibling, row);
   rkRenumber(list); row.focus();
 });
+
+/* ---------- Higher or Lower: a chain of things, each one compared with the last ---------- */
+const HL_BANK={
+ count:{name:"How many?", items:[
+  ["People living in Iceland",390000],["Capacity of Wembley Stadium",90000],["Capacity of Old Trafford",74310],["Capacity of Anfield",61276],["Capacity of the Melbourne Cricket Ground",100024],["Capacity of Croke Park",82300],
+  ["People living in Monaco",38000],["People living in Wales (2021 census)",3107500],["People living in Scotland (2022 census)",5436600],["People living in Northern Ireland (2021 census)",1903100],["People living in London (2021 census)",8799800],
+  ["People living in Vatican City (about)",800],["MPs in the House of Commons",650],["Member states of the United Nations",193],["Bones in an adult human body",206],["Keys on a standard piano",88],["Pokémon in the original Red and Blue games",151],
+  ["Episodes of Friends",236],["Premier League goals scored by Alan Shearer",260],["Premier League goals scored by Wayne Rooney",208],["Test wickets taken by Shane Warne",708],["Test runs scored by Sachin Tendulkar",15921],["Olympic medals won by Michael Phelps",28],
+  ["Copies of Michael Jackson's 'Thriller' sold (estimated)",70000000],["Copies of the Harry Potter books sold (estimated)",600000000],["Steps to the top of the Monument in London",311],["Horses allowed to run in the Grand National (since 2024)",34],
+  ["Days in one year on Mars",687],["Miles round the M25",117],["Islands in the Philippines",7641],["Countries in Africa",54],["Seats in the US Senate",100],["Weeks '(Everything I Do) I Do It for You' spent at UK number one",16],["Characters allowed in an original tweet",140],
+  ["Squares on a chessboard",64],["Teeth in a full adult set",32],["Episodes of Fawlty Towers",12],["Countries in the European Union",27],["Capacity of Lord's Cricket Ground",31100],["Capacity of Murrayfield",67144],["Capacity of Celtic Park",60411],
+  ["Capacity of the O2 Arena, London",20000],["Seats in the Royal Albert Hall",5272],["England caps won by Peter Shilton",125],["Olympic gold medals won by Usain Bolt",8],["Formula 1 race wins by Michael Schumacher",91],
+  ["Test runs scored by Alastair Cook",12472],["Grand Slam singles titles won by Roger Federer",20],["Grand Slam singles titles won by Serena Williams",23],["James Bond films made by Eon (up to No Time to Die)",25],["Stars on the US flag",50],["Cards in a standard deck",52]]},
+ money:{name:"Worldwide box office", items:[
+  ["Avatar (2009)",2923000000],["Avengers: Endgame",2799000000],["Titanic",2264000000],["Star Wars: The Force Awakens",2071000000],["Avengers: Infinity War",2052000000],["Spider-Man: No Way Home",1922000000],["Jurassic World",1671000000],
+  ["The Lion King (2019)",1663000000],["Top Gun: Maverick",1496000000],["Barbie",1446000000],["Black Panther",1349000000],["Toy Story 3",1067000000],["The Dark Knight",1006000000],["Oppenheimer",975000000],["Bohemian Rhapsody",911000000],
+  ["Inception",837000000],["E.T. the Extra-Terrestrial (all releases)",793000000],["Mamma Mia!",610000000],["Jaws (all releases)",476000000],
+  ["Frozen",1281000000],["The Avengers (2012)",1519000000],["Incredibles 2",1243000000],["Aquaman",1152000000],["Skyfall",1109000000],["The Super Mario Bros. Movie",1362000000],["Inside Out 2",1699000000],["Forrest Gump",678000000]]},
+ height:{name:"How tall?", items:[
+  ["Burj Khalifa",828],["Tokyo Skytree",634],["CN Tower, Toronto",553],["One World Trade Center",541],["Empire State Building (to the tip)",443],["Eiffel Tower",330],["The Shard",310],["The Gherkin",180],["Blackpool Tower",158],
+  ["Great Pyramid of Giza (as built)",147],["Big Ben's tower",96],["Statue of Liberty (ground to torch)",93],["Leaning Tower of Pisa",56],["Nelson's Column",52],["Christ the Redeemer (statue only)",30],["Angel of the North",20],
+  ["Mount Everest",8849],["K2",8611],["Kilimanjaro",5895],["Mont Blanc",4806],["Ben Nevis",1345],["Snowdon (Yr Wyddfa)",1085],["Scafell Pike",978],
+  ["The London Eye",135],["Golden Gate Bridge towers",227],["Taipei 101",508],["Petronas Towers",452],["Space Needle, Seattle",184],["Arc de Triomphe",50],["Washington Monument",169],["Matterhorn",4478],["Mount Fuji",3776],["Denali",6190],["Aconcagua",6961]]},
+ length:{name:"How long?", items:[
+  ["River Thames",346],["River Severn",354],["River Shannon",360],["River Seine",777],["River Rhine",1230],["River Danube",2850],["River Volga",3530],["Mississippi River",3730],["Yangtze River",6300],["River Amazon",6400],["River Nile",6650],
+  ["M1 motorway",311],["Channel Tunnel",50],["Hadrian's Wall",117],["Panama Canal",82],["Suez Canal",193],["Great Wall of China (all sections)",21196],["A marathon",42],["Width of the English Channel at its narrowest",33],["London to Paris as the crow flies",344],["London to Edinburgh as the crow flies",534]]},
+ age:{name:"How old were they?", items:[
+  ["Mozart, when he died",35],["Elvis Presley, when he died",42],["John Lennon, when he died",40],["Freddie Mercury, when he died",45],["Michael Jackson, when he died",50],["Queen Elizabeth II, when she died",96],["Kurt Cobain, when he died",27],
+  ["Abraham Lincoln, when he died",56],["John F. Kennedy, when he died",46],["William Shakespeare, when he died",52],["Winston Churchill, when he died",90],["Albert Einstein, when he died",76],["Charles Dickens, when he died",58],["Bob Marley, when he died",36],
+  ["David Bowie, when he died",69],["Prince, when he died",57],["Whitney Houston, when she died",48],["Tupac Shakur, when he died",25],["Pelé, when he died",82],["Queen Victoria, when she died",81],["Henry VIII, when he died",55]]},
+ year:{name:"Which came first?", items:[
+  ["Google founded",1998],["YouTube founded",2005],["Facebook launched",2004],["Amazon founded",1994],["Apple founded",1976],["Microsoft founded",1975],["Nintendo founded",1889],["Coca-Cola first sold",1886],["Manchester United founded (as Newton Heath)",1878],
+  ["The BBC founded",1922],["The NHS founded",1948],["The first iPhone released",2007],["The first Harry Potter book published",1997],["Spotify launched",2008],["Instagram launched",2010],["Twitter launched",2006],["Wikipedia launched",2001],["Minecraft fully released",2011],
+  ["LEGO founded",1932],["First Eurovision Song Contest",1956],["First Premier League season kicked off",1992],["First Glastonbury Festival",1970],["Tesco founded",1919],["Cadbury founded",1824],["Rolls-Royce founded",1906],["London Underground opened",1863],
+  ["First person walks on the Moon",1969],["The Berlin Wall falls",1989],["The Titanic sinks",1912],["The first Toy Story film",1995],["Euro notes and coins arrive",2002],["The first Doctor Who episode",1963],["The Beatles' first single",1962],
+  ["Battle of Hastings",1066],["Magna Carta sealed",1215],["Great Fire of London",1666],["First FA Cup final",1872],["First Wimbledon Championships",1877]]}
+};
+function hlFmt(fam, v){ if(fam==="money") return v>=1e9?`$${(v/1e9).toFixed(2).replace(/\.?0+$/,"")} billion`:`$${Math.round(v/1e6)} million`;
+  if(fam==="height") return `${v.toLocaleString("en-GB")} m`; if(fam==="length") return `${v.toLocaleString("en-GB")} km`; if(fam==="age") return `${v} years old`; if(fam==="year") return String(v);
+  return v>=1e6 ? `${(v/1e6).toFixed(v>=1e8?0:1).replace(/\.0$/,"")} million` : v.toLocaleString("en-GB"); }
+function hlBuild(n){
+  const fams=Object.keys(HL_BANK), last=LS.get("sq-hl-last")||""; const pool=fams.filter(f=>f!==last); const fam=pool[Math.floor(Math.random()*pool.length)]; LS.set("sq-hl-last",fam);
+  const items=HL_BANK[fam].items.map(x=>({x, s:seenAt["hl:"+norm(x[0])]||0})).sort((a,b)=>a.s-b.s||Math.random()-.5).map(o=>o.x);
+  const chain=[items[0]]; for(const it of items.slice(1)){ if(chain.length>n) break; if(it[1]!==chain[chain.length-1][1]) chain.push(it); }
+  const c=shuffle(chain); for(let i=1;i<c.length;i++) if(c[i][1]===c[i-1][1]){ const j=(i+1)%c.length; [c[i],c[j]]=[c[j],c[i]]; }
+  c.forEach(x=>{ seenAt["hl:"+norm(x[0])]=Date.now(); }); saveSeen();
+  const yr=fam==="year", opts=yr?["Later","Earlier"]:["Higher","Lower"], qs=[];
+  for(let i=1;i<c.length && qs.length<n;i++){ const A=c[i-1], B=c[i]; qs.push({text: yr?`Did this happen later or earlier?`:`Higher or lower?`, fam, famName:HL_BANK[fam].name, opts, a:{l:A[0], v:A[1], f:hlFmt(fam,A[1])}, b:{l:B[0], v:B[1], f:hlFmt(fam,B[1])}, ans: B[1]>A[1]?0:1}); }
+  return qs; }
+function hlCardsHTML(q, rev){ const b=rev?rev.b:q.b, up=rev? rev.ans===0 : null;
+  return `<div class="hl-wrap"><div class="hl-card a"><span class="eyebrow">${esc(q.famName||"")}</span><b class="hl-l">${esc(q.a.l)}</b><span class="hl-v num">${esc(q.a.f)}</span></div>
+    <div class="hl-vs" aria-hidden="true">vs</div>
+    <div class="hl-card b${rev?" shown":""}"><span class="eyebrow">${rev?(up?(q.fam==="year"?"Later":"Higher"):(q.fam==="year"?"Earlier":"Lower")):"Your call"}</span><b class="hl-l">${esc(b.l)}</b><span class="hl-v num">${rev?esc(b.f):"?"}</span></div></div>`; }
 function answerAreaHTML(q){
   const t=q.t; const done=!!myAns; const late=Date.now()>qLocalEnd;
   if(t==="est") return done ? `<div class="locked">Locked in: <b class="num">${esc(fmtNum(myAns.v, q.unit))}</b>${esc(unitTxt(q.unit))}</div>` : scaleInputHTML("estr", q) + `<div class="row"><span class="maphint grow">Drag the marker along the scale, then lock it in.</span><button class="btn primary" data-act="lockest" id="lockest" disabled>Lock in</button></div>`;
   if(t==="grid") return gridAreaHTML(q, done);
   if(t==="rank") return rankAreaHTML(q, done, late);
+  if(t==="hl") return hlCardsHTML(q,null)+`<div class="hl-btns">${q.opts.map((o,i)=>`<button class="opt hl-b ${i?"dn":"up"} ${myAns&&Number(myAns.v)===i?"sel":""}" data-act="opt" data-i="${i}" ${done||late?"disabled":""}><span class="hl-ar" aria-hidden="true">${i?"▼":"▲"}</span><span>${esc(o)}</span></button>`).join("")}</div>`;
   if(t==="gk"||t==="sp"||t==="lead") return `<div class="opts${t!=="gk"?" sp":""}">${q.opts.map((o,i)=>`<button class="opt ${myAns&&Number(myAns.v)===i?"sel":""}" data-act="opt" data-i="${i}" ${done||late?"disabled":""}><span class="k">${"ABCD"[i]}</span><span>${esc(o)}</span></button>`).join("")}</div>${done?`<div class="locked">Locked in. Waiting for everyone else.</div>`:""}`;
   if(t==="mm" && q.chair!==me.pid) return `<div class="locked">${esc(nameOf(q.chair))} is answering. Watch the timer.</div>`;
   if(t==="pin"||t==="ctry") return `<div class="map" id="map"></div><div class="row"><span class="maphint grow">${done?"Pin locked in.":t==="ctry"?"Tap anywhere inside the country. Drag to move the map, and pinch or use + and − to zoom.":"Tap the map to drop your pin. Drag to move the map, and pinch or use + and − to zoom."}</span>${done?"":`<button class="btn primary" data-act="lockpin" id="lockpin" disabled>Lock in pin</button>`}</div>`;
@@ -7546,6 +7626,10 @@ function revealHTML(q, rev){
   if(rev.t==="rank"){
     h += `<div class="rk-ans"><div class="eyebrow">Correct order · ${esc(rev.lo)} to ${esc(rev.hi.toLowerCase())}</div>${rev.correct.map((it,pos)=>`<div class="rk-row"><span class="rk-n">${pos+1}</span><b>${esc(rev.items[it])}</b><span class="muted num">${esc((rev.vals||[])[pos]||"")}</span></div>`).join("")}</div>`;
     h += `<div class="res">${rev.rows.map(r=>row(r, r.a?`<span class="rk-mini">${r.a.map((it,pos)=>`<i class="${it===rev.correct[pos]?"y":"n"}">${esc(rev.items[it])}</i>`).join("")}</span>`:'<span class="muted">no answer</span>', r.a?(r.ok?(r.fast?"Perfect, and fastest":"Perfect order"):`${r.n} of ${rev.items.length} in the right place`):"")).join("")}</div>`;
+  } else if(rev.t==="hl"){
+    h += hlCardsHTML(q, rev);
+    h += `<div class="hl-btns">${rev.opts.map((o,i)=>{ const who=rev.rows.filter(r=>r.a===i); return `<div class="opt hl-b hl-rv ${i?"dn":"up"} ${i===rev.ans?"right":(who.length?"wrong":"")}"><span class="hl-lab"><span class="hl-ar" aria-hidden="true">${i?"▼":"▲"}</span><span>${esc(o)}</span></span>${who.length?`<span class="hl-who">${who.map(r=>avatar(r.p,"sm",nameOf(r.p))).join("")}</span>`:""}</div>`; }).join("")}</div>`;
+    h += `<div class="res">${rev.rows.map(r=>row(r, r.a==null?'<span class="muted">no answer</span>':esc(rev.opts[r.a]||""), r.fast?"Fastest correct answer":"")).join("")}</div>`;
   } else if(rev.t==="gk"){
     h += `<div class="opts">${rev.opts.map((o,i)=>{ const who=rev.rows.filter(r=>r.a===i); return `<div class="opt ${i===rev.ans?"right":(who.length?"wrong":"")} ${myAns&&Number(myAns.v)===i&&i!==rev.ans?"mine":""}"><span class="k">${"ABCD"[i]}</span><span class="grow">${esc(o)}</span><span class="row" style="gap:4px">${who.map(r=>`${avatar(r.p,"sm",nameOf(r.p))}`).join("")}</span></div>`; }).join("")}</div>`;
     h += `<div class="res">${rev.rows.map(r=>row(r, r.a==null?'<span class="muted">no answer</span>':esc(rev.opts[r.a]||""), r.fast?"Fastest correct answer":"")).join("")}</div>`;
@@ -7609,7 +7693,7 @@ function standingsHTML(title, sub, roundEnd){
 /* seconds until the last (winning) pillar has finished rising; matches Room.setPodium's timing */
 function finalRevealDelay(){ const n=Math.max(1, players().length); return .9+(n-1)*.75+.5+1.7; }
 const SG_COL=["var(--spot,#F5B83D)","#4FA3FF","#FF6B6B","#3DDC97","#C792EA","#FF9F43","#2EC4D6","#F78FB3","#A3D65C","#9AA0A6"];
-const RT_SHORT={gk:"Quiz", est:"Guess", rank:"Rank", pin:"Pin", ctry:"Country", mf:"Mines", grid:"Words", uniq:"Minds", lead:"Leader", sp:"Speed", mm:"Subject"};
+const RT_SHORT={gk:"Quiz", hl:"Hi-Lo", est:"Guess", rank:"Rank", pin:"Pin", ctry:"Country", mf:"Mines", grid:"Words", uniq:"Minds", lead:"Leader", sp:"Speed", mm:"Subject"};
 /* line graph: everyone's running total after each round */
 function scoreGraphSVG(g, ps){
   const hp=g.hp||[], H=g.h||[]; if(H.length<1 || !hp.length) return "";
@@ -8612,6 +8696,7 @@ document.addEventListener("keydown", e=>{
   if(e.key==="Enter" && e.target.id==="topic"){ e.preventDefault(); document.querySelector('[data-act="savetopic"]').click(); }
   if(e.key==="Enter" && e.target.id==="nick"){ e.preventDefault(); readNick(); }
   if(!e.target.closest("input") && S && S.phase==="q" && (S.q.t==="gk"||S.q.t==="sp"||S.q.t==="lead") && !myAns && app.view==="party"){ const i="abcd".indexOf(e.key.toLowerCase()); if(i>=0){ submitAnswer(i); } }
+  if(!e.target.closest("input") && S && S.phase==="q" && S.q.t==="hl" && !myAns && app.view==="party"){ if(e.key==="ArrowUp"||e.key.toLowerCase()==="h"){ e.preventDefault(); submitAnswer(0); } if(e.key==="ArrowDown"||e.key.toLowerCase()==="l"){ e.preventDefault(); submitAnswer(1); } }
 });
 document.addEventListener("change", e=>{ const t=e.target; if(t && t.id==="mkface" && t.files && t.files[0]){ faceEditorOpen(t.files[0]); t.value=""; } else if(t && t.id==="mkphoto" && t.files && t.files[0]){ avatarFromPhoto(t.files[0]); t.value=""; } else if(t && t.dataset && t.dataset.mk){ app.mk[t.dataset.mk]= t.type==="checkbox"?t.checked:t.value; renderMaker(); } });
 document.addEventListener("keydown", e=>{ if(e.key==="Escape" && document.getElementById("mkmodal")) closeMaker(); if(e.key==="Escape" && document.getElementById("acctmodal")) closeAcct(); });
