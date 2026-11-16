@@ -3314,6 +3314,7 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -6337,7 +6338,7 @@ function boot(){
   acctInit();
 }
 /* answer time: never more than 15 seconds a question (10 on Hard); Word Grid keeps its own clock */
-function durFor(t){ const g=(typeof G!=="undefined"&&G)||(typeof S!=="undefined"&&S)||{}, hard=g.diff==="hard"; if(t==="grid") return RT.grid.dur; if(t==="sp") return hard?8:12; if(t==="rank") return hard?25:30; if(t==="ctry") return hard?15:20; if(t==="pin"||t==="est") return hard?15:20; return hard?10:15; }
+function durFor(t){ const g=(typeof G!=="undefined"&&G)||(typeof S!=="undefined"&&S)||{}, hard=g.diff==="hard"; if(t==="grid") return RT.grid.dur; if(t==="sp") return hard?8:12; if(t==="rank") return hard?30:40; if(t==="uniq") return hard?25:35; if(t==="pin"||t==="ctry") return hard?20:30; if(t==="est") return hard?15:20; return hard?10:15; }
 function aiOn(){ return !!app.sample && !app.sampleDenied; }
 async function ask(prompt, tier="default", ms=90000, extra){
   if(!aiOn()) throw new Error("no-ai");
@@ -8455,7 +8456,7 @@ function dailyAcc(q, v){
   return 0;
 }
 function dailyScore(q, v, ms){ const a=dailyAcc(q,v); return (q.t==="gk"||q.t==="hl") ? Math.round(a*dailyAvail(q, ms==null?DDUR[q.t]*1000:ms)) : Math.round(a*100); }
-const DDUR={gk:20, hl:15, est:30, pin:30, ctry:30, rank:30};
+const DDUR={gk:20, hl:15, est:30, pin:35, ctry:35, rank:40};
 const DMAX={gk:100, hl:100, est:100, pin:100, ctry:100, rank:100};
 const DNAME={gk:"Question", hl:"Higher or lower", est:"Guesstimate", pin:"Pin drop", ctry:"Find the country", rank:"Rank it"};
 function dailyMax(qs){ return (qs||[]).reduce((a,q)=>a+(DMAX[q.t]||0),0)||30; }
