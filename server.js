@@ -46,6 +46,23 @@ const ready = (async () => {
   console.log("Supabase: loaded " + Object.keys(store).length + " saved items");
 })();
 const dirty = new Set(), gone = new Set(); let saveT = null;
+/* one-off score corrections the owner asked for, applied once after the store loads (a marker stops them running twice) */
+const FIXES = [
+  { id: "phil-1057-2026-11-17", nick: "PhilEatsToast", score: 1057, kind: "dq" }
+];
+ready.then(() => {
+  for (const f of FIXES) {
+    const mark = "fix/" + f.id; if (store[mark]) continue;
+    const re = f.kind === "dq" ? /^dq\d*\/(\d{4}-\d\d-\d\d)\/scores\/([^/]+)$/ : /^dg\d*\/(\d{4}-\d\d-\d\d)\/scores\/([^/]+)$/;
+    const hits = Object.keys(store).map(k => { const m = re.exec(k); return m && store[k] && String(store[k].nick || "").toLowerCase() === f.nick.toLowerCase() ? { k, day: m[1], id: m[2] } : null; }).filter(Boolean);
+    if (!hits.length) { console.log(`Fix ${f.id}: no score found for ${f.nick}`); continue; }
+    const day = hits.map(h => h.day).sort().pop(); /* their most recent daily */
+    for (const h of hits.filter(h => h.day === day)) { store[h.k] = Object.assign({}, store[h.k], { score: f.score }); save(h.k);
+      const up = "users/" + (store[h.k].uid || h.id); if (store[up] && store[up][f.kind] && store[up][f.kind][day]) { store[up][f.kind][day].score = f.score; save(up); } }
+    store[mark] = { at: Date.now(), day }; save(mark);
+    console.log(`Fix ${f.id}: ${f.nick}'s ${day} score set to ${f.score}`);
+  }
+});
 function save(p) {
   if (p) { dirty.add(p); gone.delete(p); }
   clearTimeout(saveT); saveT = setTimeout(flush, SB_ON ? 300 : 1000);

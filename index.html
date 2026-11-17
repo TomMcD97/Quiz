@@ -1,6 +1,16 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Spotlight Quiz: a live party quiz you play together on your phones.">
-<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+/* your stats */
+.stats-sec{display:grid;gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.stat-card{border:1px solid var(--line);padding:14px;display:grid;gap:10px;background:rgba(255,255,255,.02)}
+.stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+.stat-c{background:var(--bg);padding:10px;display:grid;gap:2px;min-width:0}.stat-c b{font-family:var(--f-display);font-size:clamp(20px,4vw,26px);line-height:1}.stat-c span{font-size:11px;color:var(--muted);font-family:var(--f-mono);letter-spacing:.06em;text-transform:uppercase}
+.stat-c:nth-child(2) b{color:var(--acc)}
+.stat-bars{display:grid;grid-template-columns:repeat(14,1fr);gap:3px;align-items:end;height:54px}
+.stat-bars i{display:block;height:calc(var(--h)*100%);background:var(--acc);opacity:.85;min-height:2px}.stat-bars i.no{background:var(--line);height:2px;opacity:1}
+@media (max-width:420px){.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
 <script>/* Stand-in for the Claude runtime when the game runs on its own server. */
 (function(){
   const NET=(()=>{ let ws=null, id=null, open=false, retry=0; const rooms=new Map(), connFns=new Set();
@@ -6429,14 +6439,15 @@ async function loadHomeDaily(){
   else h += `<div class="row"><button class="btn spot" data-act="daily">Play today's quiz</button>${streak?`<span class="muted">${streak}-day streak</span>`:""}</div>`;
   h += `<div id="homelb"></div>`;
   el.innerHTML = h;
-  if(app.db) subscribeDailyLB(key, "#homelb", 5);
+  if(app.db) subscribeDailyLB(key, "#homelb", 10);
   const gi=$("#gridinfo"); if(gi){ const g=LS.get(DG_LS+key);
     gi.innerHTML = (g ? `<div class="row"><div class="scoreline num">${Number(g.score||0).toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts · ${g.n} word${g.n===1?"":"s"}</span></div></div><div class="row"><button class="btn" data-act="dgrid">See results</button></div>` : `<div class="row"><button class="btn spot" data-act="dgrid">Play today's grid</button></div>`) + `<div id="homegridlb"></div>`;
-    if(app.db) subscribeLB(`${DG_DB}/${key}/scores`, "#homegridlb", 5, "Today's grid leaderboard"); }
+    if(app.db) subscribeLB(`${DG_DB}/${key}/scores`, "#homegridlb", 10, "Today's grid leaderboard"); }
 }
 const DQ_SALT=113; const DAY0=Math.floor(Date.UTC(2026,10,16)/864e5)+DQ_SALT-1; /* -1: the 16 Nov afternoon reset moves every pool on one step */ /* 16 Nov 2026: start of the current daily pack order */ /* moves every pool's daily position on, so a reset gives a completely fresh set */
+var DQ_OLD=["sq-dq10-","sq-dq9-","sq-dq8-","sq-dq7-","sq-dq6-","sq-dq5-","sq-dq4-","sq-dq3-","sq-dq2-","sq-daily-"];
 const DQ_LS="sq-dq11-", DG_LS="sq-grid2-", DQ_DB="dq11", DG_DB="dg2", DQ_RESET_DAY="2026-11-16"; /* 16 Nov 2026: fresh keys for the new 15-question daily */ /* daily questions replaced on 14 Nov 2026 */ /* fresh keys: the daily quiz and grid were reset on 14 Nov 2026 */
-function calcStreak(){ let n=0; const d=new Date(); for(let i=0;i<400;i++){ const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); if(LS.get(DQ_LS+k)||LS.get("sq-dq10-"+k)||LS.get("sq-dq9-"+k)||LS.get("sq-dq8-"+k)||LS.get("sq-dq7-"+k)||LS.get("sq-dq6-"+k)||LS.get("sq-dq5-"+k)||LS.get("sq-dq4-"+k)||LS.get("sq-dq3-"+k)||LS.get("sq-dq2-"+k)||LS.get("sq-daily-"+k)) n++; else if(i>0) break; d.setDate(d.getDate()-1); } return n; }
+function calcStreak(){ let n=0; const d=new Date(); for(let i=0;i<400;i++){ const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); if(LS.get(DQ_LS+k)||DQ_OLD.some(p=>LS.get(p+k))||(app.acct&&app.acct.dq&&app.acct.dq[k]&&!app.acct.dq[k].guest)) n++; else if(i>0) break; d.setDate(d.getDate()-1); } return n; }
 
 /* ---------------- party join / host ---------------- */
 function localParty(){
@@ -8534,7 +8545,7 @@ function renderDaily(){
     const M=resMax(r), f=r.score/M;
     if(f>=0.6) setTimeout(()=>confetti(f>=0.8?180:90), 400);
     const txt=shareText(r);
-    h=`<div class="intro"><div class="eyebrow">Today's score</div><div class="scoreline num">${r.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts</span></div><p>${f>=0.8?"Brilliant.":f>=0.53?"Solid effort.":"Tomorrow's another quiz."} ${calcStreak()>1?`You're on a ${calcStreak()}-day streak.`:""} Come back tomorrow for a new set.</p></div>${guestDone(r)?acctCTA("Guest scores don't go on the leaderboard. Log in before tomorrow's quiz to get ranked."):""}<div class="share" id="sharetxt">${esc(txt)}</div><div class="row"><button class="btn" data-act="copyshare">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div>`;
+    h=`<div class="intro"><div class="eyebrow">Today's score</div><div class="scoreline num">${r.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts</span></div><p>${f>=0.8?"Brilliant.":f>=0.53?"Solid effort.":"Tomorrow's another quiz."} ${calcStreak()>1?`You're on a ${calcStreak()}-day streak.`:""} Come back tomorrow for a new set.</p></div>${guestDone(r)?acctCTA("Guest scores don't go on the leaderboard. Log in before tomorrow's quiz to get ranked."):""}<div class="share" id="sharetxt">${esc(txt)}</div><div class="row"><button class="btn" data-act="copyshare">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div><div style="margin-top:18px">${statsCardHTML("dq")}</div>`;
   }
   el.innerHTML=h;
   if((D.phase==="q"||D.phase==="fb") && (D.qs[D.i].t==="pin"||D.qs[D.i].t==="ctry")){
@@ -8635,6 +8646,27 @@ function acctPromptHTML(){
 }
 async function acctRecheck(){ /* played on another device? fetch the account's days before starting */
   if(!ACCT.on || !app.acct || !window.SQ_AUTH) return; try{ const p=await window.SQ_AUTH.me(); if(p) acctApply(p, true); }catch(e){} }
+/* ---------- your stats: days played, best, average and streaks, for the daily quiz and the word grid ---------- */
+function statDays(kind){ const out={}, prof=app.acct&&app.acct[kind]||{};
+  for(const [d,v] of Object.entries(prof)) if(v && !v.guest && typeof v.score==="number") out[d]=v.score;
+  const pre=kind==="dq"?[DQ_LS,...DQ_OLD]:[DG_LS,"sq-grid-"];
+  for(let i=0;i<400;i++){ const k=dayKeyBack(i); if(out[k]!=null) continue; for(const p of pre){ const v=LS.get(p+k); if(v && typeof v.score==="number"){ out[k]=v.score; break; } } }
+  return out; }
+function statsOf(kind){ const m=statDays(kind), days=Object.keys(m).sort(); if(!days.length) return null;
+  const sc=days.map(d=>m[d]), best=Math.max(...sc), bestDay=days[sc.indexOf(best)], avg=Math.round(sc.reduce((a,b)=>a+b,0)/sc.length);
+  let cur=0; for(let i=0;i<400;i++){ if(m[dayKeyBack(i)]!=null) cur++; else if(i>0) break; }
+  let run=0, top=0, prev=null; for(const d of days){ const t=Date.parse(d+"T12:00:00Z"); run = prev!=null && Math.round((t-prev)/864e5)===1 ? run+1 : 1; top=Math.max(top,run); prev=t; }
+  const last=[...Array(14)].map((_,i)=>{ const k=dayKeyBack(13-i); return {k, v:m[k]}; });
+  return {n:days.length, best, bestDay, avg, total:sc.reduce((a,b)=>a+b,0), cur, top, first:days[0], last}; }
+function statsCardHTML(kind){ const st=statsOf(kind), title=kind==="dq"?"Daily quiz":"Daily word grid";
+  if(!st) return `<div class="stat-card"><div class="eyebrow">${title}</div><p class="muted" style="margin:6px 0 0;font-size:14px">No games yet. Play today's to start your record.</p></div>`;
+  const fd=d=>new Date(d+"T12:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"}), mx=Math.max(1,...st.last.map(x=>x.v||0));
+  const cell=(v,l)=>`<div class="stat-c"><b class="num">${v}</b><span>${l}</span></div>`;
+  return `<div class="stat-card"><div class="row" style="justify-content:space-between;align-items:baseline"><div class="eyebrow">${title}</div><span class="muted" style="font-size:12px">since ${fd(st.first)}</span></div>
+    <div class="stat-grid">${cell(st.n, st.n===1?"day played":"days played")}${cell(st.best.toLocaleString("en-GB"), "highest · "+fd(st.bestDay))}${cell(st.avg.toLocaleString("en-GB"),"average")}${cell(st.cur,"current streak")}${cell(st.top,"best streak")}${cell(st.total.toLocaleString("en-GB"),"total points")}</div>
+    <div class="stat-bars" aria-label="Scores over the last 14 days">${st.last.map(x=>`<i title="${fd(x.k)}: ${x.v==null?"not played":x.v}" style="--h:${x.v==null?0:Math.max(.06,x.v/mx)}" class="${x.v==null?"no":""}"></i>`).join("")}</div>
+    <div class="row muted" style="justify-content:space-between;font-size:11px"><span>14 days ago</span><span>Today</span></div></div>`; }
+function statsHTML(){ return `<section class="stats-sec"><h3 style="margin:0">Your stats</h3>${statsCardHTML("dq")}${statsCardHTML("dg")}</section>`; }
 function dayKeyBack(i){ const d=new Date(); d.setDate(d.getDate()-i); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 async function acctInit(){
   const A=window.SQ_AUTH; if(!A) return;
@@ -8684,7 +8716,7 @@ function renderAcct(){
   else if(v==="forgot") h+=`<form class="acct-form" data-form="acct-forgot"><p class="muted" style="margin:0;font-size:14px">We'll email you a link to choose a new password.</p>${F("ae","Email","email","you@example.com","email","",'required')}${err}<button class="btn primary" ${dis}>${ACCT.busy?"Sending…":"Send reset link"}</button></form><button class="linkbtn" type="button" data-act="acctview" data-v="login">Back to log in</button>`;
   else if(v==="reset") h+=`<form class="acct-form" data-form="acct-reset">${F("ap","New password","password","At least 8 characters","new-password","",'minlength="8" required')}${err}<button class="btn primary" ${dis}>${ACCT.busy?"Saving…":"Save password"}</button></form>`;
   else if(v==="sent") h+=`<p style="margin:0">${esc(ACCT.msg)}</p><p class="muted" style="margin:0;font-size:13px">Can't see it? Check your spam folder.</p><button class="btn" type="button" data-act="acctview" data-v="login">Back to log in</button>`;
-  else if(v==="account"){ const a=app.acct||{}; h+=`<form class="acct-form" data-form="acct-account">${F("an","Name on the leaderboard","text","e.g. Sam","nickname",a.name,'maxlength="18" required')}<div class="muted" style="font-size:14px">Logged in as <b>${esc(a.email||"")}</b></div>${err}<button class="btn primary" ${dis}>Save</button></form><div class="row" style="justify-content:space-between"><button class="linkbtn" type="button" data-act="acctview" data-v="reset">Change password</button><button class="btn small" type="button" data-act="logout">Log out</button></div>`; }
+  else if(v==="account"){ const a=app.acct||{}; h+=`<form class="acct-form" data-form="acct-account">${F("an","Name on the leaderboard","text","e.g. Sam","nickname",a.name,'maxlength="18" required')}<div class="muted" style="font-size:14px">Logged in as <b>${esc(a.email||"")}</b></div>${err}<button class="btn primary" ${dis}>Save</button></form><div class="row" style="justify-content:space-between"><button class="linkbtn" type="button" data-act="acctview" data-v="reset">Change password</button><button class="btn small" type="button" data-act="logout">Log out</button></div>${statsHTML()}`; }
   if(v==="login"||v==="signup") h+=`<p class="muted" style="font-size:13px;margin:0">An account puts your daily scores on the leaderboards and keeps your name, avatar and streak on every device. Playing without one is fine too.</p>`;
   m.innerHTML=h+`</div>`;
   const first=m.querySelector("input"); if(first && !ACCT.err) setTimeout(()=>first.focus({preventScroll:true}),30);
