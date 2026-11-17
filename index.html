@@ -49,14 +49,24 @@
   try{ const h=new URLSearchParams(location.hash.slice(1)); /* links from Supabase emails land here */
     if(h.get("access_token")){ keep({access_token:h.get("access_token"), refresh_token:h.get("refresh_token")||"", expires_at:Math.floor(Date.now()/1000)+(+h.get("expires_in")||3600)}); recovery=h.get("type")==="recovery"; history.replaceState(null,"",location.pathname+location.search); }
     else if(h.get("error_description")){ window.SQ_AUTH_ERR=h.get("error_description").replace(/\+/g," "); history.replaceState(null,"",location.pathname+location.search); } }catch(e){}
+  /* stay logged in: refresh the session well before it runs out, pick up a refresh another tab already did,
+     and only forget the session when the server says the refresh token is truly dead (never on a network blip) */
   let refreshing=null;
-  async function token(){
+  const fromStore=()=>{ try{ return JSON.parse(localStorage.getItem(SK)||"null"); }catch(e){ return null; } };
+  addEventListener("storage",e=>{ if(e.key===SK) sess=fromStore(); });
+  async function token(force){
     if(!sess) return null;
-    if(sess.expires_at && sess.expires_at-Date.now()/1000<90 && sess.refresh_token){
-      refreshing=refreshing||fetch("/api/auth/refresh",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({refresh_token:sess.refresh_token})}).then(r=>r.json().then(j=>{ if(r.ok&&j.session) keep(j.session); else if(r.status===400||r.status===401) keep(null); })).catch(()=>{}).finally(()=>{ refreshing=null; });
+    const ls=fromStore(); if(ls && ls.refresh_token && (ls.expires_at||0)>(sess.expires_at||0)) sess=ls;
+    if(sess.refresh_token && (force || (sess.expires_at && sess.expires_at-Date.now()/1000<300))){
+      const sent=sess.refresh_token;
+      refreshing=refreshing||fetch("/api/auth/refresh",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({refresh_token:sent})}).then(r=>r.json().catch(()=>({})).then(j=>{
+          if(r.ok&&j.session) keep(j.session);
+          else if(r.status===401 && j.code==="invalid_refresh"){ const now=fromStore(); if(now && now.refresh_token && now.refresh_token!==sent) sess=now; else keep(null); } })).catch(()=>{}).finally(()=>{ refreshing=null; });
       await refreshing; }
     return sess&&sess.access_token;
   }
+  setInterval(()=>{ if(sess && !document.hidden) token().catch(()=>{}); }, 4*60*1000);
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden && sess) token().catch(()=>{}); });
   const post=async(url,body)=>{ const t=await token(); return fetch(url,{method:"POST",headers:Object.assign({"content-type":"application/json"},t?{authorization:"Bearer "+t}:{}),body:JSON.stringify(body)}).then(async r=>{ const j=await r.json().catch(()=>({})); if(!r.ok){ const e=new Error(j.message||j.error||("HTTP "+r.status)); e.code=j.code||"error"; e.status=r.status; throw e; } return j; }); };
   const blobToData=b=>new Promise((res,rej)=>{ const f=new FileReader(); f.onload=()=>res(f.result); f.onerror=rej; f.readAsDataURL(b); });
   const parseJSON=t=>{ let s=String(t||"").trim().replace(/^```(?:json)?\s*/i,"").replace(/```\s*$/,""); try{ return JSON.parse(s); }catch(e){}
@@ -94,9 +104,13 @@
     async login(email,password){ const j=await post("/api/auth/login",{email,password}); keep(j.session); return j; },
     async forgot(email){ return post("/api/auth/forgot",{email}); },
     async setPassword(password){ const j=await post("/api/auth/password",{password}); recovery=false; return j; },
-    async me(){ if(!sess) return null; try{ return (await post("/api/auth/me",{})).profile; }catch(e){ if(e.status===401) keep(null); return null; } },
+    async me(){ if(!sess) return null;
+      const cached=()=>{ try{ return JSON.parse(localStorage.getItem("sq-prof")||"null"); }catch(e){ return null; } }, save=p=>{ try{ localStorage.setItem("sq-prof",JSON.stringify(p)); }catch(e){} return p; };
+      try{ return save((await post("/api/auth/me",{})).profile); }
+      catch(e){ if(e.status===401){ await token(true); if(!sess) return null; try{ return save((await post("/api/auth/me",{})).profile); }catch(e2){ if(e2.status===401){ keep(null); return null; } } }
+        return cached(); /* server or network hiccup: stay logged in with what we knew */ } },
     async saveProfile(patch){ if(!sess) return null; return (await post("/api/auth/profile",patch)).profile; },
-    logout(){ keep(null); }
+    logout(){ keep(null); try{ localStorage.removeItem("sq-prof"); }catch(e){} }
   };
   window.SQ_AUTH=A;
   let lobby=null;

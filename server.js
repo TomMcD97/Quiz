@@ -176,8 +176,13 @@ async function authRoute(req, res, url) {
       const u = j.user; return json(res, 200, { session: sessOut(j), profile: profileOut({ id: u.id, email: u.email, name: (u.user_metadata || {}).name }) });
     }
     if (act === "refresh") {
-      const j = await sbFetch("/auth/v1/token?grant_type=refresh_token", { method: "POST", headers: { apikey: SB_ANON, "content-type": "application/json" }, body: JSON.stringify({ refresh_token: String(b.refresh_token || "") }) });
-      return json(res, 200, { session: sessOut(j) });
+      try {
+        const j = await sbFetch("/auth/v1/token?grant_type=refresh_token", { method: "POST", headers: { apikey: SB_ANON, "content-type": "application/json" }, body: JSON.stringify({ refresh_token: String(b.refresh_token || "") }) });
+        return json(res, 200, { session: sessOut(j) });
+      } catch (e) { /* only tell the page to log out when Supabase says the refresh token itself is no good */
+        const dead = (e.status === 400 || e.status === 401 || e.status === 403) && /refresh|invalid|not found|revoked|expired|already used/i.test(String(e.message || "") + JSON.stringify(e.body || {}));
+        return json(res, dead ? 401 : 503, { error: String(e.message || e), code: dead ? "invalid_refresh" : "try_again" });
+      }
     }
     if (act === "forgot") {
       await sbFetch("/auth/v1/recover?redirect_to=" + encodeURIComponent(origin), { method: "POST", headers: { apikey: SB_ANON, "content-type": "application/json" }, body: JSON.stringify({ email, redirect_to: origin }) });
