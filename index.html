@@ -1,16 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Spotlight Quiz: a live party quiz you play together on your phones.">
-<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
-/* your stats */
-.stats-sec{display:grid;gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
-.stat-card{border:1px solid var(--line);padding:14px;display:grid;gap:10px;background:rgba(255,255,255,.02)}
-.stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
-.stat-c{background:var(--bg);padding:10px;display:grid;gap:2px;min-width:0}.stat-c b{font-family:var(--f-display);font-size:clamp(20px,4vw,26px);line-height:1}.stat-c span{font-size:11px;color:var(--muted);font-family:var(--f-mono);letter-spacing:.06em;text-transform:uppercase}
-.stat-c:nth-child(2) b{color:var(--acc)}
-.stat-bars{display:grid;grid-template-columns:repeat(14,1fr);gap:3px;align-items:end;height:54px}
-.stat-bars i{display:block;height:calc(var(--h)*100%);background:var(--acc);opacity:.85;min-height:2px}.stat-bars i.no{background:var(--line);height:2px;opacity:1}
-@media (max-width:420px){.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-</style>
+<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
 <script>/* Stand-in for the Claude runtime when the game runs on its own server. */
 (function(){
   const NET=(()=>{ let ws=null, id=null, open=false, retry=0; const rooms=new Map(), connFns=new Set();
@@ -1220,6 +1210,22 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .hl-lab{display:inline-flex;align-items:center;gap:10px}
 .hl-who{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;max-width:100%}.hl-b.up .hl-ar{color:var(--good,#3BCF86)}.hl-b.dn .hl-ar{color:#ff6b6b}
 @media (max-width:620px){.hl-wrap{grid-template-columns:minmax(0,1fr)}.hl-vs{justify-self:center}.hl-card{padding:14px}}
+
+/* crowded rooms: smaller name tags; podium tags show the score on a second line */
+.room-tags.rt-crowd .room-tag{font-size:10.5px!important;padding:2px 7px!important;max-width:76px}
+.room-tags.rt-pod .room-tag{white-space:pre-line;text-align:center;line-height:1.15;border-radius:10px}
+@media (max-width:620px){.room-tags.rt-crowd .room-tag{font-size:9.5px!important;padding:2px 5px!important;max-width:62px}}
+
+/* your stats */
+.stats-sec{display:grid;gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.stat-card{border:1px solid var(--line);padding:14px;display:grid;gap:10px;background:rgba(255,255,255,.02)}
+.stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+.stat-c{background:var(--bg);padding:10px;display:grid;gap:2px;min-width:0}.stat-c b{font-family:var(--f-display);font-size:clamp(20px,4vw,26px);line-height:1}.stat-c span{font-size:11px;color:var(--muted);font-family:var(--f-mono);letter-spacing:.06em;text-transform:uppercase}
+.stat-c:nth-child(2) b{color:var(--acc)}
+.stat-bars{display:grid;grid-template-columns:repeat(14,1fr);gap:3px;align-items:end;height:54px}
+.stat-bars i{display:block;height:calc(var(--h)*100%);background:var(--acc);opacity:.85;min-height:2px}.stat-bars i.no{background:var(--line);height:2px;opacity:1}
+@media (max-width:420px){.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.opt-who.many{flex-basis:100%;flex-wrap:wrap;justify-content:flex-end;gap:4px!important;padding-left:44px}.opt:has(.opt-who.many){flex-wrap:wrap;row-gap:8px}
 </style>
 <style id="sq-fixes">
 /* clear right / wrong colours */
@@ -3341,6 +3347,18 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -4132,6 +4150,8 @@ function poseChar(ch, t, dt){
       for(const ax of ["rx","ry","rz"]){ const q=st[ax], tg=j[ax]; for(let it=0;it<2;it++){ const hh=h/2, acc=K*(tg-q[0])-C*q[1]; q[1]+=acc*hh; q[0]+=q[1]*hh; } j[ax]=q[0]; } } }
   J.root.off=[ch.x+rootX, rootY+(ch.lift||0), ch.z]; J.root.ry=rootRY;
 }
+/* name tags in the 3D room: first name only, trimmed, so a big group's tags don't run into each other */
+function shortTag(l,me){ if(me) return "You"; l=String(l||"").trim().replace(/\s*\(you\)$/i,""); let f=l.split(/\s+/)[0]||""; if(f.length>8) f=f.slice(0,7)+"…"; return f; }
 /* ---------------- character factory: sculpts people on background threads ---------------- */
 const CF={ pool:null, jobs:{}, jid:0, cache:new Map(), pending:new Map(), queue:[],
   start(){ if(this.pool) return; this.pool=[];
@@ -4227,13 +4247,13 @@ const Room={
       const it2=box(x,2.9,-4.6,.12,5.8,.06,lit?acc0:"#1A1B23",lit?{emit:1.4,spec:0,noCast:true,noRecv:true}:{spec:.5,gloss:40,noCast:true}); if(lit) ac(it2); }
     // the big LED screen with the party code, in a thin black bezel, with a light bar beneath
     this.boardCv=document.createElement("canvas"); this.boardCv.width=1600; this.boardCv.height=640; this.drawBoard();
-    box(0,2.7,-4.58,5.5,2.3,.08,"#050507",{spec:1.2,gloss:90,noCast:true});
-    this.boardItem=box(0,2.7,-4.53,5.2,2.08,.02,"#FFFFFF",{tex:this.boardTex,emit:.85,spec:.7,gloss:90,noCast:true,noRecv:true});
-    ac(box(0,1.48,-4.55,5.5,.035,.03,acc0,{emit:2.2,spec:0,noCast:true,noRecv:true}));
+    box(0,3.3,-4.58,5.5,2.3,.08,"#050507",{spec:1.2,gloss:90,noCast:true}); /* raised so a back row of players doesn't hide the code */
+    this.boardItem=box(0,3.3,-4.53,5.2,2.08,.02,"#FFFFFF",{tex:this.boardTex,emit:.85,spec:.7,gloss:90,noCast:true,noRecv:true});
+    ac(box(0,2.08,-4.55,5.5,.035,.03,acc0,{emit:2.2,spec:0,noCast:true,noRecv:true}));
     // neon "SPOTLIGHT QUIZ" sign above the screen
     const sg=cvs(1024,160,(c,w,h)=>{ c.fillStyle="#08080B"; c.fillRect(0,0,w,h); c.textAlign="center"; c.textBaseline="middle"; c.font=`800 104px ${DISPLAY_FONT}`;
       c.shadowColor="rgba(255,255,255,.9)"; c.shadowBlur=26; c.fillStyle="#FFFFFF"; c.fillText("SPOTLIGHT QUIZ",w/2,h/2+4); c.shadowBlur=8; c.fillText("SPOTLIGHT QUIZ",w/2,h/2+4); });
-    box(0,4.35,-4.6,3.4,.53,.02,"#FFFFFF",{tex:gx.texCanvas("neonS",sg),emit:1.1,spec:0,noCast:true,noRecv:true});
+    box(0,4.85,-4.6,3.4,.53,.02,"#FFFFFF",{tex:gx.texCanvas("neonS",sg),emit:1.1,spec:0,noCast:true,noRecv:true});
     // LED towers either side, showing a soft moving-light gradient
     const tw=cvs(128,512,(c,w,h)=>{ const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,"#FFFFFF"); g.addColorStop(.5,"#9A9AA6"); g.addColorStop(1,"#2A2A33"); c.fillStyle=g; c.fillRect(0,0,w,h); c.fillStyle="rgba(0,0,0,.55)"; for(let y=0;y<h;y+=8) c.fillRect(0,y,w,2); for(let x=0;x<w;x+=8) c.fillRect(x,0,2,h); });
     const twT=gx.texCanvas("towerS",tw);
@@ -4274,10 +4294,10 @@ const Room={
     const bg=x.createLinearGradient(0,0,0,H); bg.addColorStop(0,"#11131F"); bg.addColorStop(1,"#07080D"); x.fillStyle=bg; x.fillRect(0,0,W,H);
     const gl=x.createRadialGradient(W/2,H*.48,0,W/2,H*.48,W*.45); gl.addColorStop(0,ACC.css); gl.addColorStop(1,"rgba(0,0,0,0)"); x.globalAlpha=.22; x.fillStyle=gl; x.fillRect(0,0,W,H); x.globalAlpha=1;
     x.fillStyle="#F4F1E8"; x.textAlign="center"; x.textBaseline="middle";
-    if(b.code){ x.globalAlpha=.7; x.font=`600 40px ${MONO_FONT}`; x.fillText("PARTY CODE",W/2,96); x.globalAlpha=1; x.font=`800 280px ${DISPLAY_FONT}`; x.fillText(b.code,W/2,300);
-      x.strokeStyle=ACC.css; x.lineWidth=12; x.lineCap="round"; x.beginPath(); x.moveTo(W/2-300,452); x.bezierCurveTo(W/2-100,470,W/2+120,440,W/2+300,456); x.stroke(); }
+    if(b.code){ x.globalAlpha=.7; x.font=`600 40px ${MONO_FONT}`; x.fillText("PARTY CODE",W/2,60); x.globalAlpha=1; x.font=`800 280px ${DISPLAY_FONT}`; x.fillText(b.code,W/2,225);
+      x.strokeStyle=ACC.css; x.lineWidth=12; x.lineCap="round"; x.beginPath(); x.moveTo(W/2-300,372); x.bezierCurveTo(W/2-100,390,W/2+120,360,W/2+300,376); x.stroke(); }
     else { x.font=`800 170px ${DISPLAY_FONT}`; x.fillText(b.title||"Spotlight",W/2,280); }
-    let cap=b.cap||""; x.font=`500 50px ${DISPLAY_FONT}`; x.globalAlpha=.85; while(x.measureText(cap).width>W-180 && cap.length>4) cap=cap.slice(0,-2)+"…"; x.fillText(cap,W/2,560); x.globalAlpha=1;
+    let cap=b.cap||""; x.font=`500 50px ${DISPLAY_FONT}`; x.globalAlpha=.85; while(x.measureText(cap).width>W-180 && cap.length>4) cap=cap.slice(0,-2)+"…"; x.fillText(cap,W/2,b.code?450:560); x.globalAlpha=1;
     x.fillStyle="rgba(0,0,0,.28)"; for(let y=0;y<H;y+=6) x.fillRect(0,y,W,2);
     this.boardTex=this.gx.texCanvas("board",c); if(this.boardItem) this.boardItem.tex=this.boardTex; this.boardHue=ACC.hue; },
   setBoard(code, cap, title){ if(!this.ok) return; if(this.board.code===code && this.board.cap===cap && this.board.title===title) return; this.board={code,cap,title}; this.drawBoard(); },
@@ -4310,15 +4330,24 @@ const Room={
       Room.sprChain=(Room.sprChain||Promise.resolve()).then(()=>avRaster(tt,{headOnly:true,vb:SV},mob?400:512)).then(png=>{ if(png){ if(typeof AVR!=="undefined"){ AVR.good++; avNote("lobby head ok"); } img.src=png; } else { if(typeof avNote==="function") avNote("lobby head failed"); ch.sprPending=false; ch.tbImg=null; ch.faceKey="?"; } }).catch(()=>{}).then(()=>new Promise(r=>setTimeout(r,mob?300:20)));
     }catch(e){} },
   /* final podium: each player's pillar rises to their share of the top score */
-  setPodium(sc){ if(!sc){ this.pod=null; for(const pid in this.chars) this.chars[pid].lift=0; return; }
+  setPodium(sc){ if(!sc){ if(this.pod){ this.pod=null; this.layout(); } for(const pid in this.chars) this.chars[pid].lift=0; return; }
     const key=JSON.stringify(sc); if(this.pod && this.pod.key===key) return;
     const ids=Object.keys(sc).sort((a,b)=>sc[a]-sc[b]), max=Math.max(1,...ids.map(p=>sc[p])), del={}; let d=.9;
     ids.forEach((p,i)=>{ const last=i===ids.length-1; if(last) d+=.5; del[p]=d; d+=last?0:.75; });
-    this.pod={key, sc, max, del, t0:this.time||0, made:this.time||0, started:false, fired:false, done:{}, rank:ids.slice().reverse()}; },
+    this.pod={key, sc, max, del, t0:this.time||0, made:this.time||0, started:false, fired:false, done:{}, rank:ids.slice().reverse()}; this.layout(); },
   emote(pid,e){ if(!EM_DUR[e]) return; this.flash=1; const c=this.chars[pid]; if(!c){ if(this.want[pid]) this.want[pid].emote=e; return; } c.emote={e, t0:this.time||0}; },
-  layout(){ const n=this.order.length, asp=(this.cv.clientWidth||800)/(this.cv.clientHeight||400); const per = asp<1.45 ? (n>6?4:(n>4?3:4)) : 8; const rows=Math.ceil(n/per)||1; this.rows=rows; const gap=n>6?.86:1.0;
-    this.order.forEach((pid,i)=>{ const c=this.chars[pid]; if(!c) return; const r=Math.floor(i/per), inRow=Math.min(per, n-r*per), k=i-r*per; c.row=r; c.x=(k-(inRow-1)/2)*gap + (rows>1?(r%2?gap/2:-gap/2):0); c.z=.4+r*.8; c.ry=-c.x*.06; });
-    const across=Math.min(n,per); this.span=Math.max(1.8,(across-1)*gap+1.3+(rows>1?.9:0)); },
+  /* stage layout. Lobby: up to 4 across on a phone (8 on a wide screen); bigger groups get a second row standing on a riser
+     behind, offset so everyone shows between the people in front. Podium: one row, winner in the middle, then outwards. */
+  layout(){ const n=this.order.length, asp=(this.cv.clientWidth||800)/(this.cv.clientHeight||400), phone=asp<1.45;
+    if(this.pod && this.pod.rank){ const rk=this.pod.rank.filter(p=>this.order.includes(p)), slots=[]; rk.forEach((p,i)=>{ slots[i]=i===0?0:(i%2?-Math.ceil(i/2):Math.ceil(i/2)); });
+      const gap=phone?(n>6?.78:n>4?.86:1.0):(n>8?.9:1.05); this.rows=1;
+      this.order.forEach(pid=>{ const c=this.chars[pid]; if(!c) return; const i=rk.indexOf(pid), sl=i<0?0:slots[i]; c.row=0; c.baseLift=0; c.x=sl*gap; c.z=.55-Math.abs(sl)*.06; c.ry=-c.x*.07; });
+      const mn=Math.min(0,...slots), mx=Math.max(0,...slots); this.span=Math.max(1.8,(mx-mn)*gap+1.3); return; }
+    const per = phone ? (n<=4?Math.max(1,n):Math.ceil(n/2)) : (n<=8?Math.max(1,n):Math.ceil(n/2)); const rows=Math.ceil(n/per)||1; this.rows=rows;
+    const gap = phone ? (per>=5?.88:per===4?1.0:1.12) : (per>6?.95:1.1);
+    this.order.forEach((pid,i)=>{ const c=this.chars[pid]; if(!c) return; const r=Math.floor(i/per), inRow=Math.min(per, n-r*per), k=i-r*per; c.row=r;
+      c.x=(k-(inRow-1)/2)*gap + (rows>1 && inRow===per ? (r%2?gap/4:-gap/4) : 0); c.z = rows>1 ? .95-r*1.2 : .5; c.baseLift = r>0 ? .66*r : 0; c.ry=-c.x*.06; });
+    const across=Math.min(n,per); this.span=Math.max(1.8,(across-1)*gap+1.5+(rows>1?gap/2:0)); },
   loop(){ const f=(ts)=>{ if(!this.cv.isConnected){ this.raf=0; return; } this.raf=requestAnimationFrame(f); if(document.hidden) return; const dt=Math.min(.05,this.last?(ts-this.last)/1000:.016); this.last=ts; this.time=(this.time||0)+dt; this.frame(dt); }; this.raf=requestAnimationFrame(f); },
   frame(dt){ const cv=this.cv, dpr=Math.min(2,window.devicePixelRatio||1), W=Math.max(10,Math.round(cv.clientWidth*dpr)), H=Math.max(10,Math.round(cv.clientHeight*dpr)); if(cv.width!==W||cv.height!==H){ cv.width=W; cv.height=H; this.layout(); }
     const asp=W/H, fov=38*Math.PI/180, rows=this.rows||1, t=this.time;
@@ -4332,10 +4361,10 @@ const Room={
     if(pod && !pod.started){ const miss=this.order.some(p=>!this.chars[p]); if(!miss || t-pod.made>6){ pod.started=true; pod.t0=t; } }
     for(const pid of this.order){ const c=this.chars[pid]; if(!c){ waiting++; continue; }
       if(pod){ const s=pod.sc[pid]||0, H=.16+1.05*Math.max(0,s)/pod.max, k=pod.started?Math.max(0,Math.min(1,(t-pod.t0-(pod.del[pid]||0))/1.7)):0, e=k<1?1-Math.pow(1-k,3):1;
-        c.lift=H*e; c.podH=H; c.podK=k; c.disp=`${c.label} · ${Math.round(Math.max(0,s)*e)}`;
+        c.lift=H*e; c.podH=H; c.podK=k; c.disp=`${shortTag(c.label,c.me)}\n${Math.round(Math.max(0,s)*e)}`;
         if(k>=1 && !pod.done[pid]){ pod.done[pid]=t; const win=pod.rank[0]===pid; c.emote={e: win?"cheer":(pod.rank.indexOf(pid)<3?"wave":"clap"), t0:t}; if(win){ this.flash=1; if(!pod.fired){ pod.fired=true; try{ this.onPodium&&this.onPodium(); }catch(e){} } } }
         if(pod.rank[0]===pid && pod.done[pid] && t-pod.done[pid]>4.5){ pod.done[pid]=t; c.emote={e:["dance","cheer","jump"][Math.floor(t)%3], t0:t}; } }
-      else { c.lift=0; c.disp=null; }
+      else { c.lift=c.baseLift||0; c.disp=null; }
       c.J.head.sc=BIG.on?BIG.s:1; poseChar(c,t,dt); bobble(c,dt); const ci=[]; charItems(c,ci,this.gx); for(const x of ci){ items.push(x); refl.push(Object.assign({},x,{m:M4.mul(M4.S(1,-1,1),x.m||M4.I()),noCast:true})); }
       if(c.spriteTex && c.relief){ const hw=c.J.head.world, sz=1.12/1.85, m=M4.mul(hw,M4.ch(M4.T(0,.11*HEAD_S+.14/1.85,.02),M4.S(sz,sz,sz)));
         const fr={mesh:c.relief.mesh,m,c:[1,1,1],tex:c.relief.front,decal:true,noRecv:true}, bk={mesh:c.relief.meshB,m,c:[1,1,1],noRecv:true};
@@ -4356,7 +4385,11 @@ const Room={
         if(ba>0){ beams.push({mesh:this.beamM,m:M4.ch(M4.T(bx,0,bz),M4.S(ri===0?.75:.6,5.4,ri===0?.75:.6)),c:bc,emit:1.4,spec:0,blend:true,alpha:ba,noCast:true,noRecv:true});
           beams.push({mesh:this.discM,m:M4.ch(M4.T(bx,.004,bz),M4.S(ri===0?.85:.7,.002,ri===0?.85:.7)),c:bc,emit:1.2,spec:0,blend:true,alpha:ba*1.6,noCast:true,noRecv:true}); } }
       items.push({mesh:this.pad,m:M4.ch(M4.T(c.J.root.off[0],lf+.005,c.J.root.off[2]),M4.S(.34,.34,.34)),c:acc,emit:c.me?1.6:.7,spec:0,noCast:true,noRecv:true});
-      tags.push([c,[c.J.root.off[0],pod?Math.max(.02,lf*.5):-.02,c.J.root.off[2]+(pod?.37:.32)]]); }
+      tags.push([c, (!pod && c.row>0) ? [c.J.root.off[0], lf+2.12+(BIG.on?.3:0), c.J.root.off[2]] : [c.J.root.off[0],pod?Math.max(.02,lf*.5):-.02,c.J.root.off[2]+(pod?.37:.32)]]); }
+    if(!pod && (this.rows||1)>1){ /* a riser for the back row */ const back=this.order.map(p=>this.chars[p]).filter(c=>c&&c.row>0);
+      if(back.length){ const x0=Math.min(...back.map(c=>c.x)), x1=Math.max(...back.map(c=>c.x)), z=back[0].z, hgt=back[0].baseLift, w=x1-x0+1.1;
+        const rm=M4.ch(M4.T((x0+x1)/2,hgt/2,z),M4.S(w,hgt,.95)); items.push({mesh:this.boxM,m:rm,c:[.07,.07,.09],spec:1.2,gloss:80}); refl.push({mesh:this.boxM,m:M4.mul(M4.S(1,-1,1),rm),c:[.07,.07,.09],noCast:true});
+        items.push({mesh:this.boxM,m:M4.ch(M4.T((x0+x1)/2,hgt-.02,z+.48),M4.S(w,.025,.01)),c:acc,emit:2,spec:0,noCast:true,noRecv:true}); } }
     if(!pod){ /* lobby: a soft spot on every player, plus two beams sweeping the stage */
       for(const pid of this.order){ const c=this.chars[pid]; if(!c) continue; const bx=c.J.root.off[0], bz=c.J.root.off[2], bc=c.me?[1,.85,.55]:[.9,.92,1], ba=c.me?.11:.07;
         beams.push({mesh:this.beamM,m:M4.ch(M4.T(bx,0,bz),M4.S(.62,5.4,.62)),c:bc,emit:1.4,spec:0,blend:true,alpha:ba,noCast:true,noRecv:true});
@@ -4369,14 +4402,17 @@ const Room={
     if(this.loading){ const tx=waiting?`Getting ${waiting===1?"1 player":waiting+" players"} ready…`:""; if(this.loading.textContent!==tx) this.loading.textContent=tx; this.loading.hidden=!waiting; }
     if(pod) this.gx.render(all,{vp:VP,eye},{dir:V3.norm([.2,-.9,-.38]), center:[0,.9,.4], radius:5.5, sun:[1.7,1.55,1.3], sky:[.2,.19,.24], gnd:[.07,.06,.08], fillDir:V3.norm([-.3,-.2,-1]), fill:[.22+this.flash*acc[0]*.6,.2+this.flash*acc[1]*.6,.26+this.flash*acc[2]*.6]},[.02,.02,.03,1]);
     else this.gx.render(all,{vp:VP,eye},{dir:V3.norm([.3,-.88,-.4]), center:[0,.9,.4], radius:5.5, sun:[1.75,1.62,1.42], sky:[.3,.29,.35], gnd:[.1,.09,.11], fillDir:V3.norm([-.3,-.2,-1]), fill:[.28+this.flash*acc[0]*.6,.27+this.flash*acc[1]*.6,.33+this.flash*acc[2]*.6]},[.02,.02,.03,1]);
+    if(this.tags){ const crowd=this.order.length>4; if(this.tags._crowd!==crowd){ this.tags._crowd=crowd; this.tags.classList.toggle("rt-crowd",crowd); } const pd=!!pod; if(this.tags._pod!==pd){ this.tags._pod=pd; this.tags.classList.toggle("rt-pod",pd); } }
+    /* podium with lots of players: alternate the name tags up and down so neighbours don't overlap */
+    const alt=new Map(); if(pod && tags.length>5) tags.map(x=>x[0]).sort((a,b)=>a.J.root.off[0]-b.J.root.off[0]).forEach((c,i)=>alt.set(c,i%2));
     for(const [c,p] of tags){ const q=M4.xf(VP,p); if(!c.tag){ c.tag=document.createElement("div"); c.tag.className="room-tag"; this.tags.appendChild(c.tag); }
-      const lb=c.disp||c.label; if(c.tag.textContent!==lb) c.tag.textContent=lb; c.tag.classList.toggle("me",!!c.me);
-      c.tag.style.transform=`translate(${((q[0]*.5+.5)*cv.clientWidth).toFixed(1)}px,${((.5-q[1]*.5)*cv.clientHeight).toFixed(1)}px) translate(-50%,0)`; }
+      const lb=c.disp||shortTag(c.label,c.me); if(c.tag.textContent!==lb) c.tag.textContent=lb; c.tag.classList.toggle("me",!!c.me);
+      c.tag.style.transform=`translate(${((q[0]*.5+.5)*cv.clientWidth).toFixed(1)}px,${((.5-q[1]*.5)*cv.clientHeight).toFixed(1)}px) translate(-50%,${alt.get(c)?"calc(100% + 4px)":"0"})`; }
   }
 };
 
 /* ---------------- 3D portraits ---------------- */
-const PORT_V="v10";
+const PORT_V="v11";
 const Portrait={ gx:null, ok:null, cache:{}, cv:null, busy:false, q:[], wait:new Set(),
   key(id){ return id+(BIG.on?"B":""); },
   get(id){ const k=this.key(id); if(this.cache[k]) return this.cache[k];
@@ -4384,7 +4420,7 @@ const Portrait={ gx:null, ok:null, cache:{}, cv:null, busy:false, q:[], wait:new
     if(!this.wait.has(k)){ this.wait.add(k); this.q.push(id); this.pump(); } return null; },
   pump(){ if(this.busy || !this.q.length) return; const id=this.q.shift(); this.busy=true;
     const k=this.key(id);
-    CF.get(id).then(g=>{ const u=this.render(id,g); this.busy=false; this.wait.delete(k); if(u){ this.cache[k]=u; try{ localStorage.setItem("sq-port-"+PORT_V+"-"+k,u); }catch(e){} document.querySelectorAll(`img[data-pav="${id}"]`).forEach(i=>{ i.src=u; i.classList.add("r3"); }); } setTimeout(()=>this.pump(),30); })
+    CF.get(id).then(g=>{ const u=this.render(id,g); this.busy=false; this.wait.delete(k); if(u){ this.cache[k]=u; try{ localStorage.setItem("sq-port-"+PORT_V+"-"+k,u); }catch(e){} document.querySelectorAll("img[data-pav]").forEach(i=>{ if(i.dataset.pav===id){ i.src=u; i.classList.add("r3"); } }); } setTimeout(()=>this.pump(),30); })
       .catch(()=>{ this.busy=false; this.wait.delete(k); setTimeout(()=>this.pump(),30); }); },
   render(id,g){
     if(this.ok===null){ try{ this.cv=document.createElement("canvas"); this.cv.width=this.cv.height=192; this.gx=new GLX(this.cv,{alpha:true,keep:true}); this.ok=true; }catch(e){ this.ok=false; } }
@@ -4396,7 +4432,11 @@ const Portrait={ gx:null, ok:null, cache:{}, cv:null, busy:false, q:[], wait:new
       const u=this.cv.toDataURL("image/png"); freeChar(this.gx,ch); return u; }catch(e){ console.warn(e); return null; } }
 };
 const TOON_URI={}; /* v2 */
-function avSVG(id, bg, pid){ const tt=avToon(id); if(tt){ const ph=(tt.eyes==="photo")?(pid?photoOf(pid,id):(id===me.av?mySelfie():null)):null; const u=avSrc(tt,ph?{photo:ph}:{noPhoto:1},360); return `<img class="avimg toon" src="${u}" alt="" draggable="false">`; } if(Room.ok===false || typeof Worker==="undefined") return avSVG2D(id, bg); const u=Portrait.get(id); return `<img class="avimg${u?" r3":""}" data-pav="${id}" src="${u||avURI(id)}" alt="" draggable="false">`; }
+/* small avatars: a render of the player's actual 3D head (so it matches the character on stage); the flat drawing shows until the render is ready.
+   Selfie avatars keep the photo face. */
+function avSVG(id, bg, pid){ const tt=avToon(id); if(tt){ const ph=(tt.eyes==="photo")?(pid?photoOf(pid,id):(id===me.av?mySelfie():null)):null; const flat=avSrc(tt,ph?{photo:ph}:{noPhoto:1},360);
+    if(ph || Room.ok===false || typeof Worker==="undefined") return `<img class="avimg toon" src="${flat}" alt="" draggable="false">`;
+    const u=Portrait.get(id); return `<img class="avimg toon${u?" r3":""}" data-pav="${esc(id)}" data-flat="1" src="${u||flat}" alt="" draggable="false">`; } if(Room.ok===false || typeof Worker==="undefined") return avSVG2D(id, bg); const u=Portrait.get(id); return `<img class="avimg${u?" r3":""}" data-pav="${id}" src="${u||avURI(id)}" alt="" draggable="false">`; }
 
 const PCOL = ["#FFFFFF","#B9B9BF","#8C8C93","#E2E2E0","#6E6E75","#CFCFD4","#A2A2A8","#F4F4F2"];
 function pcol(pid){ let h=0; for(const c of String(pid)) h=(h*31+c.charCodeAt(0))>>>0; return PCOL[h%PCOL.length]; }
@@ -7656,7 +7696,7 @@ function revealHTML(q, rev){
   const row=(r, a, note)=>`<div class="res-row">${avatar(r.p)}<div class="a"><b>${esc(nameOf(r.p))}${r.p===me.pid?" (you)":""}</b> <span>${a}</span>${note?`<div class="note">${note}</div>`:""}</div><span></span><span class="pts ${r.pts>0?"on":r.pts<0?"neg":"off"}">${r.pts>0?"+"+r.pts:r.pts<0?"−"+Math.abs(r.pts):"0"}</span></div>`;
   if(rev.t==="lead"){
     const L=rev.lead, by=rev.by, team=rev.rows.filter(r=>!r.lead);
-    h += `<div class="opts sp">${rev.opts.map((o,i)=>{ const who=rev.rows.filter(r=>r.a===i); return `<div class="opt ${i===rev.ans?"right":(who.length?"wrong":"")}"><span class="k">${"ABCD"[i]}</span><span class="grow">${esc(o)}</span><span class="row" style="gap:4px">${who.map(r=>avatar(r.p,"sm",nameOf(r.p))).join("")}</span></div>`; }).join("")}</div>`;
+    h += `<div class="opts sp">${rev.opts.map((o,i)=>{ const who=rev.rows.filter(r=>r.a===i); return `<div class="opt ${i===rev.ans?"right":(who.length?"wrong":"")}"><span class="k">${"ABCD"[i]}</span><span class="grow">${esc(o)}</span><span class="row opt-who${who.length>3?" many":""}" style="gap:4px">${who.map(r=>avatar(r.p,"sm",nameOf(r.p))).join("")}</span></div>`; }).join("")}</div>`;
     const fr=rev.rows.find(r=>r.p===by), who=esc(by===me.pid?"You":nameOf(by)), sec=rev.s!=null?` in ${rev.s}s`:"", ok=fr&&fr.ok;
     const msg = rev.win==="leader" ? `<b>${ok?`${who} got it first`:`${who} got it wrong`}</b> <span class="num">+150 to ${esc(L===me.pid?"you":nameOf(L))}</span><span class="muted sp-n">${ok?`The leader answered right${sec}.`:`A wrong answer from the team${sec} hands the leader the points.`}</span>`
       : rev.win==="team" ? `<b>${ok?`${who} got it first`:`${who} got it wrong`}</b> <span class="num">+100 each to The Rest</span><span class="muted sp-n">${ok?`Right answer${sec}, so all ${team.length} on the team score.`:`The leader answered wrong${sec}, so all ${team.length} on the team score.`}</span>`
@@ -7681,7 +7721,7 @@ function revealHTML(q, rev){
     h += `<div class="hl-btns">${rev.opts.map((o,i)=>{ const who=rev.rows.filter(r=>r.a===i); return `<div class="opt hl-b hl-rv ${i?"dn":"up"} ${i===rev.ans?"right":(who.length?"wrong":"")}"><span class="hl-lab"><span class="hl-ar" aria-hidden="true">${i?"▼":"▲"}</span><span>${esc(o)}</span></span>${who.length?`<span class="hl-who">${who.map(r=>avatar(r.p,"sm",nameOf(r.p))).join("")}</span>`:""}</div>`; }).join("")}</div>`;
     h += `<div class="res">${rev.rows.map(r=>row(r, r.a==null?'<span class="muted">no answer</span>':esc(rev.opts[r.a]||""), r.fast?"Fastest correct answer":"")).join("")}</div>`;
   } else if(rev.t==="gk"){
-    h += `<div class="opts">${rev.opts.map((o,i)=>{ const who=rev.rows.filter(r=>r.a===i); return `<div class="opt ${i===rev.ans?"right":(who.length?"wrong":"")} ${myAns&&Number(myAns.v)===i&&i!==rev.ans?"mine":""}"><span class="k">${"ABCD"[i]}</span><span class="grow">${esc(o)}</span><span class="row" style="gap:4px">${who.map(r=>`${avatar(r.p,"sm",nameOf(r.p))}`).join("")}</span></div>`; }).join("")}</div>`;
+    h += `<div class="opts">${rev.opts.map((o,i)=>{ const who=rev.rows.filter(r=>r.a===i); return `<div class="opt ${i===rev.ans?"right":(who.length?"wrong":"")} ${myAns&&Number(myAns.v)===i&&i!==rev.ans?"mine":""}"><span class="k">${"ABCD"[i]}</span><span class="grow">${esc(o)}</span><span class="row opt-who${who.length>3?" many":""}" style="gap:4px">${who.map(r=>`${avatar(r.p,"sm",nameOf(r.p))}`).join("")}</span></div>`; }).join("")}</div>`;
     h += `<div class="res">${rev.rows.map(r=>row(r, r.a==null?'<span class="muted">no answer</span>':esc(rev.opts[r.a]||""), r.fast?"Fastest correct answer":"")).join("")}</div>`;
   } else if(rev.t==="mm"){
     const r=rev.rows[0];
@@ -8771,7 +8811,7 @@ document.addEventListener("click", async e=>{
   if(a==="leave"){ leaveParty(); return; }
   if(a==="ready" && S && (S.phase==="lobby"||S.phase==="intro")){ const k=rdyKey(); setMyPresence({rdy: myPres.rdy===k?null:k}); if(S.phase==="lobby") lbLive(); else rdyLive(); if(app.isHost) hostTick(); return; }
   if(a==="emote"){ sendEmote(b.dataset.e); return; }
-  if(a==="bighead"){ BIG.set(!BIG.on); document.querySelectorAll('[data-act="bighead"]').forEach(x=>x.setAttribute("aria-pressed",String(BIG.on))); document.querySelectorAll("img[data-pav]").forEach(im=>{ const u=Portrait.get(im.dataset.pav); im.src=u||avURI(im.dataset.pav); im.classList.toggle("r3",!!u); }); return; }
+  if(a==="bighead"){ BIG.set(!BIG.on); document.querySelectorAll('[data-act="bighead"]').forEach(x=>x.setAttribute("aria-pressed",String(BIG.on))); document.querySelectorAll("img[data-pav]").forEach(im=>{ const u=Portrait.get(im.dataset.pav); im.src=u||(im.dataset.flat?im.src:avURI(im.dataset.pav)); im.classList.toggle("r3",!!u); }); return; }
   if(a==="maker"){ if(document.getElementById("mkmodal")) closeMaker(); else { app.mkOpen=true; app.mk=null; mkState(); openMaker(); } return; }
   if(a==="mktab"){ app.mkTab=b.dataset.tab; renderMaker(); const bd=document.getElementById("mkbody"); if(bd) bd.scrollTop=0; return; }
   if(a==="mkrandom"){ mkRandom(); return; }
