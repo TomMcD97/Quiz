@@ -6116,6 +6116,22 @@ function qFactsOf(q){ return qFacts(q.text+(q.items?" "+q.items.join(" "):""), q
 var NEWQ=new Set();
 function dailyOnly(text){ const n=norm(String(text||"")); return !NEWQ.has(n) && hashStr("dq|"+n)%4===0; }
 const DAILY_TYPES=new Set(["gk","gk_pop","est","est_pop","est_hard","rank","rank_pop"]);
+/* Pin Drop asks for the place on its own ("Where is Old Trafford?"), not "Old Trafford, Manchester": the country or city after the comma gives it away. The full name is shown on the answer. */
+/* places that share their name with somewhere else far away keep their qualifier, or the answer would be unfair */
+const PIN_SAME_NAME=new Set(["washington","santiago","valencia","alexandria","kochi","phoenix","perth","georgetown","halifax","hamilton","hyderabad","kingston","lagos","plymouth","portland","victoria","wellington","cartagena","olympic stadium","st james' park","etihad stadium"]);
+function pinName(n){ const b=String(n).split(",")[0].trim(); return PIN_SAME_NAME.has(b.toLowerCase()) ? String(n) : b; }
+/* Pin Drop: no two places in one game within this distance of each other */
+const PIN_GAP_KM=700;
+function pinRound(n){
+  const got=[], far=(lat,lng)=>got.every(q=>km(q,{lat,lng})>=PIN_GAP_KM), hard=G && G.diff==="hard" && BANK.pin_hard && BANK.pin_hard.length;
+  for(let i=0;i<n;i++){
+    const order=hard?["pin_hard","pin","pin_pop"]:(i%2?["pin","pin_pop"]:["pin_pop","pin"]); let q=null;
+    for(const t of order){ const a=bankPick(t,1,Math.random,true,x=>far(x[1],x[2])); if(a.length && far(a[0].lat,a[0].lng)){ q=a[0]; break; } }
+    if(!q){ const a=bankPick(order[0],1); q=a[0]||null; }
+    if(q) got.push(q);
+  }
+  return got;
+}
 function bankPick(type, n, rnd=Math.random, track=true, keep=null){
   let all = BANK[type].map((x,i)=>({x,i,k:qKey(type,x)})).filter(o=>(!keep || keep(o.x)) && !(DAILY_TYPES.has(type) && dailyOnly(o.x[0])));
   if(track) all=dayFilter(all, n, o=>o.x[0]);
@@ -6134,7 +6150,7 @@ function fromBank(type, x, rnd=Math.random){
   if(type==="est") return {text:x[0], ans:x[1], unit:x[2], ...estRange(x[1], x[2], rnd)};
   if(type==="uniq") return {text:x[0], valid:x[1]};
   if(type==="rank"){ const sh=shuffle(x[1].slice(), rnd); if(sh.every((v,i)=>v===x[1][i])) sh.reverse(); return {text:x[0], items:sh, correct:x[1].map(v=>sh.indexOf(v)), vals:x[2], lo:x[3], hi:x[4]}; }
-  if(type==="pin") return {text:"Where is "+x[0]+"?", place:x[0], lat:x[1], lng:x[2]};
+  if(type==="pin") return {text:"Where is "+pinName(x[0])+"?", place:x[0], lat:x[1], lng:x[2]};
 }
 function mmBank(topic){
   const keys=Object.keys(BANK.mm); let k=keys.find(t=>norm(topic) && (norm(t).includes(norm(topic))||norm(topic).includes(norm(t))));
@@ -6723,6 +6739,7 @@ async function buildRound(r, ps){
   if(r.t==="sp") return {t:"sp", qs:await buildSpeed()};
   if(r.t==="lead") return {t:"lead", qs:(await buildSpeed(Math.max(2,Math.ceil(r.n/3)))).slice(0,r.n)};
   if(r.t==="ctry"){ GeoData.load(); return {t:"ctry", qs:ctryPick(r.n)}; }
+  if(r.t==="pin") return {t:"pin", qs:pinRound(r.n)};
   if(r.t==="hl") return {t:"hl", qs:hlBuild(r.n)};
   let qs=[];
   /* Great Minds: there must be plenty more valid answers than players, so a clash isn't forced */
