@@ -1,6 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Spotlight Quiz: a live party quiz you play together on your phones.">
-<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}.rt-wrap{overflow-x:auto;border:1px solid var(--line2);border-radius:14px;-webkit-overflow-scrolling:touch;display:block;width:0;min-width:100%;max-width:100%;box-sizing:border-box}.summary{min-width:0;max-width:100%}.rt-table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}.rt-table th,.rt-table td{padding:8px 7px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line,rgba(255,255,255,.08))}.rt-table thead th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}.rt-table tbody tr:last-child td{border-bottom:0}.rt-table .rt-name{text-align:left;position:sticky;left:0;background:var(--panel);z-index:1;padding-left:10px}.rt-table td.rt-name{max-width:118px}.rt-table td.rt-name>span{display:inline-block;vertical-align:middle;max-width:72px;overflow:hidden;text-overflow:ellipsis;margin-left:6px}.rt-table td.rt-name .av{vertical-align:middle}.rt-table tr.me td{color:var(--accent)}.rt-table td.top{color:var(--good);font-weight:800}.rt-table td.neg{color:var(--bad,#e5484d)}.rt-table .rt-tot{font-weight:800;position:sticky;right:0;background:var(--panel);box-shadow:-1px 0 0 var(--line2);padding-right:10px}.rt-table thead,.rt-wrap{background:var(--panel)}
+</style>
 <script>/* Stand-in for the Claude runtime when the game runs on its own server. */
 (function(){
   const NET=(()=>{ let ws=null, id=null, open=false, retry=0; const rooms=new Map(), connFns=new Set();
@@ -6288,7 +6289,7 @@ function makerHTML(){ const m=mkState(), tab=app.mkTab||"body", canPhoto=!!app.s
     <div class="mk-main">
       <div class="mk-stage"><div class="mk-pv" id="mkpv"><img src="${avSrc(m,{},480)}" alt="Your avatar" draggable="false">${app.mkBusy?`<div class="busy"><span class="spin"></span>${esc(app.mkBusy)}</div>`:""}</div>
         <label class="btn mk-selfie ${canPhoto?"":"disabled"}" ${canPhoto?"":'aria-disabled="true"'}><input type="file" accept="image/*" capture="user" id="mkphoto" hidden ${canPhoto?"":"disabled"}>📷 Match a selfie</label>
-        <p class="mk-note">${canPhoto?"Claude reads your selfie to fill everything in. The photo isn't saved or shared.":"Selfie matching needs Claude, which isn't available here."}</p>
+        <p class="mk-note">${canPhoto?"Your selfie is read to fill everything in. The photo isn't saved or shared.":"Selfie matching isn't available here."}</p>
         <label class="btn primary mk-selfie"><input type="file" accept="image/*" capture="user" id="mkface" hidden>${m.eyes==="photo"?"🙂 Change my real face":"🙂 Use my real face"}</label>
         ${m.eyes==="photo"?`<button type="button" class="btn ghost mk-selfie" data-act="mkfacedel">Remove my photo</button>`:""}
         <p class="mk-note">Your face photo goes on your 3D character. Only players in your party see it.</p></div>
@@ -6380,7 +6381,7 @@ Choose the closest option for each, and make "hair" agree with "hairNotes".`;
     for(const k in sets) if(sets[k][r[k]]) m[k]=r[k];
     m.freckles=!!r.freckles; m.earrings=!!r.earrings;
     app.mk=m; app.mkBusy=""; toast("Matched to your selfie. Tweak anything, then tap Save avatar.");
-  }catch(e){ app.mkBusy=""; toast(e&&e.code==="not_granted"?"Claude access was declined, so the selfie can't be read.":"Couldn't read that photo. Try another, or build your look by hand."); }
+  }catch(e){ app.mkBusy=""; toast(e&&e.code==="not_granted"?"Access was declined, so the selfie can't be read.":"Couldn't read that photo. Try another, or build your look by hand."); }
   renderMaker();
 }
 
@@ -7562,7 +7563,7 @@ function lobbyHTML(){
   if(host){
     if(!local) h+=`<div class="pset"><form class="answer-row" data-form="pname" style="margin:0"><input class="input" id="pnamein" maxlength="30" autocomplete="off" placeholder="Name your party (optional)" value="${esc(S.pname||"")}"><button class="btn">Save name</button></form>
       <div class="lenpick" role="radiogroup" aria-label="Who can join"><span class="lp-l">Who can join</span><div class="seg"><button type="button" role="radio" aria-checked="${!S.pub}" class="${!S.pub?"on":""}" data-act="pub" data-pub="0">Private</button><button type="button" role="radio" aria-checked="${!!S.pub}" class="${S.pub?"on":""}" data-act="pub" data-pub="1">Public</button></div><span class="muted">${S.pub?"Listed under Open parties: anyone on Spotlight can join.":"Hidden: only people you give the code to can join."}</span></div></div>`;
-    h+=`<details class="hostcfg"${app.cfgOpen?" open":""}><summary>Game setup <span class="muted">Only you can see this. ${aiOn()?"Questions by Claude.":"Built-in question bank."}</span></summary><div class="rcfg" id="rcfg">${roundsCfgHTML()}</div></details>`;
+    h+=`<details class="hostcfg"${app.cfgOpen?" open":""}><summary>Game setup <span class="muted">Only you can see this.</span></summary><div class="rcfg" id="rcfg">${roundsCfgHTML()}</div></details>`;
     h+=`<div class="lb-go"><div class="lb-go-meta"><span class="eyebrow">Ready up</span><span class="num" id="lbgo">${rdyCounts().r} of ${ps.length} ready · about ${estMinutes(S.rounds)} min</span></div><span data-rdybtn>${rdyBtnHTML("I'm ready")}</span><button class="btn small" data-act="start" title="Start without waiting for everyone">Start now</button><button class="btn ghost small" data-act="leave">Close party</button></div>`;
   } else h+=`<div class="lb-go"><div class="lb-go-meta"><span class="eyebrow">Ready up</span><span class="num" id="lbgo">${rdyCounts().r} of ${ps.length} ready</span></div><span data-rdybtn>${rdyBtnHTML("I'm ready")}</span><button class="btn ghost small" data-act="leave">Leave party</button></div>`;
   return h;
@@ -7604,7 +7605,7 @@ function questionHTML(q){
   if(q.t==="mm"){ const mine=q.chair===me.pid; h+=`<div class="chair">${avatar(q.chair,"lg")}<div><div class="eyebrow">In the chair</div><b style="font-size:18px">${esc(mine?"You":nameOf(q.chair))}</b> <span class="muted">· ${esc(q.topic)}</span></div></div>`; }
   h += `<div class="qtext">${esc(q.text)}</div>`;
   h += `<div id="ansarea">${answerAreaHTML(q)}</div>`;
-  if(app.isHost) h += `<div class="hostbar"><span class="muted" style="font-size:13px" data-count></span><span class="grow"></span><button class="btn small" data-act="closeq">End question now</button></div>`;
+  if(app.isHost) h += `<div class="hostbar"><span class="muted" style="font-size:13px" data-count></span></div>`;
   else h += `<div class="muted" style="font-size:13px;margin-top:auto" data-count></div>`;
   return h;
 }
@@ -7838,6 +7839,17 @@ function scoreGraphSVG(g, ps){
   const key=`<div class="sg-key">${order.map(p=>`<span><i style="background:${SG_COL[order.indexOf(p)%SG_COL.length]}"></i>${esc(nameOf(p))}${p===me.pid?" (you)":""}</span>`).join("")}</div>`;
   return `<div class="eyebrow" style="margin:4px 0 8px">How the game went</div><div class="sg-wrap">${svg}${key}</div>`;
 }
+/* points scored in each round, one row per player, one column per round */
+function roundTableHTML(g, ps){
+  const h=g.h||[], hp=g.hp||[]; if(!h.length) return "";
+  const idx=p=>hp.indexOf(p), rows=ps.map(x=>x.p).filter(p=>idx(p)>=0);
+  const pts=(ri,p)=>{ const j=idx(p)+1; return (h[ri][j]||0)-(ri?(h[ri-1][j]||0):0); };
+  const best=h.map((_,ri)=>Math.max(...rows.map(p=>pts(ri,p))));
+  const total=p=>(S.scores||{})[p]||0;
+  let t=`<div class="eyebrow" style="margin:16px 0 8px">Points by round</div><div class="rt-wrap"><table class="rt-table"><thead><tr><th class="rt-name">Player</th>${h.map(([tt],ri)=>`<th title="${esc((RT[tt]||{}).name||tt)}">${esc(RT_SHORT[tt]||(RT[tt]||{}).name||tt)}</th>`).join("")}<th class="rt-tot">Total</th></tr></thead><tbody>`;
+  t+=rows.map(p=>`<tr class="${p===me.pid?"me":""}"><td class="rt-name">${avatar(p,"sm")}<span>${esc(nameOf(p))}${p===me.pid?" (you)":""}</span></td>${h.map((_,ri)=>{ const v=pts(ri,p); return `<td class="num${v>0&&v===best[ri]?" top":""}${v<0?" neg":""}">${v>0?v:v<0?"−"+Math.abs(v):"–"}</td>`; }).join("")}<td class="num rt-tot">${total(p)}</td></tr>`).join("");
+  return t+`</tbody></table></div>`;
+}
 function gameSummaryHTML(ps, wait, D){
   const g=S.gx; if(!g || !ps.length) return "";
   const nm=p=>esc(nameOf(p))+(p===me.pid?" (you)":""), top=o=>{ let b=null; for(const p in o||{}) if(o[p]>0 && (!b || o[p]>o[b])) b=p; return b; };
@@ -7852,6 +7864,7 @@ function gameSummaryHTML(ps, wait, D){
   if(g.avg) add("⏱️","Fastest on average",g.avg.p,`${(g.avg.ms/1000).toFixed(1)} seconds an answer`);
   const pick=[], used=new Set(); for(const c of C){ if(pick.length<3 && !used.has(c.p)){ pick.push(c); used.add(c.p); } } for(const c of C){ if(pick.length<3 && !pick.includes(c)) pick.push(c); }
   let h=`<div class="summary${wait?" wait3d":""}" style="--d:${D}s">`;
+  h+=roundTableHTML(g, ps);
   h+=scoreGraphSVG(g, ps);
   if(pick.length) h+=`<div class="eyebrow" style="margin:16px 0 8px">Accolades</div><div class="aw-grid">${pick.map(c=>`<div class="aw-card">${avatar(c.p)}<div><div class="eyebrow">${c.icon} ${esc(c.title)}</div><b>${nm(c.p)}</b><div class="muted">${esc(c.val)}</div></div></div>`).join("")}</div>`;
   return h+`</div>`;
@@ -7871,7 +7884,7 @@ function finalHTML(){
 function topicsHTML(){
   const k=S.gid+"-"+S.ri, st=S.tp&&S.tp[me.pid], sent=topicSentK===k, n=((S.rounds||[]).find(r=>r.t==="mm")||{}).n||10;
   let h=`<div class="stagehead"><div><div class="eyebrow">Round ${S.ri+1} · Specialist Subject</div><h2 style="margin-top:6px;font-size:clamp(24px,3.6vw,32px)">Choose your specialist subject</h2></div></div>`;
-  h+=`<p class="muted" style="margin:0;max-width:60ch">Type any topic you know well, as broad or as niche as you like. ${S.ai?`Claude writes ${n} questions on it just for you.`:"Without Claude, you'll get the closest preset topic."} Then you all answer your own questions at the same time.</p>`;
+  h+=`<p class="muted" style="margin:0;max-width:60ch">Type any topic you know well, as broad or as niche as you like. ${S.ai?`You get ${n} questions on it written just for you.`:"You'll get the closest preset topic."} Then you all answer your own questions at the same time.</p>`;
   if(!st && !sent) h+=`<form class="answer-row" data-form="tp" style="max-width:600px"><input class="input" id="tpin" maxlength="60" autocomplete="off" placeholder="e.g. 90s Britpop, Harry Potter, The Roman Empire" value="${esc(me.topic)}"><button class="btn primary">Write my questions</button></form>`;
   else h+=`<div class="chair">${ICON.mm}<div id="tpme">${tpMine(st)}</div></div>`;
   h+=`<div><div class="eyebrow" style="margin-bottom:8px">Players</div><div class="res still" id="tplist"></div></div>`;
@@ -8007,7 +8020,7 @@ function mfHTML(q){
   if(L && !L.skip) h+=`<div class="mf-last ${L.ok?"ok":"bad"}">${avatar(L.by,"sm")}<span><b>${esc(nameOf(L.by))}</b> picked <b>${esc(L.w)}</b>. ${L.ok?"Right! +100":"It's a trap! −50"}</span></div>`;
   else if(L && L.skip) h+=`<div class="mf-last">${avatar(L.by,"sm")}<span><b>${esc(nameOf(L.by))}</b> ran out of time.</span></div>`;
   h+=`<div class="mf-grid">${q.tiles.map((t,i)=>`<button class="mf-tile ${t.s===1?"r":t.s===2?"w":""} ${L&&L.i===i?"flip":""}" data-act="mfpick" data-i="${i}" ${mine&&!t.s&&!myAns?"":"disabled"}>${t.by?avatar(t.by,"sm"):""}<span>${esc(t.w)}</span>${t.s===1?'<em>✓</em>':t.s===2?'<em>✕</em>':""}</button>`).join("")}</div>`;
-  h+=`<div class="row"><div class="mf-turn ${mine?"me":""}">${mine?(myAns?"Locked in…":"Your turn! Pick one that fits."):`${esc(nameOf(q.turn))}'s turn`}</div><span class="muted">${q.left} right answer${q.left===1?"":"s"} still hidden</span>${app.isHost?`<span class="grow"></span><button class="btn small" data-act="mfskip">Skip this turn</button>`:""}</div>`;
+  h+=`<div class="row"><div class="mf-turn ${mine?"me":""}">${mine?(myAns?"Locked in…":"Your turn! Pick one that fits."):`${esc(nameOf(q.turn))}'s turn`}</div><span class="muted">${q.left} right answer${q.left===1?"":"s"} still hidden</span></div>`;
   return h;
 }
 function mfRevealHTML(rev){
@@ -8610,7 +8623,7 @@ function renderDaily(){
   if(mapView){ mapView.destroy(); mapView=null; }
   const prog = D.qs ? `<div class="progress">${D.qs.map((_,i)=>`<i class="${i<D.i||(i===D.i&&D.phase==="fb")?"done":i===D.i&&D.phase==="q"?"cur":""}"></i>`).join("")}</div>` : "";
   let h="";
-  if(D.phase==="loading") h=`<div class="intro"><div class="spinner"></div><h2>Loading today's quiz</h2><p>If you're the first player today, Claude is writing the questions. Everyone else gets the same set.</p></div>`;
+  if(D.phase==="loading") h=`<div class="intro"><div class="spinner"></div><h2>Loading today's quiz</h2><p>Everyone gets the same set today.</p></div>`;
   else if(D.phase==="intro") h=`${prog}<div class="intro"><div class="eyebrow">Daily quiz · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}))}</div><div class="ri">${D.qs.length} questions</div><p>Ten questions on ten different topics, from easy to tough, plus two guesstimates, a rank it, a country to find and a higher-or-lower. Multiple-choice and higher-or-lower questions start at <b>100 points</b> and count down, so be quick. Maps and guesstimates score up to 100 for how close you get. One go per day.</p>${acctPromptHTML()}<div class="row"><button class="btn spot" data-act="dbegin">Start</button></div></div>`;
   else if(D.phase==="q"||D.phase==="fb"){
     const q=D.qs[D.i]; const fb=D.phase==="fb";
