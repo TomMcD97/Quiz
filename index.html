@@ -100,7 +100,7 @@
       try{ return save((await post("/api/auth/me",{})).profile); }
       catch(e){ if(e.status===401){ await token(true); if(!sess) return null; try{ return save((await post("/api/auth/me",{})).profile); }catch(e2){ if(e2.status===401){ keep(null); return null; } } }
         return cached(); /* server or network hiccup: stay logged in with what we knew */ } },
-    async saveProfile(patch){ if(!sess) return null; return (await post("/api/auth/profile",patch)).profile; },
+    async saveProfile(patch){ if(!sess) return null; const p=(await post("/api/auth/profile",patch)).profile; if(p){ try{ localStorage.setItem("sq-prof",JSON.stringify(p)); }catch(e){} } return p; },
     logout(){ keep(null); try{ localStorage.removeItem("sq-prof"); }catch(e){} }
   };
   window.SQ_AUTH=A;
@@ -6224,6 +6224,20 @@ const MK={
   tabs:[["body","Male / Female"],["skin","Skin"],["hair","Hair"],["face","Face"],["eyes","Eyes"],["brows","Brows"],["nose","Nose & lips"],["beard","Facial hair"],["glasses","Glasses"],["outfit","Outfit"],["extras","Extras"]]
 };
 const HEAD_VB="18 0 164 168";
+/* change your avatar: this device, your account, and everyone in your party all get it.
+   Until the account has confirmed the new look, a slow or older copy of the account can't switch you back. */
+function setMyAv(id){
+  if(!validAv(id)) return; me.av=id; LS.set("sq-av",id); if(isToonAv(id)) LS.set("sq-av-custom",id);
+  if(app.acct){ LS.set("sq-av-sync",id); avPush(); }
+  avEverywhere();
+}
+function avPush(){ const id=LS.get("sq-av-sync"); if(!id || !app.acct || !window.SQ_AUTH) return;
+  window.SQ_AUTH.saveProfile({av:id}).then(p=>{ if(p && p.av===id && LS.get("sq-av-sync")===id){ LS.set("sq-av-sync",null); app.acct.av=id; } }).catch(()=>{}); }
+function avEverywhere(){
+  if(app.party){ setMyPresence({av:me.av}); try{ sharePhoto(); }catch(e){} renderBoard(); try{ renderLobbyStage(); }catch(e){} if(S && ["intro","roundEnd","final"].includes(S.phase)){ stageKey=""; renderStage(); } }
+  document.querySelectorAll("#avpick").forEach(pk=>{ const tmp=document.createElement("div"); tmp.innerHTML=avPickerHTML(); pk.replaceWith(...tmp.childNodes); });
+  try{ AVR.png.clear(); }catch(e){}
+}
 function mkState(){ return app.mk||(app.mk=Object.assign({},avToon(me.av)||(isToonAv(LS.get("sq-av-custom"))&&decodeToon(LS.get("sq-av-custom")))||TOON.def())); }
 function genderSwap(m0,v){ const m=Object.assign({},m0); if(m.gender===v) return m; if(v==="f"){ if(["crop","buzz","quiff","sidepart","bald","mohawk","curlytop"].includes(m.hair)) m.hair="long"; m.facial="none"; } else { if(["long","wavy","curlylong","bob","ponytail","bun","puffs","pixie","hijab"].includes(m.hair)) m.hair="crop"; m.earrings=false; } m.gender=v; return m; }
 function mkTiles(key,opts,vb){ const m=mkState(); return `<div class="mk-tiles">${Object.entries(opts).map(([v,l])=>{ const t=key==="gender"?genderSwap(m,v):Object.assign({},m,{[key]:v}); return `<button type="button" class="mk-tile ${m[key]===v?"on":""}" data-act="mkset" data-k="${key}" data-v="${v}" aria-pressed="${m[key]===v}"><span class="art"><img src="${avSrc(t,{vb:vb||HEAD_VB},180)}" alt="" draggable="false"></span><span class="lb">${l}</span></button>`; }).join("")}</div>`; }
@@ -7558,7 +7572,7 @@ function lobbyHTML(){
     </div></section>
   <div class="lb-stats" id="lbstats">${lbStatsHTML()}</div>`;
   h+=`<div class="lb-stage">${stageHTML(host ? (local?((G.bots||[]).length?"Solo game against bots. Add or remove bots below, then start.":"Solo game. Add some bots below to play against."):"Friends join from the home screen with this code.") : `You're in. Waiting for ${esc(hp?hp.nick:"the host")} to start the game.`)}</div>`;
-  h+=`<div class="lb-grid"><section class="lb-sec"><div class="lb-sh"><span class="eyebrow">The cast</span><details class="lb-look"><summary>Change your look</summary><div class="lb-lookin">${avPickerHTML()}</div></details></div><div class="lb-cast" id="lbcast">${lbCastHTML()}</div></section>
+  h+=`<div class="lb-grid"><section class="lb-sec"><div class="lb-sh"><span class="eyebrow">The cast</span><details class="lb-look"${app.lookOpen?" open":""}><summary>Change your look</summary><div class="lb-lookin">${avPickerHTML()}</div></details></div><div class="lb-cast" id="lbcast">${lbCastHTML()}</div></section>
     <section class="lb-sec"><div class="lb-sh"><span class="eyebrow">Running order</span><span class="muted lb-diff">${S.diff==="hard"?"Hard":"Easy"} mode</span></div><div id="lbprog">${lbProgHTML()}</div></section></div>`;
   if(host){
     if(!local) h+=`<div class="pset"><form class="answer-row" data-form="pname" style="margin:0"><input class="input" id="pnamein" maxlength="30" autocomplete="off" placeholder="Name your party (optional)" value="${esc(S.pname||"")}"><button class="btn">Save name</button></form>
@@ -8782,7 +8796,9 @@ function acctRefreshView(){ if(app.view==="home") render(); else if(app.view==="
 function acctApply(p, quiet){
   app.acct=p;
   if(p.name){ me.nick=p.name; LS.set("sq-nick",p.name); const ni=$("#nick"); if(ni) ni.value=p.name; }
-  if(p.av && validAv(p.av) && p.av!==me.av){ me.av=p.av; LS.set("sq-av",p.av); if(isToonAv(p.av)) LS.set("sq-av-custom",p.av); }
+  const pend=LS.get("sq-av-sync");
+  if(pend && validAv(pend)){ if(p.av===pend) LS.set("sq-av-sync",null); else { p.av=pend; avPush(); } }
+  if(p.av && validAv(p.av) && p.av!==me.av){ me.av=p.av; LS.set("sq-av",p.av); if(isToonAv(p.av)) LS.set("sq-av-custom",p.av); avEverywhere(); }
   for(const [d,t] of Object.entries(p.dqr||{})){ const a=LS.get(DQ_LS+d); if(a && (a.at||0)<t && !LS.get("sq-dqr-"+d+"-"+t)){ try{ localStorage.removeItem(DQ_LS+d); }catch(e){} LS.set("sq-dqr-"+d+"-"+t,1); } } /* a daily go that was reset for this account */
   for(const [d,v] of Object.entries(p.dq||{})) if(!LS.get(DQ_LS+d) && !(d===DQ_RESET_DAY && !v.v11)) LS.set(DQ_LS+d,{score:v.score, pts:[], posted:1, acct:p.id, guest:v.guest||0});
   for(const [d,v] of Object.entries(p.dg||{})) if(!LS.get(DG_LS+d)) LS.set(DG_LS+d,{score:v.score, n:v.n, words:[], posted:1, acct:p.id, guest:v.guest||0});
@@ -8866,8 +8882,8 @@ document.addEventListener("click", async e=>{
   if(a==="mkfacedel"){ app.mk=Object.assign({},mkState(),{eyes:"almond"}); renderMaker(); return; }
   if(a==="fe-cancel"){ faceEditorClose(); return; }
   if(a==="fe-use"){ faceEditorUse(); return; }
-  if(a==="mksave"){ const id=encodeToon(app.mk); LS.set("sq-av-custom",id); if(app.acct) window.SQ_AUTH.saveProfile({av:id}).catch(()=>{}); me.av=id; LS.set("sq-av",id); if(app.mk.eyes==="photo" && app.feDraft){ LS.set("sq-selfie",app.feDraft); app.feDraft=null; AVR.png.clear(); } if(app.party) setMyPresence({av:id}); sharePhoto(); closeMaker(); document.querySelectorAll("#avpick").forEach(pk=>{ const tmp=document.createElement("div"); tmp.innerHTML=avPickerHTML(); pk.replaceWith(...tmp.childNodes); }); if(app.party){ setMyPresence({av:id}); renderBoard(); renderLobbyStage(); } toast("Avatar saved. You're using it now."); return; }
-  if(a==="pickav"){ const v=b.dataset.av; if(!validAv(v)) return; if(app.acct) window.SQ_AUTH.saveProfile({av:v}).catch(()=>{}); me.av=v; LS.set("sq-av", v); document.querySelectorAll(".avopt").forEach(o=>{ const on=o.dataset.av===v; o.classList.toggle("sel", on); o.setAttribute("aria-pressed", on); }); if(app.party){ setMyPresence({av:v}); renderBoard(); } return; }
+  if(a==="mksave"){ const id=encodeToon(app.mk); if(app.mk.eyes==="photo" && app.feDraft){ LS.set("sq-selfie",app.feDraft); app.feDraft=null; } closeMaker(); setMyAv(id); toast("Avatar saved. You're using it now."); return; }
+  if(a==="pickav"){ const v=b.dataset.av; if(!validAv(v)) return; setMyAv(v); return; }
   if(a==="daily"||a==="dailyresult"){ startDaily(); return; }
   if(a==="dgrid"){ startDGrid(); return; }
   if(a==="acct"){ openAcct(); return; }
@@ -8932,6 +8948,7 @@ document.addEventListener("keydown", e=>{
   if(!e.target.closest("input") && S && S.phase==="q" && S.q.t==="hl" && !myAns && app.view==="party"){ if(e.key==="ArrowUp"||e.key.toLowerCase()==="h"){ e.preventDefault(); submitAnswer(0); } if(e.key==="ArrowDown"||e.key.toLowerCase()==="l"){ e.preventDefault(); submitAnswer(1); } }
 });
 document.addEventListener("change", e=>{ const t=e.target; if(t && t.id==="mkface" && t.files && t.files[0]){ faceEditorOpen(t.files[0]); t.value=""; } else if(t && t.id==="mkphoto" && t.files && t.files[0]){ avatarFromPhoto(t.files[0]); t.value=""; } else if(t && t.dataset && t.dataset.mk){ app.mk[t.dataset.mk]= t.type==="checkbox"?t.checked:t.value; renderMaker(); } });
+document.addEventListener("toggle", e=>{ const t=e.target; if(t && t.classList && t.classList.contains("lb-look")) app.lookOpen=t.open; }, true);
 document.addEventListener("keydown", e=>{ if(e.key==="Escape" && document.getElementById("mkmodal")) closeMaker(); if(e.key==="Escape" && document.getElementById("acctmodal")) closeAcct(); });
 document.addEventListener("input", e=>{
   const id=e.target.id;
