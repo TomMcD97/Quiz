@@ -4472,17 +4472,17 @@ const ICON = {
 };
 const RT = {
   mm:  {name:"Specialist Subject", desc:"Everyone types their own subject and gets questions written just for them, then you all answer at the same time on your own devices. 100 points per correct answer.", def:10, min:5, max:10, dur:20, unitLabel:"per player"},
-  gk:  {name:"General Knowledge", desc:"Everyone answers the same multiple-choice question. 100 points if right, plus 50 for the fastest correct answer.", def:8, min:3, max:15, dur:20},
-  rank:{name:"Rank It", desc:"Put five things in the right order, like smallest to largest or oldest to newest. 15 points for each one in the right place, and the full 100 for a perfect order, plus 50 for the fastest perfect order.", def:5, min:3, max:10, dur:30},
+  gk:  {name:"General Knowledge", desc:"Everyone answers the same multiple-choice question. 100 points if right, plus 20 for the fastest correct answer.", def:8, min:3, max:15, dur:20},
+  rank:{name:"Rank It", desc:"Put five things in the right order, like smallest to largest or oldest to newest. 15 points for each one in the right place, and the full 100 for a perfect order, plus 20 for the fastest perfect order.", def:5, min:3, max:10, dur:30},
   est: {name:"Guesstimate", desc:"Slide your marker along a scale, then see where everyone landed. Closest scores 100, second closest 50.", def:5, min:3, max:10, dur:30},
   uniq:{name:"Great Minds", desc:"Give a valid answer nobody else gives for 100 points. If someone matches you, neither of you scores. Needs 3+ players.", def:5, min:3, max:10, dur:40, minPlayers:3},
-  ctry:{name:"Find the Country", desc:"A country's name appears and you tap where it is on a map with no names. 100 if your tap lands inside it, fewer points the closer you get, plus 50 for the fastest tap inside.", def:5, min:3, max:10, dur:20},
+  ctry:{name:"Find the Country", desc:"A country's name appears and you tap where it is on a map with no names. 100 if your tap lands inside it, fewer points the closer you get, plus 20 for the fastest tap inside.", def:5, min:3, max:10, dur:20},
   pin: {name:"Pin Drop", desc:"Drop a pin on the world map, then watch everyone's pins land. Closest scores 100, second closest 50.", def:5, min:3, max:10, dur:30},
   grid:{name:"Word Grid", desc:"30 seconds to find words by joining touching letters. 3 letters score 10, 4 letters 20, 5 letters 40, then big points for long words: 6 letters 100, 7 letters 150, 8 letters 200 and 50 more for each extra letter.", def:1, min:1, max:3, dur:30}
 };
 RT.sp={name:"Speed Round", desc:"The grand finale. Four topics, three quick-fire questions each. Scores are hidden until the end. A right answer is worth 150 points the moment the question appears, and the points count down as the clock runs. A wrong answer loses 50, so don't guess wildly.", def:12, min:12, max:12, dur:10, last:true};
 RT.lead={name:"Beat the Leader", desc:"Whoever's top of the scores plays alone against everyone else as one team. Three questions on each topic, and the first answer in decides each one: a right answer wins it for that side, a wrong answer hands it to the other side. The leader scores 150; the team scores 100 each. Needs 2+ players.", def:9, min:6, max:12, dur:15, minPlayers:2};
-RT.hl={name:"Higher or Lower", desc:"One thing is shown with its number. Is the next one higher or lower? Each answer becomes the next thing to beat. 100 points if right, plus 50 for the fastest right answer.", def:8, min:3, max:15, dur:15};
+RT.hl={name:"Higher or Lower", desc:"One thing is shown with its number. Is the next one higher or lower? Each answer becomes the next thing to beat. 100 points if right. No rush: speed doesn't matter.", def:8, min:3, max:15, dur:15};
 RT.mf={name:"Minefield", desc:"Take turns picking from a grid of 12 answers. Most fit the category but some are traps. Right picks score 100, traps lose 50.", def:3, min:1, max:5, dur:15};
 
 /* one-line summaries for the game setup list (the full rules show at the start of each round) */
@@ -7150,7 +7150,7 @@ async function scoreQuestion(t, Q, A){
     for(const pid of ps) if(!rows.find(r=>r.p===pid)) rows.push({p:pid, a:parse(A[pid].v), ms:A[pid].t});
     rows.forEach(r=>{ r.n = r.a ? r.a.filter((x,i)=>x===Q.correct[i]).length : 0; r.ok = r.n===n; r.pts = r.ok ? 100 : r.n*15; });
     const perfect=rows.filter(r=>r.ok).sort((a,b)=>a.ms-b.ms);
-    if(perfect.length && rows.length>1){ perfect[0].pts+=50; perfect[0].fast=true; }
+    if(perfect.length && rows.length>1){ perfect[0].pts+=20; perfect[0].fast=true; }
     rows.forEach(r=>delete r.ms);
     return {t, items:Q.items, correct:Q.correct, vals:Q.vals, lo:Q.lo, hi:Q.hi, rows};
   }
@@ -7159,7 +7159,7 @@ async function scoreQuestion(t, Q, A){
     for(const pid of ps) if(!rows.find(r=>r.p===pid)) rows.push({p:pid, a:Number(A[pid].v), ms:A[pid].t});
     const right=rows.filter(r=>r.a===Q.ans).sort((a,b)=>a.ms-b.ms);
     rows.forEach(r=>{ r.ok = r.a===Q.ans; r.pts = r.ok?100:0; });
-    if(right.length && rows.length>1){ right[0].pts+=50; right[0].fast=true; }
+    if(t==="gk" && right.length && rows.length>1){ right[0].pts+=20; right[0].fast=true; } /* Higher or Lower: no speed bonus */
     rows.forEach(r=>delete r.ms);
     return t==="hl" ? {t, ans:Q.ans, opts:Q.opts, b:Q.b, rows} : {t, ans:Q.ans, opts:Q.opts, rows};
   }
@@ -7198,7 +7198,7 @@ async function scoreQuestion(t, Q, A){
       const pt={lat:+v.lat, lng:+v.lng}, inside = f ? inRings(f, pt) : km(pt, Q)<200, d = inside ? 0 : Math.round(f ? kmToFeature(f, pt) : Math.max(0, km(pt, Q)-200));
       return {p:pid, lat:+pt.lat.toFixed(3), lng:+pt.lng.toFixed(3), km:d, in:inside, ms:A[pid].t}; });
     rows.forEach(r=>{ r.pts = r.km==null?0 : r.in?100 : r.km<=150?70 : r.km<=400?50 : r.km<=800?30 : r.km<=1500?10 : 0; });
-    const hits=rows.filter(r=>r.in).sort((a,b)=>a.ms-b.ms); if(hits.length && ps.length>1){ hits[0].pts+=50; hits[0].fast=true; }
+    const hits=rows.filter(r=>r.in).sort((a,b)=>a.ms-b.ms); if(hits.length && ps.length>1){ hits[0].pts+=20; hits[0].fast=true; }
     rows.forEach(r=>delete r.ms); rows.sort((a,b)=>b.pts-a.pts || (a.km??1e9)-(b.km??1e9));
     return {t, place:Q.place, lat:Q.lat, lng:Q.lng, rows};
   }
@@ -7297,7 +7297,7 @@ function mmBegin(){
 }
 /* ---- Minefield (host) ---- */
 let mfH={used:new Set()};
-function mfTopics(){ const bt=BANK.mf.map(b=>b[0]); return aiOn() ? [...new Set([...bt, ...MF_EXTRA])] : bt; }
+function mfTopics(){ const bt=[...new Set(BANK.mf.map(b=>b[0]))]; return aiOn() ? [...new Set([...bt, ...MF_EXTRA])] : bt; }
 function mfPrompt(topic){ return `Create a board for a party quiz game called Minefield on the topic ${JSON.stringify(topic)}. Write one specific category for the board (for example "Clubs that have won the Premier League"), then exactly ${Math.round(mfSize()*.62)} correct answers that clearly belong in that category and exactly ${mfSize()-Math.round(mfSize()*.62)} believable wrong answers that clearly do not belong but could fool people. Every answer must be factually certain and not time-sensitive, at most 28 characters, and well known to a friendly group. British English. Variety code: ${rid(5)}\nReply with only JSON like {"prompt":"Clubs that have won the Premier League","right":["Arsenal","Chelsea"],"wrong":["Everton","Leeds United"]}`; }
 function cleanMF(j){
   if(!j || typeof j!=="object" || !j.prompt) return null;
@@ -7317,7 +7317,7 @@ function mfPick(R){
   const order=players().map(p=>p.pid); mfH.order=order;
   const chooser=order[G.qi % Math.max(1,order.length)];
   const all=mfTopics(), pool=shuffle(all.filter(t=>!mfH.used.has(t))).sort((a,b)=>(seenAt["mf:"+a]||0)-(seenAt["mf:"+b]||0));
-  const opts=(pool.length>=4 ? pool : shuffle(all)).slice(0,4);
+  const opts=[...new Set([...pool, ...shuffle(all)].map(t=>String(t)))].filter((t,i,arr)=>arr.findIndex(x=>norm(x)===norm(t))===i).slice(0,4);
   mfH.opts=opts; mfH.chooser=chooser;
   G.q={k:`${G.gid}-${G.ri}-${G.qi}-pick`, t:"mf", pick:true, chooser, opts, dur:20, n:G.qi+1, of:R.qs.length};
   G.q.dur=durFor("mf"); G.phase="q"; G.rev=null; G.adv=0; hostAdvAt=0; closing=false; hostQEnd=Date.now()+durFor("mf")*1000+1500; pushState();
