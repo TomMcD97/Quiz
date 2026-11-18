@@ -48,11 +48,24 @@ const ready = (async () => {
 const dirty = new Set(), gone = new Set(); let saveT = null;
 /* one-off score corrections the owner asked for, applied once after the store loads (a marker stops them running twice) */
 const FIXES = [
-  { id: "phil-1057-2026-11-17", nick: "PhilEatsToast", score: 1057, kind: "dq" }
+  { id: "phil-1057-2026-11-17", nick: "PhilEatsToast", score: 1057, kind: "dq" },
+  { id: "phil-reset-2026-11-18", nick: "PhilEatsToast", day: "2026-11-18", kind: "dqreset" }
 ];
 ready.then(() => {
   for (const f of FIXES) {
     const mark = "fix/" + f.id; if (store[mark]) continue;
+    if (f.kind === "dqreset") { /* wipe one player's go at a daily quiz so they can play it again */
+      const uk = Object.keys(store).filter(k => /^users\/[^/]+$/.test(k) && String((store[k] || {}).name || "").toLowerCase() === f.nick.toLowerCase());
+      if (!uk.length) { console.log(`Fix ${f.id}: no account found for ${f.nick}`); continue; }
+      for (const k of uk) {
+        const id = k.slice(6), p = Object.assign({}, store[k]);
+        if (p.dq) { p.dq = Object.assign({}, p.dq); delete p.dq[f.day]; }
+        p.dqr = Object.assign({}, p.dqr || {}, { [f.day]: Date.now() }); store[k] = p; save(k);
+        for (const sk of Object.keys(store)) if (new RegExp("^dq\\d*/" + f.day + "/scores/" + id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$").test(sk)) { delete store[sk]; gone.add(sk); dirty.delete(sk); save(); }
+      }
+      store[mark] = { at: Date.now(), day: f.day }; save(mark);
+      console.log(`Fix ${f.id}: ${f.nick}'s ${f.day} daily quiz reset`); continue;
+    }
     const re = f.kind === "dq" ? /^dq\d*\/(\d{4}-\d\d-\d\d)\/scores\/([^/]+)$/ : /^dg\d*\/(\d{4}-\d\d-\d\d)\/scores\/([^/]+)$/;
     const hits = Object.keys(store).map(k => { const m = re.exec(k); return m && store[k] && String(store[k].nick || "").toLowerCase() === f.nick.toLowerCase() ? { k, day: m[1], id: m[2] } : null; }).filter(Boolean);
     if (!hits.length) { console.log(`Fix ${f.id}: no score found for ${f.nick}`); continue; }
@@ -140,7 +153,7 @@ function nameTaken(n, exceptId) { // leaderboard names are unique, ignoring case
   return false;
 }
 const TAKEN = "That name's already taken. Try another.";
-function profileOut(user) { const p = store["users/" + user.id] || {}; return { id: user.id, email: user.email, name: p.name || user.name || "", av: p.av || null, dq: p.dq || {}, dg: p.dg || {} }; }
+function profileOut(user) { const p = store["users/" + user.id] || {}; return { id: user.id, email: user.email, name: p.name || user.name || "", av: p.av || null, dq: p.dq || {}, dg: p.dg || {}, dqr: p.dqr || {} }; }
 function sessOut(j) { return { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: j.expires_at || (Math.floor(Date.now() / 1000) + (j.expires_in || 3600)) }; }
 const authTries = new Map();
 function authAllowed(ip) { const now = Date.now(), a = (authTries.get(ip) || []).filter(t => now - t < 600000); if (a.length >= 30) return false; a.push(now); authTries.set(ip, a); return true; }
