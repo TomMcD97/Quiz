@@ -1,8 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Spotlight Quiz: a live party quiz you play together on your phones.">
-<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}.rt-wrap{overflow-x:auto;border:1px solid var(--line2);border-radius:14px;-webkit-overflow-scrolling:touch;display:block;width:0;min-width:100%;max-width:100%;box-sizing:border-box}.summary{min-width:0;max-width:100%}.rt-table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}.rt-table th,.rt-table td{padding:8px 7px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line,rgba(255,255,255,.08))}.rt-table thead th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}.rt-table tbody tr:last-child td{border-bottom:0}.rt-table .rt-name{text-align:left;position:sticky;left:0;background:var(--panel);z-index:1;padding-left:10px}.rt-table td.rt-name{max-width:118px}.rt-table td.rt-name>span{display:inline-block;vertical-align:middle;max-width:72px;overflow:hidden;text-overflow:ellipsis;margin-left:6px}.rt-table td.rt-name .av{vertical-align:middle}.rt-table tr.me td{color:var(--accent)}.rt-table td.top{color:var(--good);font-weight:800}.rt-table td.neg{color:var(--bad,#e5484d)}.rt-table .rt-tot{font-weight:800;position:sticky;right:0;background:var(--panel);box-shadow:-1px 0 0 var(--line2);padding-right:10px}.rt-table thead,.rt-wrap{background:var(--panel)}
-#musicbtn{display:inline-grid;place-items:center;padding-inline:9px;color:var(--accent)}#musicbtn svg{width:17px;height:17px}#musicbtn .x{display:none}#musicbtn.off{color:var(--muted)}#musicbtn.sfx{color:var(--muted)}#musicbtn.sfx svg circle{fill:currentColor}#musicbtn.off .x{display:inline}
-</style>
+<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
 <script>/* Stand-in for the Claude runtime when the game runs on its own server. */
 (function(){
   const NET=(()=>{ let ws=null, id=null, open=false, retry=0; const rooms=new Map(), connFns=new Set();
@@ -1074,7 +1072,7 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .lv-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 2px}.lv-bar.big{margin:10px 0}
 .lv-side{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:14px;background:var(--panel2,rgba(255,255,255,.05));border:1px solid var(--line,rgba(255,255,255,.08));min-width:0;flex:1}
 .lv-side.me{border-color:var(--spot,#f5b800);box-shadow:0 0 0 1px var(--spot,#f5b800) inset}.lv-side b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lv-side>div{min-width:0}
-.lv-avs{display:flex}.lv-avs .av{margin-left:-6px}.lv-avs .av:first-child{margin-left:0}
+.lv-avs{display:flex;flex-wrap:wrap;gap:4px;align-items:center}.lv-more{font-size:12px;font-weight:700;color:var(--muted);padding:0 4px}.lv-side.team{flex-direction:column;align-items:flex-start;gap:6px}
 .lv-vs{font-family:var(--f-display);font-weight:900;font-size:22px;color:var(--spot,#f5b800)}.lv-tip{font-size:13px;margin:0}
 .tcard{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;min-height:46vh;animation:tcIn .5s cubic-bezier(.2,.9,.3,1.2) both}
 .tcard .tc-t{font-family:var(--f-display);font-weight:900;font-size:clamp(40px,9vw,84px);line-height:1;color:var(--acc,var(--spot));text-wrap:balance}
@@ -1228,6 +1226,11 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .stat-bars i{display:block;height:calc(var(--h)*100%);background:var(--acc);opacity:.85;min-height:2px}.stat-bars i.no{background:var(--line);height:2px;opacity:1}
 @media (max-width:420px){.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .opt-who.many{flex-basis:100%;flex-wrap:wrap;justify-content:flex-end;gap:4px!important;padding-left:44px}.opt:has(.opt-who.many){flex-wrap:wrap;row-gap:8px}
+.lv-crown{display:flex;align-items:center;gap:12px;justify-content:center;margin-top:14px;text-align:left}.lv-cw{display:flex!important;flex-direction:column;align-items:flex-start;gap:2px}.lv-cn{display:block;font-family:var(--f-display);font-weight:800;font-size:22px}.lv-rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin:12px 0 4px}.lv-rules>div{border:1px solid var(--line2);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}.lv-rules b{font-family:var(--f-display);font-size:24px;color:var(--accent)}.lv-rules span{font-size:13px;color:var(--muted)}
+#musicbtn{display:inline-grid;place-items:center;padding-inline:9px;color:var(--accent)}#musicbtn svg{width:17px;height:17px}#musicbtn .x{display:none}#musicbtn.off{color:var(--muted)}#musicbtn.sfx{color:var(--muted)}#musicbtn.sfx svg circle{fill:currentColor}#musicbtn.off .x{display:inline}
+.bh-poster{display:flex;align-items:center;gap:14px;margin:8px 0;padding:12px 16px;border-radius:14px;border:1px dashed var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent);position:relative}.bh-poster.me{border-style:solid}.bh-poster.big{padding:16px 18px;margin:12px 0}.bh-w{position:absolute;top:-10px;left:14px;padding:1px 8px;border-radius:6px;background:var(--accent);color:#111;font-family:var(--f-display);font-weight:900;font-size:11px;letter-spacing:.14em;text-transform:uppercase}.bh-info{display:flex;flex-direction:column;min-width:0}.bh-info b{font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bh-poster.big .bh-info b{font-size:26px}.bh-amt{color:var(--muted);font-size:14px}.bh-amt .num{font-family:var(--f-display);font-weight:900;font-size:22px;color:var(--accent);margin-right:4px}
+.rt-wrap{overflow-x:auto;border:1px solid var(--line2);border-radius:14px;-webkit-overflow-scrolling:touch;display:block;width:0;min-width:100%;max-width:100%;box-sizing:border-box}.summary{min-width:0;max-width:100%}.rt-table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}.rt-table th,.rt-table td{padding:8px 7px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line,rgba(255,255,255,.08))}.rt-table thead th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}.rt-table tbody tr:last-child td{border-bottom:0}.rt-table .rt-name{text-align:left;position:sticky;left:0;background:var(--panel);z-index:1;padding-left:10px}.rt-table td.rt-name{max-width:118px}.rt-table td.rt-name>span{display:inline-block;vertical-align:middle;max-width:72px;overflow:hidden;text-overflow:ellipsis;margin-left:6px}.rt-table td.rt-name .av{vertical-align:middle}.rt-table tr.me td{color:var(--accent)}.rt-table td.top{color:var(--good);font-weight:800}.rt-table td.neg{color:var(--bad,#e5484d)}.rt-table .rt-tot{font-weight:800;position:sticky;right:0;background:var(--panel);box-shadow:-1px 0 0 var(--line2);padding-right:10px}.rt-table thead,.rt-wrap{background:var(--panel)}
+.hs-pick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.hs-pick button{display:flex;flex-direction:column;gap:2px;text-align:left;padding:10px 12px;border-radius:12px;border:1px solid var(--line2);background:transparent;color:var(--fg);cursor:pointer}.hs-pick button b{font-size:16px}.hs-pick button span{font-size:12px;color:var(--muted);line-height:1.3}.hs-pick button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}.hs-pick button.steal.on{border-color:var(--bad,#e5484d);background:color-mix(in srgb,var(--bad,#e5484d) 14%,transparent)}.hs-pick.locked button:not(.on){opacity:.4}.hs-av{display:inline-flex;border-radius:50%}.hs-av.thief{box-shadow:0 0 0 2px var(--bad,#e5484d)}.hs-av.lead{box-shadow:0 0 0 2px var(--accent)}.bh-poster.hs{border-style:solid}
 </style>
 <style id="sq-fixes">
 /* clear right / wrong colours */
@@ -3366,6 +3369,41 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -4483,12 +4521,12 @@ const RT = {
   grid:{name:"Word Grid", desc:"30 seconds to find words by joining touching letters. 3 letters score 10, 4 letters 20, 5 letters 40, then big points for long words: 6 letters 100, 7 letters 150, 8 letters 200 and 50 more for each extra letter.", def:1, min:1, max:3, dur:30}
 };
 RT.sp={name:"Speed Round", desc:"The grand finale. Four topics, three quick-fire questions each. Scores are hidden until the end. A right answer is worth 150 points the moment the question appears, and the points count down as the clock runs. A wrong answer loses 50, so don't guess wildly.", def:12, min:12, max:12, dur:10, last:true};
-RT.lead={name:"Beat the Leader", desc:"Whoever's top of the scores plays alone against everyone else as one team. Three questions on each topic, and the first answer in decides each one: a right answer wins it for that side, a wrong answer hands it to the other side. The leader scores 150; the team scores 100 each. Needs 2+ players.", def:9, min:6, max:12, dur:15, minPlayers:2};
+RT.lead={name:"Beat the Leader", desc:"Two styles, picked in Game setup. Heist: before each question, choose Play safe (100 if right) or Steal: if you're right and the leader is wrong you take 150 from them, but a wrong steal costs you 100. The leader gets 100 plus 50 for every thief they catch. Bounty Hunt: everyone scores 100 for a right answer; when the target slips, those who were right split the bounty. Needs 2+ players.", def:8, min:6, max:12, dur:15, minPlayers:2};
 RT.hl={name:"Higher or Lower", desc:"One thing is shown with its number. Is the next one higher or lower? Each answer becomes the next thing to beat. 100 points if right. No rush: speed doesn't matter.", def:8, min:3, max:15, dur:15};
 RT.mf={name:"Minefield", desc:"Take turns picking from a grid of 12 answers. Most fit the category but some are traps. Right picks score 100, traps lose 50.", def:3, min:1, max:5, dur:15};
 
 /* one-line summaries for the game setup list (the full rules show at the start of each round) */
-RT.hl.short="Is the next one higher or lower? A chain of comparisons.";RT.mm.short="Everyone picks their own subject and answers questions on it."; RT.gk.short="Multiple choice. Bonus for the fastest right answer."; RT.rank.short="Put five things in the right order."; RT.est.short="Slide to your best guess. Closest wins."; RT.uniq.short="Give a right answer nobody else gives. 3+ players."; RT.ctry.short="Tap the country on a map with no names."; RT.pin.short="Drop a pin on the world map. Closest wins."; RT.grid.short="Find words by joining touching letters."; RT.sp.short="The finale: quick-fire topics. Points count down from 150, scores hidden till the end."; RT.lead.short="The leader plays alone against everyone else. 2+ players."; RT.mf.short="Take turns picking answers. Avoid the traps."; 
+RT.hl.short="Is the next one higher or lower? A chain of comparisons.";RT.mm.short="Everyone picks their own subject and answers questions on it."; RT.gk.short="Multiple choice. Bonus for the fastest right answer."; RT.rank.short="Put five things in the right order."; RT.est.short="Slide to your best guess. Closest wins."; RT.uniq.short="Give a right answer nobody else gives. 3+ players."; RT.ctry.short="Tap the country on a map with no names."; RT.pin.short="Drop a pin on the world map. Closest wins."; RT.grid.short="Find words by joining touching letters."; RT.sp.short="The finale: quick-fire topics. Points count down from 150, scores hidden till the end."; RT.lead.short="Bounty Hunt: claim the bounty when the leader slips up. 2+ players."; RT.mf.short="Take turns picking answers. Avoid the traps."; 
 const ROUND_ORDER = ["gk","hl","est","rank","pin","ctry","mf","grid","uniq","lead","sp"]; /* Specialist Subject ("mm") switched off for now */
 
 /* ---------------- built-in question bank ---------------- */
@@ -6459,7 +6497,7 @@ function boot(){
   acctInit();
 }
 /* answer time: never more than 15 seconds a question (10 on Hard); Word Grid keeps its own clock */
-function durFor(t){ /* same timers on easy and hard: hard only changes the questions */ if(t==="grid") return RT.grid.dur; if(t==="sp") return 12; if(t==="rank") return 40; if(t==="uniq") return 20; if(t==="pin"||t==="ctry") return 30; if(t==="est") return 20; return 15; }
+function durFor(t){ /* same timers on easy and hard: hard only changes the questions */ if(t==="lead") return 15; if(t==="grid") return RT.grid.dur; if(t==="sp") return 12; if(t==="rank") return 40; if(t==="uniq") return 20; if(t==="pin"||t==="ctry") return 30; if(t==="est") return 20; return 15; }
 function aiOn(){ return !!app.sample && !app.sampleDenied; }
 async function ask(prompt, tier="default", ms=90000, extra){
   if(!aiOn()) throw new Error("no-ai");
@@ -6468,7 +6506,7 @@ async function ask(prompt, tier="default", ms=90000, extra){
   catch(e){ if(e && e.code==="not_granted") app.sampleDenied=true; throw e; }
 }
 
-/* ---------------- music: everything is synthesised live with Web Audio, no files ----------------
+/* ---------------- music (trial): everything is synthesised live with Web Audio, no files ----------------
    lobby: laid-back keys groove · question: ticking tension bed that speeds up in the last 5 seconds
    round intro: short fanfare · reveal: a sting for whether you got it · final: upbeat celebration */
 const MUSIC=(()=>{
@@ -6843,7 +6881,8 @@ function botTick(now){
     if(!due(b.pid,a,z)) continue;
     if(q.t==="grid" && !DSORT){ loadDict(); continue; }
     const v=botAnswer(q.t, Q, q, L); if(v===null) continue;
-    ansCache[k][b.pid]={k, v, t:Math.max(300, now-(hostQEnd-dur*1000-1500))}; } }
+    ansCache[k][b.pid]={k, v, t:Math.max(300, now-(hostQEnd-dur*1000-1500))};
+    if(q.t==="lead" && q.mode==="heist" && q.lead!==b.pid) ansCache[k][b.pid].steal = Math.random() < (v===Q.ans ? .55 : .2); } }
 function players(){
   const out=[]; const seen=new Set();
   for(const p of partyPeers()){ const pr=p.presence||{}; if(!pr.pid || (pr.role!=="host" && pr.role!=="player")) continue; if(seen.has(pr.pid)) continue; seen.add(pr.pid);
@@ -6866,7 +6905,7 @@ function onPartyPeers(){
 function onState(g){
   const prev=S; S=g;
   if(g.q && (!prev || !prev.q || prev.q.k!==g.q.k)){ try{ noteDay(qDayKeys(g.q)); }catch(e){}
-    myAns=null; draft=null; gridWords=[]; gridPath=[]; qLocalEnd=Date.now()+g.q.dur*1000-300; qShownAt=Date.now(); if(myPres.ans) setMyPresence({ans:null}); }
+    myAns=null; app.hsSteal=false; draft=null; gridWords=[]; gridPath=[]; qLocalEnd=Date.now()+g.q.dur*1000-300; qShownAt=Date.now(); if(myPres.ans) setMyPresence({ans:null}); }
   if(!prev || prev.phase!==g.phase || prev.seq!==g.seq) advLocalEnd = g.adv ? Date.now()+g.adv*1000 : 0;
   if(g.phase==="lobby" && prev && prev.gid!==g.gid){ myAns=null; }
   if(g.phase==="lobby" && (!prev || prev.phase!=="lobby")) shareDay();
@@ -6921,7 +6960,7 @@ async function buildRound(r, ps){
   if(r.t==="mf") return {t:"mf", qs:Array.from({length:r.n}, ()=>({board:true}))};
   if(r.t==="grid") return {t:"grid", qs:Array.from({length:r.n}, ()=>({grid:makeGrid()}))};
   if(r.t==="sp") return {t:"sp", qs:await buildSpeed()};
-  if(r.t==="lead") return {t:"lead", qs:(await buildSpeed(Math.max(2,Math.ceil(r.n/3)))).slice(0,r.n)};
+  if(r.t==="lead"){ const b=await buildRound({t:"gk", n:r.n, on:true}, ps); return {t:"lead", qs:b.qs}; }
   if(r.t==="ctry"){ GeoData.load(); return {t:"ctry", qs:ctryPick(r.n)}; }
   if(r.t==="pin") return {t:"pin", qs:pinRound(r.n)};
   if(r.t==="hl") return {t:"hl", qs:hlBuild(r.n)};
@@ -7294,7 +7333,7 @@ function cleanQs(t, arr){
 function goIntro(ri){
   G.phase="intro"; G.ri=ri; G.qi=-1; G.q=null; G.rev=null; G.rs={}; G.st={c:{}, n:0, at:{}}; G.adv=0; hostAdvAt=0; /* waits for everyone to ready up */
   const R=plan[ri]; G.intro = {t:R.t, n: R.t==="mm" ? players().length : R.qs.length};
-  if(R.t==="lead"){ const here=players().map(p=>p.pid), sc=here.map(p=>G.scores[p]||0), mx=Math.max(...sc), tops=here.filter(p=>(G.scores[p]||0)===mx); G.lead={p:tops[Math.floor(Math.random()*tops.length)], tie:tops.length>1}; G.intro.lead=G.lead; }
+  if(R.t==="lead"){ G.lmode=leadMode(); G.lead=pickLeader(); G.intro.lead=G.lead; G.intro.mode=G.lmode; G.bh={t:G.lead.p, b:BH.start, n:1}; G.hs={t:G.lead.p}; }
   pushState();
 }
 function compactGs(){ const g=G.gs; if(!g) return null; const top=o=>{ let b=null; for(const p in o||{}) if(o[p]>0 && (!b || o[p]>o[b])) b=p; return b; };
@@ -7308,12 +7347,16 @@ function nextQuestion(){
   if(G.qi>=R.qs.length){ try{ gsRoundEnd(R.t, G.rs||{}); }catch(e){} G.phase="roundEnd"; G.q=null; G.rev=null; G.adv=15; hostAdvAt=Date.now()+15000; pushState(); return; } /* round scores show for 15 seconds, then the game moves on by itself */
   const Q=R.qs[G.qi];
   if(R.t==="mf"){ mfPick(R); return; }
-  if((R.t==="sp"||R.t==="lead") && Q.tq===1 && G.tcard!==G.ri+"-"+G.qi){ G.tcard=G.ri+"-"+G.qi; G.qi--; G.phase="tcard"; G.q=null; G.rev=null; G.tc={t:R.t, topic:Q.topic, tn:Q.tn, tof:Q.tof||4}; G.adv=3; hostAdvAt=Date.now()+3200; pushState(); return; }
+  if((R.t==="sp"||R.t==="lead") && Q.tq===1 && G.tcard!==G.ri+"-"+G.qi){ G.tcard=G.ri+"-"+G.qi; if(R.t==="lead"){ if(Q.tn>1) G.lead=pickLeader(); G.lt={p:G.lead.p, held:0, of:0}; } G.qi--; G.phase="tcard"; G.q=null; G.rev=null; G.tc={t:R.t, topic:Q.topic, tn:Q.tn, tof:Q.tof||4, lead:R.t==="lead"?G.lead:null}; G.adv=3; hostAdvAt=Date.now()+3200; pushState(); return; }
   const pq={k:G.gid+"-"+G.ri+"-"+G.qi, t:R.t, text:Q.text, dur:durFor(R.t), n:G.qi+1, of:R.qs.length};
   if(R.t==="gk") pq.opts=Q.opts;
   if(R.t==="hl"){ pq.opts=Q.opts; pq.fam=Q.fam; pq.famName=Q.famName; pq.a=Q.a; pq.b={l:Q.b.l}; }
   if(R.t==="sp"||R.t==="lead"){ pq.opts=Q.opts; pq.topic=Q.topic; pq.tn=Q.tn; pq.tq=Q.tq; pq.tof=Q.tof||4; }
-  if(R.t==="lead") pq.lead=G.lead&&G.lead.p;
+  if(R.t==="lead"){ pq.mode=G.lmode||"heist";
+    if(pq.mode==="heist"){ const hs=G.hs||(G.hs={t:G.lead.p}), here=players().map(p=>p.pid), sc=p=>G.scores[p]||0, mx=Math.max(...here.map(sc));
+      if(!here.includes(hs.t) || sc(hs.t)<mx){ const tops=here.filter(p=>sc(p)===mx); hs.t=tops[Math.floor(Math.random()*tops.length)]; }
+      pq.lead=hs.t; }
+    else { pq.lead=G.bh&&G.bh.t; pq.bh=G.bh?Object.assign({},G.bh):null; } }
   if(R.t==="est"){ pq.unit=Q.unit; pq.min=Q.min; pq.max=Q.max; pq.int=!!Q.int; }
   if(R.t==="rank"){ pq.items=Q.items; pq.lo=Q.lo; pq.hi=Q.hi; }
   if(R.t==="grid"){ pq.grid=Q.grid; pq.judge=aiOn(); }
@@ -7379,15 +7422,38 @@ async function scoreQuestion(t, Q, A){
     rows.forEach(r=>delete r.ms);
     return t==="hl" ? {t, ans:Q.ans, opts:Q.opts, b:Q.b, rows} : {t, ans:Q.ans, opts:Q.opts, rows};
   }
+  if(t==="lead" && G.q && G.q.mode==="heist"){
+    const T=G.q.lead, rows=players().map(p=>({p:p.pid, a: A[p.pid] ? Number(A[p.pid].v) : null, steal: !!(A[p.pid] && A[p.pid].steal)}));
+    for(const pid of ps) if(!rows.find(r=>r.p===pid)) rows.push({p:pid, a:Number(A[pid].v), steal:!!A[pid].steal});
+    rows.forEach(r=>{ r.ok=r.a===Q.ans; r.lead=r.p===T; if(r.lead) r.steal=false; r.pts=0; });
+    const lr=rows.find(r=>r.lead), lok=!!(lr&&lr.ok), thieves=rows.filter(r=>r.steal);
+    let caught=0, stolen=0;
+    for(const r of rows){ if(r.lead) continue;
+      if(!r.steal){ if(r.ok) r.pts=HS.right; continue; }
+      if(!r.ok){ r.pts=-Math.min(HS.fail, Math.max(0,G.scores[r.p]||0)); r.res="failed"; } /* never below zero */
+      else if(lok){ r.res="caught"; r.pts=HS.caught; caught++; }
+      else { r.res="stole"; r.pts=HS.steal; stolen+=HS.steal; } }
+    const nWrong=rows.filter(r=>!r.lead && r.steal && !r.ok).length; /* only failed steals pay the leader */
+    if(lr){ lr.pts=(lok?HS.right:0)+nWrong*HS.wrong; lr.bonus=nWrong*HS.wrong; const have=(G.scores[T]||0)+lr.pts; lr.lost=Math.min(stolen, Math.max(0,have)); lr.pts-=lr.lost; }
+    return {t, mode:"heist", ans:Q.ans, opts:Q.opts, lead:T, lok, nThief:thieves.length, caught, nWrong, stolen:lr?lr.lost:0, rows};
+  }
   if(t==="lead"){
-    const L=G.lead&&G.lead.p, rows=players().map(p=>({p:p.pid, a: A[p.pid] ? Number(A[p.pid].v) : null, ms: A[p.pid] ? A[p.pid].t : null}));
-    for(const pid of ps) if(!rows.find(r=>r.p===pid)) rows.push({p:pid, a:Number(A[pid].v), ms:A[pid].t});
-    rows.forEach(r=>{ r.ok=r.a===Q.ans; r.lead=r.p===L; r.pts=0; });
-    /* the first answer decides it: right wins it for their side, wrong hands it to the other side */
-    const first=rows.filter(r=>r.a!=null && !isNaN(r.a)).sort((a,b)=>(a.ms??1e12)-(b.ms??1e12))[0];
-    let win=null; if(first){ first.first=true; const leaderSide=first.lead===first.ok; win=leaderSide?"leader":"team"; if(leaderSide){ const l=rows.find(r=>r.lead); if(l) l.pts=150; } else rows.forEach(r=>{ if(!r.lead) r.pts=100; }); }
-    const s=first&&first.ms!=null?+(first.ms/1000).toFixed(1):null; rows.forEach(r=>delete r.ms);
-    return {t, ans:Q.ans, opts:Q.opts, topic:Q.topic, tn:Q.tn, tq:Q.tq, tof:Q.tof||4, lead:L, win, by:first?first.p:null, s, rows};
+    const bh=G.bh||(G.bh={t:G.lead.p, b:BH.start, n:1}), T=bh.t, before=bh.b;
+    const rows=players().map(p=>({p:p.pid, a: A[p.pid] ? Number(A[p.pid].v) : null}));
+    for(const pid of ps) if(!rows.find(r=>r.p===pid)) rows.push({p:pid, a:Number(A[pid].v)});
+    rows.forEach(r=>{ r.ok=r.a===Q.ans; r.lead=r.p===T; r.pts=0; });
+    const tr=rows.find(r=>r.lead), tok=!!(tr&&tr.ok), hunters=rows.filter(r=>!r.lead && r.ok);
+    rows.forEach(r=>{ if(r.ok) r.pts=BH.right; });
+    let res, share=0, next=T;
+    if(tok){ res="held"; bh.b+=BH.grow; }
+    else if(hunters.length){ res="claimed"; share=Math.max(BH.min, Math.round(before/hunters.length/10)*10); hunters.forEach(r=>{ r.pts+=share; r.claim=true; }); }
+    else { res="none"; }
+    const R=plan[G.ri], last=G.qi>=R.qs.length-1; let banked=0;
+    if(last && res!=="claimed" && tr){ banked=BH.survive; tr.pts+=banked; } /* survived the round */
+    if(res==="claimed" && !last){ /* new target: whoever is top once these points are added */
+      const sc=p=>(G.scores[p]||0)+((rows.find(r=>r.p===p)||{}).pts||0), here=players().map(p=>p.pid), mx=Math.max(...here.map(sc)), tops=here.filter(p=>sc(p)===mx);
+      next=tops[Math.floor(Math.random()*tops.length)]; bh.t=next; bh.b=BH.start; bh.n++; }
+    return {t, ans:Q.ans, opts:Q.opts, lead:T, res, before, bounty:bh.b, share, nClaim:hunters.length, next, banked, last, rows};
   }
   if(t==="sp"){
     const durMs=durFor("sp")*1000;
@@ -7473,7 +7539,6 @@ function hostTick(){
   else if(G.phase==="q" && !closing){
     hostCollect();
     const exp=expected(), got=ansCache[G.q.k]||{};
-    if(G.q.t==="lead"){ if(Object.keys(got).length){ if(!leadFirstAt) leadFirstAt=now; } if(leadFirstAt && now-leadFirstAt>450){ leadFirstAt=0; closeQuestion(); return; } } /* first answer in decides it */
     if(now>hostQEnd || (exp.length && exp.every(p=>got[p]))){ leadFirstAt=0; closeQuestion(); }
   }
   if(G.phase==="topics"){ hostTopics(); if(topicsEnd && now>topicsEnd && !players().some(p=>G.tp[p.pid]&&G.tp[p.pid].s==="gen")){ topicsEnd=0; mmBegin(); } }
@@ -7513,6 +7578,20 @@ function mmBegin(){
 }
 /* ---- Minefield (host) ---- */
 let mfH={used:new Set()};
+/* Beat the Leader: Bounty Hunt. The top scorer is the target, with a bounty on their head.
+   Everyone scores 100 for a right answer, the target included, so matching the leader keeps you level.
+   Target right: the bounty grows. Target wrong: everyone who got it right splits the bounty on top, and the new top scorer becomes the target.
+   Still the target when the round ends: a 100 survivor bonus (the bounty itself goes unpaid), so leading pays a little without running away with it. */
+const BH={right:100, start:200, grow:50, min:50, survive:100};
+/* Beat the Leader: Heist. Before answering, everyone except the leader picks Play safe or Steal.
+   Safe: 100 for a right answer. Steal: right while the leader is wrong takes 150 straight from the leader; right while the leader is also right gets 75; wrong costs 50.
+   Leader: 100 for a right answer, plus 10 for every failed steal. The leader is whoever is top before each question. */
+const HS={right:100, steal:150, caught:75, fail:50, wrong:10};
+function leadDesc(m){ return (m||"heist")==="heist" ? "Heist. Whoever's top is the leader. Before each question, everyone else chooses: play safe, or try to steal. Steal and you take 150 from the leader if you're right and they're wrong. If they're right too you get 75, and a wrong steal costs you 50. The leader gets 100 for a right answer, plus 10 for every failed steal." : "Bounty Hunt. The top scorer is the target, with a 200-point bounty. Everyone scores 100 for a right answer. Each time the target is right, the bounty grows by 50; when they slip, everyone who was right splits it. Still the target at the end? A 100 survivor bonus."; }
+const LEAD_PICK=false; /* Heist is the live style; set true to let hosts choose Bounty Hunt again */
+const leadMode=()=>LEAD_PICK?((S&&S.lmode)||(G&&G.lmode)||"heist"):"heist";
+
+function pickLeader(){ const here=players().map(p=>p.pid), mx=Math.max(...here.map(p=>G.scores[p]||0)), tops=here.filter(p=>(G.scores[p]||0)===mx); return {p:tops[Math.floor(Math.random()*tops.length)], tie:tops.length>1}; }
 function mfTopics(){ const bt=[...new Set(BANK.mf.map(b=>b[0]))]; return aiOn() ? [...new Set([...bt, ...MF_EXTRA])] : bt; }
 function mfPrompt(topic){ return `Create a board for a party quiz game called Minefield on the topic ${JSON.stringify(topic)}. Write one specific category for the board (for example "Clubs that have won the Premier League"), then exactly ${Math.round(mfSize()*.62)} correct answers that clearly belong in that category and exactly ${mfSize()-Math.round(mfSize()*.62)} believable wrong answers that clearly do not belong but could fool people. Every answer must be factually certain and not time-sensitive, at most 28 characters, and well known to a friendly group. British English. Variety code: ${rid(5)}\nReply with only JSON like {"prompt":"Clubs that have won the Premier League","right":["Arsenal","Chelsea"],"wrong":["Everton","Leeds United"]}`; }
 function cleanMF(j){
@@ -7642,14 +7721,16 @@ function renderStage(){
   const host = app.isHost;
   if(S.phase==="lobby") h = lobbyHTML();
   else if(S.phase==="gen") h = `<div><div class="eyebrow">Get ready</div><div class="ri" style="font-size:clamp(32px,5.6vw,54px);margin-top:6px">The show's about to start</div></div>`+stageHTML(`<span class="spinner" style="display:inline-block;width:14px;height:14px;vertical-align:-2px;margin-right:8px;border-width:2px"></span>Getting the show ready. Warm up with an emote.`);
-  else if(S.phase==="tcard"){ const c=S.tc||{}; h=`<div class="tcard"><div class="eyebrow">${c.t==="lead"?"Beat the Leader":"Speed Round"} · ${c.tn>1?"New topic":"First topic"} · ${c.tn} of ${c.tof}</div><div class="tc-t">${esc(c.topic||"")}</div><p class="muted" style="font-size:15px;margin:0">3 questions on ${esc(c.topic||"this")} coming up</p></div>`; }
+  else if(S.phase==="tcard"){ const c=S.tc||{}; h=`<div class="tcard"><div class="eyebrow">${c.t==="lead"?"Beat the Leader":"Speed Round"} · ${c.tn>1?"New topic":"First topic"} · ${c.tn} of ${c.tof}</div><div class="tc-t">${esc(c.topic||"")}</div><p class="muted" style="font-size:15px;margin:0">3 questions on ${esc(c.topic||"this")} coming up</p>${c.lead?`<div class="lv-crown">${avatar(c.lead.p,"lg")}<div class="lv-cw"><span class="eyebrow">Leader for this topic${c.lead.tie?" (picked from the tie)":""}</span><span class="lv-cn">${esc(c.lead.p===me.pid?"You":nameOf(c.lead.p))}</span></div></div>`:""}</div>`; }
   else if(S.phase==="intro"){
     const I=S.intro||{}; const t=I.t||R;
-    h = `<div class="intro"><div class="eyebrow">Round ${S.ri+1} of ${S.active.length}</div><div class="row" style="gap:14px"><span style="width:44px;height:44px;color:var(--accent);display:block">${ICON[t]}</span><div class="ri">${RT[t].name}</div></div><p>${esc(RT[t].desc)}</p>`;
+    h = `<div class="intro"><div class="eyebrow">Round ${S.ri+1} of ${S.active.length}</div><div class="row" style="gap:14px"><span style="width:44px;height:44px;color:var(--accent);display:block">${ICON[t]}</span><div class="ri">${RT[t].name}</div></div><p>${esc(t==="lead"?leadDesc(I.mode):RT[t].desc)}</p>`;
     if(t==="mm") h += `<p class="muted" style="font-size:15px">First everyone types a subject. Then you all answer your own questions at the same time, ${Math.round(RT.mm.dur*(S.diff==="hard"?1:1.5))} seconds each.</p>`;
     else if(t==="grid") h += `<p class="muted" style="font-size:15px">${I.n} grid${I.n>1?"s":""} · ${RT.grid.dur} seconds each</p><p class="num" style="font-size:15px;margin:0">3 letters <b>10</b> · 4 <b>20</b> · 5 <b>40</b> · 6 <b>100</b> · 7 <b>150</b> · 8+ <b>200+</b></p>`;
     else if(t==="ctry") h += `<p class="muted" style="font-size:15px">${S.diff==="hard"?"Hard mode: smaller and trickier countries":"Easy mode: bigger, better-known countries"} · no names on the map · ${durFor("ctry")} seconds each</p>`;
-    else if(t==="lead"){ const Ld=I.lead||{}, team=players().filter(p=>p.pid!==Ld.p); h += `<div class="lv-bar big"><div class="lv-side">${avatar(Ld.p,"lg")}<div><div class="eyebrow">The leader${Ld.tie?" (picked from the tie)":""}</div><b>${esc(Ld.p===me.pid?"You":nameOf(Ld.p))}</b></div></div><div class="lv-vs">VS</div><div class="lv-side team"><div class="lv-avs">${team.slice(0,8).map(p=>avatar(p.pid,"sm")).join("")}</div><div><div class="eyebrow">The Rest</div><b>${team.map(p=>esc(p.pid===me.pid?"You":nameOf(p.pid))).join(", ")}</b></div></div></div><p class="muted" style="font-size:15px">${Math.ceil(I.n/3)} topics · 3 questions each · ${durFor("lead")} seconds · the first answer in decides it: right wins it for your side, wrong gives it to the other side</p>`; }
+    else if(t==="lead" && (I.mode||"heist")==="heist"){ const Ld=I.lead||{}; h += `<div class="bh-poster big hs"><div class="bh-w">Leader</div>${avatar(Ld.p,"lg")}<div class="bh-info"><div class="eyebrow">Top of the scores${Ld.tie?" (picked from the tie)":""}</div><b>${esc(Ld.p===me.pid?"You":nameOf(Ld.p))}</b><span class="bh-amt">Whoever's top before each question is the leader</span></div></div><div class="lv-rules"><div><b class="num">${HS.right}</b><span>Play safe and get it right</span></div><div><b class="num">+${HS.steal}</b><span>Steal: you're right and the leader is wrong</span></div><div><b class="num">−${HS.fail}</b><span>Steal and get it wrong</span></div><div><b class="num">${HS.caught}</b><span>Steal, but the leader is right too</span></div><div><b class="num">+${HS.wrong}</b><span>Leader, for each failed steal</span></div></div>`; }
+    else if(t==="lead"){ const Ld=I.lead||{}; h += `<div class="bh-poster big"><div class="bh-w">Wanted</div>${avatar(Ld.p,"lg")}<div class="bh-info"><div class="eyebrow">Top of the scores${Ld.tie?" (picked from the tie)":""}</div><b>${esc(Ld.p===me.pid?"You":nameOf(Ld.p))}</b><span class="bh-amt"><span class="num">${BH.start}</span> point bounty</span></div></div><div class="lv-rules"><div><b class="num">${BH.right}</b><span>Every right answer, target included</span></div><div><b class="num">+${BH.grow}</b><span>Bounty grows each time the target is right</span></div><div><b class="num">Split</b><span>Target wrong: everyone right shares the bounty on top</span></div><div><b class="num">+${BH.survive}</b><span>Still the target at the end</span></div></div>`; }
+
     else if(t==="sp") h += `<p class="muted" style="font-size:15px">4 topics · 3 questions each · 12 seconds a question · right answers start at 150 and count down · wrong answers lose 50 · scores hidden</p>`;
     else if(t==="mf") h += `<p class="muted" style="font-size:15px">${I.n} board${I.n>1?"s":""} · players take turns · ${durFor("mf")} seconds a pick</p>`;
     else h += `<p class="muted" style="font-size:15px">${I.n} questions · ${durFor(t)} seconds each · ${S.diff==="hard"?"Hard":"Easy"} mode</p>`;
@@ -7786,6 +7867,9 @@ function lobbyHTML(){
 const LEN={short:{gk:5,hl:5,est:3,rank:3,pin:3,ctry:3,uniq:3,mm:5,grid:1,mf:2,sp:12},medium:{gk:8,hl:8,est:5,rank:4,pin:5,ctry:5,uniq:5,mm:8,grid:1,mf:3,sp:12},long:{gk:12,hl:12,est:8,rank:6,pin:8,ctry:8,uniq:8,mm:10,grid:2,mf:4,sp:12}};
 function lenOf(rounds){ for(const k in LEN){ if(rounds.every(r=>r.n===Math.max(RT[r.t].min,Math.min(RT[r.t].max,LEN[k][r.t])))) return k; } return "custom"; }
 function estMinutes(rounds, np){ let sec=0; for(const r of rounds){ if(!r.on) continue; const T=RT[r.t]; if(r.t==="mf") sec+=r.n*110; else if(r.t==="grid") sec+=r.n*50; else sec+=r.n*(durFor(r.t)*.7+4); sec+=25; } return Math.max(1,Math.round(sec/60)); }
+function leadPickHTML(){ if(!LEAD_PICK) return ""; const on=(S.rounds||[]).some(r=>r.t==="lead"&&r.on); if(!on) return ""; const cur=leadMode(), lab={heist:"Heist",bounty:"Bounty Hunt"}, note=cur==="heist"?"Steal points from the leader, but a wrong steal costs you":"Split the bounty when the leader slips up";
+  if(!app.isHost) return `<div class="lenpick ro"><span class="lp-l">Beat the Leader</span><b>${lab[cur]}</b><span class="muted">${note}</span></div>`;
+  return `<div class="lenpick" role="radiogroup" aria-label="Beat the Leader style"><span class="lp-l">Beat the Leader</span><div class="seg">${Object.keys(lab).map(k=>`<button type="button" role="radio" aria-checked="${cur===k}" class="${cur===k?"on":""}" data-act="lmode" data-m="${k}">${lab[k]}</button>`).join("")}</div><span class="muted">${note}</span></div>`; }
 function diffPickHTML(){ const cur=S.diff==="hard"?"hard":"easy", lab={easy:"Easy",hard:"Hard"}, note=cur==="hard"?"No country names on the map, tougher questions, same timers":"Country names on the map, friendlier questions";
   if(!app.isHost) return `<div class="lenpick ro"><span class="lp-l">Difficulty</span><b>${lab[cur]}</b><span class="muted">${note}</span></div>`;
   return `<div class="lenpick" role="radiogroup" aria-label="Difficulty"><span class="lp-l">Difficulty</span><div class="seg">${Object.keys(lab).map(k=>`<button type="button" role="radio" aria-checked="${cur===k}" class="${cur===k?"on":""}" data-act="diff" data-diff="${k}">${lab[k]}</button>`).join("")}</div><span class="muted">${note}</span></div>`; }
@@ -7796,7 +7880,7 @@ function roundsCfgHTML(){
   const host=app.isHost; const n=players().length;
   const list = host ? S.rounds : S.rounds.filter(r=>r.on);
   if(!list.length) return `<p class="muted">The host hasn't picked any rounds yet.</p>`;
-  return diffPickHTML()+lenPickHTML()+list.map((r,i)=>{ const T=RT[r.t]; const blocked=r.t==="uniq" && n<3;
+  return diffPickHTML()+lenPickHTML()+leadPickHTML()+list.map((r,i)=>{ const T=RT[r.t]; const blocked=r.t==="uniq" && n<3;
     if(!host) return `<div class="rc" style="grid-template-columns:auto 1fr auto"><span style="width:26px;height:26px;color:var(--accent);display:block">${ICON[r.t]}</span><div class="nm"><b>${T.name}</b><span>${esc(T.short||T.desc)}</span></div><span class="muted num">${r.n}${r.t==="mm"?" each":r.t==="grid"?(r.n>1?" grids":" grid"):r.t==="mf"?(r.n>1?" boards":" board"):" Qs"}</span></div>`;
     if(r.t==="sp") return `<div class="rc ${r.on?"":"off"}"><label class="sw" title="Include this round"><input type="checkbox" id="rc-sp" data-act="toggle" data-t="sp" ${r.on?"checked":""}><span></span></label><div class="nm"><b>${T.name}</b><span>${esc(T.short||T.desc)}</span></div><span class="muted num" style="white-space:nowrap">12 Qs · always last</span><span></span></div>`;
     return `<div class="rc ${r.on?"":"off"}"><label class="sw" title="Include this round"><input type="checkbox" id="rc-${r.t}" data-act="toggle" data-t="${r.t}" ${r.on?"checked":""}><span></span></label>
@@ -7806,10 +7890,16 @@ function roundsCfgHTML(){
 }
 function qHead(q, timer=true){
   const t=q.t;
-  if(t==="lead"){ const L=q.lead, mine=L===me.pid, team=players().filter(p=>p.pid!==L);
-    return `<div class="stagehead"><div><div class="eyebrow">Beat the Leader · Topic ${q.tn} of ${q.tof||3}</div><div class="sp-topic">${esc(q.topic)}</div><div class="muted num" style="font-size:14px">Question ${q.tq} of 3 on this topic</div></div>${timer?timerHTML(qLocalEnd, q.dur):""}</div>
-    <div class="lv-bar"><div class="lv-side ${mine?"me":""}">${avatar(L)}<div><div class="eyebrow">Leader</div><b>${esc(mine?"You":nameOf(L))}</b></div></div><div class="lv-vs">VS</div><div class="lv-side team ${mine?"":"me"}"><div class="lv-avs">${team.slice(0,6).map(p=>avatar(p.pid,"sm")).join("")}</div><div><div class="eyebrow">The Rest</div><b>${mine?`${team.length} player${team.length===1?"":"s"}`:"You"+(team.length>1?` + ${team.length-1}`:"")}</b></div></div></div>
-    <p class="muted lv-tip">${mine?"The first answer in decides it. Right first: you score 150. But if you answer wrong first, the team scores.":"The first answer in decides it. Anyone on your team right first: you all score 100. But a wrong answer first hands the leader 150."}</p>`; }
+  if(t==="lead" && q.mode==="heist"){ const T=q.lead, mine=T===me.pid, steal=!!app.hsSteal, locked=!!myAns;
+    return `<div class="stagehead"><div><div class="eyebrow">Beat the Leader · Heist</div><div class="muted num" style="font-size:14px">Question ${q.n} of ${q.of}</div></div>${timer?timerHTML(qLocalEnd, q.dur):""}</div>
+    <div class="bh-poster hs ${mine?"me":""}"><div class="bh-w">Leader</div>${avatar(T,"lg")}<div class="bh-info"><b>${esc(mine?"You":nameOf(T))}</b><span class="bh-amt"><span class="num">${(S.scores||{})[T]||0}</span> points to steal from</span></div></div>
+    ${!timer?"":mine?`<p class="muted lv-tip">You're the leader. ${HS.right} for a right answer, plus ${HS.wrong} for every player who tries to steal and gets it wrong. Get it wrong and everyone who stole and got it right takes ${HS.steal} from you.</p>`
+      :`<div class="hs-pick ${locked?"locked":""}" role="radiogroup" aria-label="Play safe or steal"><button type="button" role="radio" aria-checked="${!steal}" class="${!steal?"on":""}" data-act="hsmode" data-v="0" ${locked?"disabled":""}><b>Play safe</b><span>${HS.right} if you're right</span></button><button type="button" role="radio" aria-checked="${steal}" class="steal ${steal?"on":""}" data-act="hsmode" data-v="1" ${locked?"disabled":""}><b>Steal</b><span>Right and the leader's wrong: take ${HS.steal} from them. Both right: ${HS.caught}. Wrong: −${HS.fail}</span></button></div>`}`; }
+  if(t==="lead"){ const T=q.lead, mine=T===me.pid, b=(q.bh&&q.bh.b)||BH.start;
+    return `<div class="stagehead"><div><div class="eyebrow">Beat the Leader · Bounty Hunt</div><div class="muted num" style="font-size:14px">Question ${q.n} of ${q.of}</div></div>${timer?timerHTML(qLocalEnd, q.dur):""}</div>
+    <div class="bh-poster ${mine?"me":""}"><div class="bh-w">Wanted</div>${avatar(T,"lg")}<div class="bh-info"><b>${esc(mine?"You":nameOf(T))}</b><span class="bh-amt"><span class="num">${b}</span> point bounty</span></div></div>
+    ${timer?`<p class="muted lv-tip">${mine?`You're the target. ${BH.right} for a right answer like everyone else. Every one you get right grows the bounty by ${BH.grow}; get one wrong and everyone who's right splits it. Still the target at the end: +${BH.survive}.`:`${BH.right} for a right answer. If ${esc(nameOf(T))} gets it wrong, everyone who's right also splits the ${b} bounty.`}</p>`:""}`; }
+
   if(t==="sp") return `<div class="stagehead"><div><div class="eyebrow">Speed Round · Topic ${q.tn} of ${q.tof||4}</div><div class="sp-topic">${esc(q.topic)}</div><div class="muted num" style="font-size:14px">Question ${q.tq} of 3 · ${q.n} of ${q.of} overall</div></div><div class="sp-right">${timer?`<div class="sp-pts" data-sppts style="--f:1"><b class="num">150</b><small>points</small></div>`:""}${timer?timerHTML(qLocalEnd, q.dur):""}</div></div>`;
   return `<div class="stagehead"><div><div class="eyebrow">Round ${S.ri+1} · ${RT[t].name}</div><div class="muted num" style="font-size:14px">${t==="mm"?esc(nameOf(q.chair))+" · ":""}${t==="grid"?"Grid":"Question"} ${q.n} of ${q.of}</div></div>${timer?timerHTML(qLocalEnd, q.dur):""}</div>`;
 }
@@ -7943,14 +8033,30 @@ function revealHTML(q, rev){
   if(rev.t==="mmsim") return mmRevealHTML(rev);
   let h=qHead(q,false)+`<div class="qtext" style="font-size:clamp(18px,2.6vw,24px)">${esc(q.text)}</div>`;
   const row=(r, a, note)=>`<div class="res-row">${avatar(r.p)}<div class="a"><b>${esc(nameOf(r.p))}${r.p===me.pid?" (you)":""}</b> <span>${a}</span>${note?`<div class="note">${note}</div>`:""}</div><span></span><span class="pts ${r.pts>0?"on":r.pts<0?"neg":"off"}">${r.pts>0?"+"+r.pts:r.pts<0?"−"+Math.abs(r.pts):"0"}</span></div>`;
+  if(rev.t==="lead" && rev.mode==="heist"){
+    const T=rev.lead, mine=T===me.pid, tn=esc(mine?"You":nameOf(T)), meRow=rev.rows.find(r=>r.p===me.pid)||{};
+    h += `<div class="opts sp">${rev.opts.map((o,i)=>{ const who=rev.rows.filter(r=>r.a===i); return `<div class="opt ${i===rev.ans?"right":(who.length?"wrong":"")}"><span class="k">${"ABCD"[i]}</span><span class="grow">${esc(o)}</span><span class="row opt-who${who.length>3?" many":""}" style="gap:4px">${who.map(r=>`<span class="hs-av ${r.steal?"thief":""}${r.lead?" lead":""}">${avatar(r.p,"sm",nameOf(r.p)+(r.lead?" (leader)":r.steal?" (stealing)":""))}</span>`).join("")}</span></div>`; }).join("")}</div>`;
+    let head, num="", sub, good;
+    if(mine){ head=rev.lok?"You got it":(rev.stolen?"You've been robbed":"You got it wrong"); num=meRow.pts?`${meRow.pts>0?"+":"−"}${Math.abs(meRow.pts)}`:""; good=meRow.pts>0;
+      sub=(rev.lok?`${rev.nThief} ${rev.nThief===1?"player tried":"players tried"} to steal.`:rev.stolen?`Thieves took ${rev.stolen} from you.`:"Nobody stole from you this time.")+(rev.nWrong?` +${rev.nWrong*HS.wrong} for ${rev.nWrong} failed ${rev.nWrong===1?"steal":"steals"}.`:""); }
+    else if(meRow.res==="stole"){ head="Heist successful"; num=`+${HS.steal}`; sub=`${tn} got it wrong, so you took ${HS.steal} from them.`; good=true; }
+    else if(meRow.res==="caught"){ head="Caught"; num=`+${HS.caught}`; sub=`${tn} got it right too, so your steal gets ${HS.caught}.`; good=false; }
+    else if(meRow.res==="failed"){ head="Steal failed"; num=`−${HS.fail}`; sub=`You got it wrong while stealing.`; good=false; }
+    else { head=meRow.ok?"Right, played safe":"Wrong"; num=meRow.ok?`+${HS.right}`:""; sub=rev.lok?`${tn} got it right${rev.caught?`, so ${rev.caught} ${rev.caught===1?"thief was":"thieves were"} caught`:""}.`:`${tn} got it wrong${rev.stolen?`: thieves took ${rev.stolen}`:""}.`; good=!!meRow.ok; }
+    h += `<div class="sp-res ${good?"ok":"no"}"><b>${head}</b>${num?` <span class="num">${num}</span>`:""}<span class="muted sp-n">${sub}</span></div>`;
+    h += `<p class="muted" style="font-size:13px;margin:0" data-adv></p>`;
+    return h;
+  }
   if(rev.t==="lead"){
-    const L=rev.lead, by=rev.by, team=rev.rows.filter(r=>!r.lead);
-    h += `<div class="opts sp">${rev.opts.map((o,i)=>{ const who=rev.rows.filter(r=>r.a===i); return `<div class="opt ${i===rev.ans?"right":(who.length?"wrong":"")}"><span class="k">${"ABCD"[i]}</span><span class="grow">${esc(o)}</span><span class="row opt-who${who.length>3?" many":""}" style="gap:4px">${who.map(r=>avatar(r.p,"sm",nameOf(r.p))).join("")}</span></div>`; }).join("")}</div>`;
-    const fr=rev.rows.find(r=>r.p===by), who=esc(by===me.pid?"You":nameOf(by)), sec=rev.s!=null?` in ${rev.s}s`:"", ok=fr&&fr.ok;
-    const msg = rev.win==="leader" ? `<b>${ok?`${who} got it first`:`${who} got it wrong`}</b> <span class="num">+150 to ${esc(L===me.pid?"you":nameOf(L))}</span><span class="muted sp-n">${ok?`The leader answered right${sec}.`:`A wrong answer from the team${sec} hands the leader the points.`}</span>`
-      : rev.win==="team" ? `<b>${ok?`${who} got it first`:`${who} got it wrong`}</b> <span class="num">+100 each to The Rest</span><span class="muted sp-n">${ok?`Right answer${sec}, so all ${team.length} on the team score.`:`The leader answered wrong${sec}, so all ${team.length} on the team score.`}</span>`
-      : `<b>Nobody answered</b><span class="muted sp-n">No points this time.</span>`;
-    h += `<div class="sp-res ${rev.win==="team"?(L===me.pid?"no":"ok"):rev.win==="leader"?(L===me.pid?"ok":"no"):"no"}">${msg}</div>`;
+    const T=rev.lead, mine=T===me.pid, tn=esc(mine?"You":nameOf(T)), meRow=rev.rows.find(r=>r.p===me.pid);
+    h += `<div class="opts sp">${rev.opts.map((o,i)=>{ const who=rev.rows.filter(r=>r.a===i); return `<div class="opt ${i===rev.ans?"right":(who.length?"wrong":"")}"><span class="k">${"ABCD"[i]}</span><span class="grow">${esc(o)}</span><span class="row opt-who${who.length>3?" many":""}" style="gap:4px">${who.map(r=>avatar(r.p,"sm",nameOf(r.p)+(r.lead?" (target)":""))).join("")}</span></div>`; }).join("")}</div>`;
+    let head, num="", sub, good;
+    const mineOk=!!(meRow&&meRow.ok);
+    const surv=rev.banked?` ${mine?"You survived":tn+" survived"} as the target: +${rev.banked} bonus.`:"";
+    if(rev.res==="held"){ head=mine?"You held on":mineOk?"Right, but so was the target":`${tn} held on`; num=mine?`+${BH.right+(rev.banked||0)}`:mineOk?`+${BH.right}`:""; sub=rev.last?`Nobody claimed the bounty.${surv}`:`The bounty on ${mine?"you":tn} grows to ${rev.bounty}.`; good=mineOk; }
+    else if(rev.res==="claimed"){ head=mine?"You slipped up":meRow&&meRow.claim?"Bounty claimed":`${tn} slipped up`; num=meRow&&meRow.claim?`+${BH.right+rev.share}`:""; sub=`${rev.nClaim} ${rev.nClaim===1?"player claims":"players split"} the ${rev.before} bounty${rev.nClaim>1?`: ${rev.share} each`:""}${meRow&&meRow.claim?`, on top of ${BH.right} for the right answer`:""}.${rev.last?"":` New target: ${esc(rev.next===me.pid?"you":nameOf(rev.next))}, with a ${BH.start} bounty.`}`; good=!!(meRow&&meRow.claim); }
+    else { head="Nobody got it"; sub=rev.last?`Nobody claimed the bounty.${surv}`:`The ${rev.bounty} bounty stays on ${tn}.`; good=mine&&!!rev.banked; num=mine&&rev.banked?`+${rev.banked}`:""; }
+    h += `<div class="sp-res ${good?"ok":"no"}"><b>${head}</b>${num?` <span class="num">${num}</span>`:""}<span class="muted sp-n">${sub}</span></div>`;
     h += `<p class="muted" style="font-size:13px;margin:0" data-adv></p>`;
     return h;
   }
@@ -8383,7 +8489,7 @@ function renderBoard(){
 function submitAnswer(v){
   if(myAns || !S || S.phase!=="q") return;
   if(S.q.t==="mm" && S.q.chair!==me.pid) return;
-  myAns={k:S.q.k, v, t:Date.now()-qShownAt};
+  myAns={k:S.q.k, v, t:Date.now()-qShownAt}; if(S.q.t==="lead" && S.q.mode==="heist" && S.q.lead!==me.pid) myAns.steal=!!app.hsSteal;
   setMyPresence({ans:myAns});
   if(app.isHost) hostCollect();
   const a=$("#ansarea"); if(a){ if(S.q.t==="pin"||S.q.t==="ctry"){ const b=$("#lockpin"); if(b) b.remove(); const hint=$(".maphint"); if(hint) hint.textContent="Pin locked in."; if(mapView) mapView.lock(); } else a.innerHTML=answerAreaHTML(S.q); }
@@ -8401,6 +8507,8 @@ function autoSubmit(){
   else if(t!=="gk" && t!=="sp" && t!=="lead" && t!=="rank" && t!=="ctry"){ const i=$("#ansin"); if(i && i.value.trim()) submitAnswer(i.value.trim()); }
   const a=$("#ansarea"); if(a && !myAns && t!=="pin" && t!=="ctry") a.innerHTML = answerAreaHTML(S.q) + `<div class="locked">Time's up.</div>`;
 }
+
+
 
 /* ---------------- timers ---------------- */
 setInterval(()=>{
@@ -9098,6 +9206,7 @@ document.addEventListener("click", async e=>{
   if(a==="host"){ if(!readNick()) return; const code=Array.from(crypto.getRandomValues(new Uint8Array(4)), x=>"ABCDEFGHJKMNPQRSTUVWXYZ"[x%23]).join(""); openParty(code, true); return; }
   if(a==="join"||a==="joinlist"){ if(!readNick()) return; const code=(a==="join"?($("#joincode").value||""):b.dataset.code).toUpperCase().replace(/[^A-Z]/g,"").slice(0,4); if(code.length!==4){ toast("Party codes are 4 letters"); return; } openParty(code, false); return; }
   if(a==="music"){ MUSIC.cycle(); return; }
+  if(a==="hsmode"){ if(myAns) return; app.hsSteal=b.dataset.v==="1"; document.querySelectorAll('[data-act="hsmode"]').forEach(x=>{ const on=x.dataset.v===(app.hsSteal?"1":"0"); x.classList.toggle("on",on); x.setAttribute("aria-checked",on); }); return; }
   if(a==="leave"){ leaveParty(); return; }
   if(a==="ready" && S && (S.phase==="lobby"||S.phase==="intro")){ const k=rdyKey(); setMyPresence({rdy: myPres.rdy===k?null:k}); if(S.phase==="lobby") lbLive(); else rdyLive(); if(app.isHost) hostTick(); return; }
   if(a==="emote"){ sendEmote(b.dataset.e); return; }
@@ -9125,6 +9234,7 @@ document.addEventListener("click", async e=>{
   if(app.isHost && G && G.phase==="lobby"){
     const r = b.dataset.t ? G.rounds.find(x=>x.t===b.dataset.t) : null;
     if(a==="diff" && (b.dataset.diff==="easy"||b.dataset.diff==="hard")) G.diff=b.dataset.diff;
+    if(a==="lmode" && (b.dataset.m==="heist"||b.dataset.m==="bounty")) G.lmode=b.dataset.m;
     if(a==="pub"){ G.pub=b.dataset.pub==="1"; LS.set("sq-pub",G.pub); pushState(); render(); return; }
     if(a==="len" && LEN[b.dataset.len]){ const P=LEN[b.dataset.len]; for(const x of G.rounds) x.n=Math.max(RT[x.t].min,Math.min(RT[x.t].max,P[x.t]||x.n)); }
     if(a==="toggle"&&r){ r.on=b.checked; }
