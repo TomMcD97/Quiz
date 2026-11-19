@@ -3410,6 +3410,7 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -4441,12 +4442,10 @@ const Room={
       if(back.length){ const x0=Math.min(...back.map(c=>c.x)), x1=Math.max(...back.map(c=>c.x)), z=back[0].z, hgt=back[0].baseLift, w=x1-x0+1.1;
         const rm=M4.ch(M4.T((x0+x1)/2,hgt/2,z),M4.S(w,hgt,.95)); items.push({mesh:this.boxM,m:rm,c:[.07,.07,.09],spec:1.2,gloss:80}); refl.push({mesh:this.boxM,m:M4.mul(M4.S(1,-1,1),rm),c:[.07,.07,.09],noCast:true});
         items.push({mesh:this.boxM,m:M4.ch(M4.T((x0+x1)/2,hgt-.02,z+.48),M4.S(w,.025,.01)),c:acc,emit:2,spec:0,noCast:true,noRecv:true}); } }
-    if(!pod){ /* lobby: a soft spot on every player, plus two beams sweeping the stage */
-      for(const pid of this.order){ const c=this.chars[pid]; if(!c) continue; const bx=c.J.root.off[0], bz=c.J.root.off[2], bc=c.me?[1,.85,.55]:[.9,.92,1], ba=c.me?.11:.07;
-        beams.push({mesh:this.beamM,m:M4.ch(M4.T(bx,0,bz),M4.S(.62,5.4,.62)),c:bc,emit:1.4,spec:0,blend:true,alpha:ba,noCast:true,noRecv:true});
-        beams.push({mesh:this.discM,m:M4.ch(M4.T(bx,.004,bz),M4.S(.72,.002,.72)),c:bc,emit:1.2,spec:0,blend:true,alpha:ba*1.7,noCast:true,noRecv:true}); }
-      for(const [px,ph,sp] of [[-2.6,0,.37],[2.6,2.1,.29]]){ const a=Math.sin(t*sp+ph)*.42, m=M4.ch(M4.T(px,5.3,-1.5),M4.RZ(a),M4.RX(-.18),M4.T(0,-5.3,0),M4.S(.9,5.3,.9));
-        beams.push({mesh:this.beamM,m,c:[acc[0]*.6+.4,acc[1]*.6+.4,acc[2]*.6+.4],emit:1.4,spec:0,blend:true,alpha:.06,noCast:true,noRecv:true}); } }
+    if(!pod){ /* lobby: just a pool of light on the floor under each player (no beams, so the stage stays clear) */
+      for(const pid of this.order){ const c=this.chars[pid]; if(!c) continue; const bx=c.J.root.off[0], bz=c.J.root.off[2], y=(c.baseLift||0)+.004, bc=c.me?[1,.86,.55]:[.9,.93,1], ba=c.me?.16:.1, pulse=1+Math.sin(t*1.6+bx)*.03;
+        beams.push({mesh:this.discM,m:M4.ch(M4.T(bx,y,bz),M4.S(.95*pulse,.002,.95*pulse)),c:bc,emit:1.1,spec:0,blend:true,alpha:ba,noCast:true,noRecv:true});
+        beams.push({mesh:this.discM,m:M4.ch(M4.T(bx,y+.002,bz),M4.S(.6,.002,.6)),c:bc,emit:1.3,spec:0,blend:true,alpha:ba*1.6,noCast:true,noRecv:true}); } }
     for(const x of (this.accItems||[])) x.c=acc;
     const scene=pod?this.arena:this.items;
     const all=refl.concat(scene.filter(x=>!x.blend), items, scene.filter(x=>x.blend), beams, sprites);
