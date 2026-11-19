@@ -6459,7 +6459,7 @@ function boot(){
   acctInit();
 }
 /* answer time: never more than 15 seconds a question (10 on Hard); Word Grid keeps its own clock */
-function durFor(t){ const g=(typeof G!=="undefined"&&G)||(typeof S!=="undefined"&&S)||{}, hard=g.diff==="hard"; if(t==="grid") return RT.grid.dur; if(t==="sp") return hard?8:12; if(t==="rank") return hard?30:40; if(t==="uniq") return hard?15:20; if(t==="pin"||t==="ctry") return hard?20:30; if(t==="est") return hard?15:20; return hard?10:15; }
+function durFor(t){ /* same timers on easy and hard: hard only changes the questions */ if(t==="grid") return RT.grid.dur; if(t==="sp") return 12; if(t==="rank") return 40; if(t==="uniq") return 20; if(t==="pin"||t==="ctry") return 30; if(t==="est") return 20; return 15; }
 function aiOn(){ return !!app.sample && !app.sampleDenied; }
 async function ask(prompt, tier="default", ms=90000, extra){
   if(!aiOn()) throw new Error("no-ai");
@@ -7650,7 +7650,7 @@ function renderStage(){
     else if(t==="grid") h += `<p class="muted" style="font-size:15px">${I.n} grid${I.n>1?"s":""} · ${RT.grid.dur} seconds each</p><p class="num" style="font-size:15px;margin:0">3 letters <b>10</b> · 4 <b>20</b> · 5 <b>40</b> · 6 <b>100</b> · 7 <b>150</b> · 8+ <b>200+</b></p>`;
     else if(t==="ctry") h += `<p class="muted" style="font-size:15px">${S.diff==="hard"?"Hard mode: smaller and trickier countries":"Easy mode: bigger, better-known countries"} · no names on the map · ${durFor("ctry")} seconds each</p>`;
     else if(t==="lead"){ const Ld=I.lead||{}, team=players().filter(p=>p.pid!==Ld.p); h += `<div class="lv-bar big"><div class="lv-side">${avatar(Ld.p,"lg")}<div><div class="eyebrow">The leader${Ld.tie?" (picked from the tie)":""}</div><b>${esc(Ld.p===me.pid?"You":nameOf(Ld.p))}</b></div></div><div class="lv-vs">VS</div><div class="lv-side team"><div class="lv-avs">${team.slice(0,8).map(p=>avatar(p.pid,"sm")).join("")}</div><div><div class="eyebrow">The Rest</div><b>${team.map(p=>esc(p.pid===me.pid?"You":nameOf(p.pid))).join(", ")}</b></div></div></div><p class="muted" style="font-size:15px">${Math.ceil(I.n/3)} topics · 3 questions each · ${durFor("lead")} seconds · the first answer in decides it: right wins it for your side, wrong gives it to the other side</p>`; }
-    else if(t==="sp") h += `<p class="muted" style="font-size:15px">4 topics · 3 questions each · ${S.diff==="hard"?8:12} seconds a question · right answers start at 150 and count down · wrong answers lose 50 · scores hidden</p>`;
+    else if(t==="sp") h += `<p class="muted" style="font-size:15px">4 topics · 3 questions each · 12 seconds a question · right answers start at 150 and count down · wrong answers lose 50 · scores hidden</p>`;
     else if(t==="mf") h += `<p class="muted" style="font-size:15px">${I.n} board${I.n>1?"s":""} · players take turns · ${durFor("mf")} seconds a pick</p>`;
     else h += `<p class="muted" style="font-size:15px">${I.n} questions · ${durFor(t)} seconds each · ${S.diff==="hard"?"Hard":"Easy"} mode</p>`;
     h += `<div class="rdy-wrap"><div data-rdylist>${rdyListHTML()}</div><div class="rdy-act"><span data-rdybtn>${rdyBtnHTML("Ready for this round")}</span>${host?`<button class="btn small" data-act="next" title="Start without waiting for everyone">Start now</button>`:""}</div></div></div>`;
@@ -7786,7 +7786,7 @@ function lobbyHTML(){
 const LEN={short:{gk:5,hl:5,est:3,rank:3,pin:3,ctry:3,uniq:3,mm:5,grid:1,mf:2,sp:12},medium:{gk:8,hl:8,est:5,rank:4,pin:5,ctry:5,uniq:5,mm:8,grid:1,mf:3,sp:12},long:{gk:12,hl:12,est:8,rank:6,pin:8,ctry:8,uniq:8,mm:10,grid:2,mf:4,sp:12}};
 function lenOf(rounds){ for(const k in LEN){ if(rounds.every(r=>r.n===Math.max(RT[r.t].min,Math.min(RT[r.t].max,LEN[k][r.t])))) return k; } return "custom"; }
 function estMinutes(rounds, np){ let sec=0; for(const r of rounds){ if(!r.on) continue; const T=RT[r.t]; if(r.t==="mf") sec+=r.n*110; else if(r.t==="grid") sec+=r.n*50; else sec+=r.n*(durFor(r.t)*.7+4); sec+=25; } return Math.max(1,Math.round(sec/60)); }
-function diffPickHTML(){ const cur=S.diff==="hard"?"hard":"easy", lab={easy:"Easy",hard:"Hard"}, note=cur==="hard"?"No country names on the map, shorter timers, tougher questions":"Country names on the map, more time, friendlier questions";
+function diffPickHTML(){ const cur=S.diff==="hard"?"hard":"easy", lab={easy:"Easy",hard:"Hard"}, note=cur==="hard"?"No country names on the map, tougher questions, same timers":"Country names on the map, friendlier questions";
   if(!app.isHost) return `<div class="lenpick ro"><span class="lp-l">Difficulty</span><b>${lab[cur]}</b><span class="muted">${note}</span></div>`;
   return `<div class="lenpick" role="radiogroup" aria-label="Difficulty"><span class="lp-l">Difficulty</span><div class="seg">${Object.keys(lab).map(k=>`<button type="button" role="radio" aria-checked="${cur===k}" class="${cur===k?"on":""}" data-act="diff" data-diff="${k}">${lab[k]}</button>`).join("")}</div><span class="muted">${note}</span></div>`; }
 function lenPickHTML(){ const cur=lenOf(S.rounds), mins=estMinutes(S.rounds); const lab={short:"Short",medium:"Medium",long:"Long"};
