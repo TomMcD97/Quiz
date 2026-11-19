@@ -153,7 +153,7 @@ function nameTaken(n, exceptId) { // leaderboard names are unique, ignoring case
   return false;
 }
 const TAKEN = "That name's already taken. Try another.";
-function profileOut(user) { const p = store["users/" + user.id] || {}; return { id: user.id, email: user.email, name: p.name || user.name || "", av: p.av || null, dq: p.dq || {}, dg: p.dg || {}, dqr: p.dqr || {} }; }
+function profileOut(user) { const p = store["users/" + user.id] || {}; return { id: user.id, email: user.email, name: p.name || user.name || "", av: p.av || null, dq: p.dq || {}, dg: p.dg || {}, dqr: p.dqr || {}, sj: p.sj || {} }; }
 function sessOut(j) { return { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: j.expires_at || (Math.floor(Date.now() / 1000) + (j.expires_in || 3600)) }; }
 const authTries = new Map();
 function authAllowed(ip) { const now = Date.now(), a = (authTries.get(ip) || []).filter(t => now - t < 600000); if (a.length >= 30) return false; a.push(now); authTries.set(ip, a); return true; }
@@ -212,6 +212,10 @@ async function authRoute(req, res, url) {
       const k = "users/" + user.id, p = Object.assign({}, store[k] || {});
       if (b.name !== undefined) { const n = cleanName(b.name); if (n && nameKey(n)) { if (nameTaken(n, user.id)) return json(res, 400, { error: TAKEN, code: "name_taken" }); p.name = n; } }
       if (typeof b.av === "string" && b.av.length < 600) p.av = b.av;
+      if (b.sjd && typeof b.sjd === "object") { // subject stats: add this device's new right/total counts
+        p.sj = Object.assign({}, p.sj || {});
+        for (const [k, v] of Object.entries(b.sjd).slice(0, 40)) { if (typeof k !== "string" || k.length > 40 || !Array.isArray(v)) continue; const r = Math.max(0, Math.min(500, v[0] | 0)), t = Math.max(0, Math.min(500, v[1] | 0)); if (!t || r > t) continue; const o = p.sj[k] || [0, 0]; p.sj[k] = [o[0] + r, o[1] + t]; }
+      }
       for (const f of ["dq", "dg"]) if (b[f] && typeof b[f] === "object") { // daily results by date, for streaks on every device
         p[f] = Object.assign({}, p[f] || {});
         for (const [d, v] of Object.entries(b[f])) if (/^\d{4}-\d{2}-\d{2}$/.test(d) && v && typeof v === "object") {

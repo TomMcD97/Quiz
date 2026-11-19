@@ -1231,6 +1231,7 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .bh-poster{display:flex;align-items:center;gap:14px;margin:8px 0;padding:12px 16px;border-radius:14px;border:1px dashed var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent);position:relative}.bh-poster.me{border-style:solid}.bh-poster.big{padding:16px 18px;margin:12px 0}.bh-w{position:absolute;top:-10px;left:14px;padding:1px 8px;border-radius:6px;background:var(--accent);color:#111;font-family:var(--f-display);font-weight:900;font-size:11px;letter-spacing:.14em;text-transform:uppercase}.bh-info{display:flex;flex-direction:column;min-width:0}.bh-info b{font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bh-poster.big .bh-info b{font-size:26px}.bh-amt{color:var(--muted);font-size:14px}.bh-amt .num{font-family:var(--f-display);font-weight:900;font-size:22px;color:var(--accent);margin-right:4px}
 .rt-wrap{overflow-x:auto;border:1px solid var(--line2);border-radius:14px;-webkit-overflow-scrolling:touch;display:block;width:0;min-width:100%;max-width:100%;box-sizing:border-box}.summary{min-width:0;max-width:100%}.rt-table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}.rt-table th,.rt-table td{padding:8px 7px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line,rgba(255,255,255,.08))}.rt-table thead th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}.rt-table tbody tr:last-child td{border-bottom:0}.rt-table .rt-name{text-align:left;position:sticky;left:0;background:var(--panel);z-index:1;padding-left:10px}.rt-table td.rt-name{max-width:118px}.rt-table td.rt-name>span{display:inline-block;vertical-align:middle;max-width:72px;overflow:hidden;text-overflow:ellipsis;margin-left:6px}.rt-table td.rt-name .av{vertical-align:middle}.rt-table tr.me td{color:var(--accent)}.rt-table td.top{color:var(--good);font-weight:800}.rt-table td.neg{color:var(--bad,#e5484d)}.rt-table .rt-tot{font-weight:800;position:sticky;right:0;background:var(--panel);box-shadow:-1px 0 0 var(--line2);padding-right:10px}.rt-table thead,.rt-wrap{background:var(--panel)}
 .hs-pick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.hs-pick button{display:flex;flex-direction:column;gap:2px;text-align:left;padding:10px 12px;border-radius:12px;border:1px solid var(--line2);background:transparent;color:var(--fg);cursor:pointer}.hs-pick button b{font-size:16px}.hs-pick button span{font-size:12px;color:var(--muted);line-height:1.3}.hs-pick button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}.hs-pick button.steal.on{border-color:var(--bad,#e5484d);background:color-mix(in srgb,var(--bad,#e5484d) 14%,transparent)}.hs-pick.locked button:not(.on){opacity:.4}.hs-av{display:inline-flex;border-radius:50%}.hs-av.thief{box-shadow:0 0 0 2px var(--bad,#e5484d)}.hs-av.lead{box-shadow:0 0 0 2px var(--accent)}.bh-poster.hs{border-style:solid}
+.subj-top{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0 10px}.subj-top>div{display:flex;flex-direction:column;gap:1px;padding:10px 12px;border:1px solid var(--line2);border-radius:12px}.subj-top b{font-size:16px}.subj-top .num{font-size:13px;color:var(--muted)}.subj-list{display:flex;flex-direction:column;gap:6px}.subj-row{display:grid;grid-template-columns:minmax(0,1.3fr) 1fr auto auto;gap:8px;align-items:center;font-size:13px}.subj-row.few{opacity:.55}.subj-n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.subj-bar{height:6px;border-radius:3px;background:var(--line,rgba(255,255,255,.08));overflow:hidden}.subj-bar i{display:block;height:100%;background:var(--accent);border-radius:3px}.subj-p{font-weight:700;min-width:3ch;text-align:right}.subj-c{font-size:11px;min-width:5ch;text-align:right}.subj-end{margin-top:16px}
 </style>
 <style id="sq-fixes">
 /* clear right / wrong colours */
@@ -3227,6 +3228,8 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -6905,8 +6908,12 @@ function onPartyPeers(){
   if(app.view==="party"){ renderBoard(); updateLive(); }
 }
 
+let subjSeen="";
+function subjFromReveal(g){ if(!g || g.phase!=="reveal" || !g.rev || !g.q || !g.rev.rows) return; const k=g.gid+"|"+g.q.k; if(k===subjSeen) return; subjSeen=k;
+  const r=g.rev.rows.find(x=>x.p===me.pid); if(!r || r.a==null && r.v==null && r.pts==null) return; const subject=subjOf(Object.assign({}, g.q, {t:g.rev.t||g.q.t})); if(!subject) return;
+  const right = typeof r.ok==="boolean" ? r.ok : (r.pts||0)>=50; subjNote(subject, right); }
 function onState(g){
-  const prev=S; S=g;
+  const prev=S; S=g; try{ subjFromReveal(g); }catch(e){}
   if(g.q && (!prev || !prev.q || prev.q.k!==g.q.k)){ try{ noteDay(qDayKeys(g.q)); }catch(e){}
     myAns=null; app.hsSteal=false; draft=null; gridWords=[]; gridPath=[]; qLocalEnd=Date.now()+g.q.dur*1000-300; qShownAt=Date.now(); if(myPres.ans) setMyPresence({ans:null}); }
   if(!prev || prev.phase!==g.phase || prev.seq!==g.seq) advLocalEnd = g.adv ? Date.now()+g.adv*1000 : 0;
@@ -8189,6 +8196,7 @@ function gameSummaryHTML(ps, wait, D){
   const pick=[], used=new Set(); for(const c of C){ if(pick.length<3 && !used.has(c.p)){ pick.push(c); used.add(c.p); } } for(const c of C){ if(pick.length<3 && !pick.includes(c)) pick.push(c); }
   let h=`<div class="summary${wait?" wait3d":""}" style="--d:${D}s">`;
   h+=roundTableHTML(g, ps);
+  h+=`<div class="subj-end">${subjCardHTML()}</div>`;
   h+=scoreGraphSVG(g, ps);
   if(pick.length) h+=`<div class="eyebrow" style="margin:16px 0 8px">Accolades</div><div class="aw-grid">${pick.map(c=>`<div class="aw-card">${avatar(c.p)}<div><div class="eyebrow">${c.icon} ${esc(c.title)}</div><b>${nm(c.p)}</b><div class="muted">${esc(c.val)}</div></div></div>`).join("")}</div>`;
   return h+`</div>`;
@@ -8936,6 +8944,7 @@ function dailyGeoTag(q){ return q.t==="pin"?"Where in the world":q.t==="ctry"?"N
 function dailyAnswer(v){
   if(D.phase!=="q") return;
   const q=D.qs[D.i], ms=Math.min(Date.now()-D.start, DDUR[q.t]*1000); D.answers[D.i]=v; D.secs[D.i]=ms/1000; D.pts[D.i]=dailyScore(q,v,ms); D.phase="fb";
+  try{ subjNote(subjOf(q), dailyAcc(q,v)>=.5); }catch(e){}
   const cur=LS.get(DQ_LS+D.key); if(cur && cur.inProgress){ cur.pts=D.pts.slice(); cur.score=D.pts.reduce((a,b)=>a+(b||0),0); LS.set(DQ_LS+D.key, cur); }
   renderDaily();
 }
@@ -8996,7 +9005,7 @@ function renderDaily(){
     const M=resMax(r), f=r.score/M;
     if(f>=0.6) setTimeout(()=>confetti(f>=0.8?180:90), 400);
     const txt=shareText(r);
-    h=`<div class="intro"><div class="eyebrow">Today's score</div><div class="scoreline num">${r.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts</span></div><p>${f>=0.8?"Brilliant.":f>=0.53?"Solid effort.":"Tomorrow's another quiz."} ${calcStreak()>1?`You're on a ${calcStreak()}-day streak.`:""} Come back tomorrow for a new set.</p></div>${guestDone(r)?acctCTA("Guest scores don't go on the leaderboard. Log in before tomorrow's quiz to get ranked."):""}<div class="share" id="sharetxt">${esc(txt)}</div><div class="row"><button class="btn" data-act="copyshare">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div><div style="margin-top:18px">${statsCardHTML("dq")}</div>`;
+    h=`<div class="intro"><div class="eyebrow">Today's score</div><div class="scoreline num">${r.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts</span></div><p>${f>=0.8?"Brilliant.":f>=0.53?"Solid effort.":"Tomorrow's another quiz."} ${calcStreak()>1?`You're on a ${calcStreak()}-day streak.`:""} Come back tomorrow for a new set.</p></div>${guestDone(r)?acctCTA("Guest scores don't go on the leaderboard. Log in before tomorrow's quiz to get ranked."):""}<div class="share" id="sharetxt">${esc(txt)}</div><div class="row"><button class="btn" data-act="copyshare">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div><div style="margin-top:18px">${statsCardHTML("dq")}${subjCardHTML()}</div>`;
   }
   el.innerHTML=h;
   if((D.phase==="q"||D.phase==="fb") && (D.qs[D.i].t==="pin"||D.qs[D.i].t==="ctry")){
@@ -9117,7 +9126,41 @@ function statsCardHTML(kind){ const st=statsOf(kind), title=kind==="dq"?"Daily q
     <div class="stat-grid">${cell(st.n, st.n===1?"day played":"days played")}${cell(st.best.toLocaleString("en-GB"), "highest · "+fd(st.bestDay))}${cell(st.avg.toLocaleString("en-GB"),"average")}${cell(st.cur,"current streak")}${cell(st.top,"best streak")}${cell(st.total.toLocaleString("en-GB"),"total points")}</div>
     <div class="stat-bars" aria-label="Scores over the last 14 days">${st.last.map(x=>`<i title="${fd(x.k)}: ${x.v==null?"not played":x.v}" style="--h:${x.v==null?0:Math.max(.06,x.v/mx)}" class="${x.v==null?"no":""}"></i>`).join("")}</div>
     <div class="row muted" style="justify-content:space-between;font-size:11px"><span>14 days ago</span><span>Today</span></div></div>`; }
-function statsHTML(){ return `<section class="stats-sec"><h3 style="margin:0">Your stats</h3>${statsCardHTML("dq")}${statsCardHTML("dg")}</section>`; }
+/* ---------------- subject stats (trial): your correct-answer % by subject, from party games and daily quizzes ---------------- */
+const SUBJ_RX=[
+  ["Sport",/\b(football|club|premier league|fa cup|world cup|olympic|tennis|golf|cricket|rugby|box(er|ing)|darts|snooker|formula 1|f1\b|grand prix|athlet|wimbledon|tour de france|nba|nfl|jockey|grand national|marathon|stadium|goalkeeper|striker|ballon d|champions league|sprinter|swimmer|cyclist|medal|league|wrestl|ufc|referee)/i],
+  ["Music",/\b(song|sang|singer|band|album|rapper|music|composer|symphony|opera|eurovision|guitar|piano|lyric|number one|single|chart|hit with|pop star|orchestra|concerto|musical)/i],
+  ["Film & TV",/\b(film|movie|actor|actress|director|directed|oscar|tv\b|television|series|sitcom|soap|episode|netflix|bbc|itv|disney|pixar|marvel|star wars|james bond|cartoon|presenter|game show|quiz show|character)/i],
+  ["Pop Culture & Games",/\b(video game|nintendo|playstation|xbox|pok[eé]mon|minecraft|fortnite|toy|lego|board game|monopoly|cluedo|scrabble|chess|app\b|social media|tiktok|instagram|twitter|youtube|brand|logo|celebrit|reality show|influencer|emoji|meme|mascot|console)/i],
+  ["History",/\b(king|queen|emperor|empire|war\b|battle|century|ancient|roman|viking|tudor|victorian|medieval|prime minister|president|revolution|treaty|dynasty|pharaoh|monarch|reign|assassinat|independence|invasion|throne|crowned|abolish)/i],
+  ["Science & Nature",/\b(element|planet|chemical|atom|scientist|biolog|animal|species|bird|insect|mammal|reptile|fish\b|human body|bone|organ|gas\b|physics|dna|space|moon|star\b|plant|tree|vitamin|cell|disease|virus|invent|discover|formula|molecule|galaxy|volcano|dinosaur)/i],
+  ["Geography",/\b(capital|country|countries|river|mountain|ocean|sea\b|island|desert|city|continent|lake|border|population|currency|located|flag of|county|state of|region|canal|strait|peninsula)/i],
+  ["Food & Drink",/\b(food|dish|cheese|wine|beer|drink|fruit|vegetable|cake|chocolate|spice|cuisine|cocktail|bread|tea\b|coffee|restaurant|recipe|sauce|pastry|dessert|spirit|whisky|gin\b|vodka|meal|cook)/i],
+  ["Art & Books",/\b(novel|author|wrote|written by|book|painted|painter|painting|artist|poem|poet|sculpt|museum|gallery|shakespeare|playwright|literature|character in the book|detective)/i]
+];
+const SUBJ_TYPE={est:"Guesstimates", rank:"Rank It", hl:"Higher or Lower", pin:"Pin Drop", ctry:"Find the Country"};
+const SUBJ_CAT={"In the News":"Wildcard", "News":"Wildcard"};
+function subjOfText(t){ let best=null, n=0; for(const [name,rx] of SUBJ_RX){ const m=String(t||"").match(new RegExp(rx.source,"gi")); if(m && m.length>n){ best=name; n=m.length; } } return best; }
+function subjOf(q){ if(!q) return null; if(SUBJ_TYPE[q.t]) return SUBJ_TYPE[q.t];
+  if(q.cat) return SUBJ_CAT[q.cat]||q.cat;
+  if(q.t==="sp" && q.topic) return subjOfText(q.topic)||subjOfText(q.text)||"General knowledge";
+  if(q.t==="gk"||q.t==="lead"||q.t==="sp") return subjOfText(q.text)||"General knowledge";
+  return null; }
+function subjLoad(){ const o=LS.get("sq-subj"); return (o && typeof o==="object") ? o : {}; }
+function subjNote(subject, right){
+  if(!subject) return; const o=subjLoad(), v=o[subject]||[0,0]; v[0]+=right?1:0; v[1]+=1; o[subject]=v; LS.set("sq-subj",o);
+  if(app.acct && window.SQ_AUTH){ const d=LS.get("sq-subj-pend")||{}; const x=d[subject]||[0,0]; x[0]+=right?1:0; x[1]+=1; d[subject]=x; LS.set("sq-subj-pend",d); subjPush(); } }
+let subjTimer=null;
+function subjPush(){ clearTimeout(subjTimer); subjTimer=setTimeout(()=>{ const d=LS.get("sq-subj-pend"); if(!d || !app.acct) return; LS.set("sq-subj-pend",null);
+  window.SQ_AUTH.saveProfile({sjd:d}).then(p=>{ if(p && p.sj) LS.set("sq-subj",p.sj); }).catch(()=>{ const now=LS.get("sq-subj-pend")||{}; for(const k in d){ const x=now[k]||[0,0]; x[0]+=d[k][0]; x[1]+=d[k][1]; now[k]=x; } LS.set("sq-subj-pend",now); }); }, 2500); }
+const SUBJ_MIN=5;
+function subjCardHTML(){ const o=subjLoad(), list=Object.entries(o).map(([k,[r,t]])=>({k,r,t,p:t?r/t:0})).filter(x=>x.t>0).sort((a,b)=>b.p-a.p||b.t-a.t);
+  const title=`<div class="row" style="justify-content:space-between;align-items:baseline"><div class="eyebrow">Your subjects</div><span class="muted" style="font-size:12px">party games and daily quizzes</span></div>`;
+  if(!list.length) return `<div class="stat-card">${title}<p class="muted" style="margin:6px 0 0;font-size:14px">Answer some questions in party games or the daily quiz to see your best and worst subjects.</p></div>`;
+  const ok=list.filter(x=>x.t>=SUBJ_MIN), best=ok[0], worst=ok.length>1?ok[ok.length-1]:null, pc=x=>Math.round(x.p*100)+"%";
+  const head = best ? `<div class="subj-top"><div><span class="eyebrow">Best</span><b>${esc(best.k)}</b><span class="num">${pc(best)} right</span></div>${worst?`<div><span class="eyebrow">Needs work</span><b>${esc(worst.k)}</b><span class="num">${pc(worst)} right</span></div>`:""}</div>` : `<p class="muted" style="margin:6px 0 0;font-size:13px">Answer at least ${SUBJ_MIN} questions in a subject to rank it.</p>`;
+  return `<div class="stat-card">${title}${head}<div class="subj-list">${list.map(x=>`<div class="subj-row${x.t<SUBJ_MIN?" few":""}"><span class="subj-n">${esc(x.k)}</span><span class="subj-bar"><i style="width:${Math.round(x.p*100)}%"></i></span><span class="num subj-p">${pc(x)}</span><span class="muted num subj-c">${x.r}/${x.t}</span></div>`).join("")}</div></div>`; }
+function statsHTML(){ return `<section class="stats-sec"><h3 style="margin:0">Your stats</h3>${statsCardHTML("dq")}${subjCardHTML()}${statsCardHTML("dg")}</section>`; }
 function dayKeyBack(i){ const d=new Date(); d.setDate(d.getDate()-i); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 async function acctInit(){
   const A=window.SQ_AUTH; if(!A) return;
@@ -9133,6 +9176,7 @@ function acctRefreshView(){ if(app.view==="home") render(); else if(app.view==="
 function acctApply(p, quiet){
   app.acct=p;
   if(p.name){ me.nick=p.name; LS.set("sq-nick",p.name); const ni=$("#nick"); if(ni) ni.value=p.name; }
+  if(p.sj && typeof p.sj==="object" && !LS.get("sq-subj-pend")) LS.set("sq-subj", p.sj);
   const pend=LS.get("sq-av-sync");
   if(pend && validAv(pend)){ if(p.av===pend) LS.set("sq-av-sync",null); else { p.av=pend; avPush(); } }
   if(p.av && validAv(p.av) && p.av!==me.av){ me.av=p.av; LS.set("sq-av",p.av); if(isToonAv(p.av)) LS.set("sq-av-custom",p.av); avEverywhere(); }
