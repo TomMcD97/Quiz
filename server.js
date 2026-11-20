@@ -49,11 +49,20 @@ const dirty = new Set(), gone = new Set(); let saveT = null;
 /* one-off score corrections the owner asked for, applied once after the store loads (a marker stops them running twice) */
 const FIXES = [
   { id: "phil-1057-2026-11-17", nick: "PhilEatsToast", score: 1057, kind: "dq" },
-  { id: "phil-reset-2026-11-18", nick: "PhilEatsToast", day: "2026-11-18", kind: "dqreset" }
+  { id: "phil-reset-2026-11-18", nick: "PhilEatsToast", day: "2026-11-18", kind: "dqreset" },
+  { id: "new-set-2026-11-20", day: "2026-11-20", kind: "dqresetall" } /* today's daily swapped for a new set: everyone's go on the old set (Tom and Lizzie included) is wiped */
 ];
 ready.then(() => {
   for (const f of FIXES) {
     const mark = "fix/" + f.id; if (store[mark]) continue;
+    if (f.kind === "dqresetall") { /* wipe every go at one day's daily quiz, plus any saved copy of its questions */
+      let n = 0, u = 0;
+      for (const sk of Object.keys(store)) if (new RegExp("^dq\\d*/" + f.day + "(/scores/[^/]+)?$").test(sk)) { delete store[sk]; gone.add(sk); dirty.delete(sk); n++; }
+      for (const k of Object.keys(store)) if (/^users\/[^/]+$/.test(k) && store[k] && store[k].dq && store[k].dq[f.day]) {
+        const p = Object.assign({}, store[k]); p.dq = Object.assign({}, p.dq); delete p.dq[f.day]; p.dqr = Object.assign({}, p.dqr || {}, { [f.day]: Date.now() }); store[k] = p; save(k); u++; }
+      store[mark] = { at: Date.now(), day: f.day, scores: n, users: u }; save(mark);
+      console.log(`Fix ${f.id}: ${f.day} daily wiped (${n} items, ${u} accounts)`); continue;
+    }
     if (f.kind === "dqreset") { /* wipe one player's go at a daily quiz so they can play it again */
       const uk = Object.keys(store).filter(k => /^users\/[^/]+$/.test(k) && String((store[k] || {}).name || "").toLowerCase() === f.nick.toLowerCase());
       if (!uk.length) { console.log(`Fix ${f.id}: no account found for ${f.nick}`); continue; }
@@ -220,8 +229,8 @@ async function authRoute(req, res, url) {
         p[f] = Object.assign({}, p[f] || {});
         for (const [d, v] of Object.entries(b[f])) if (/^\d{4}-\d{2}-\d{2}$/.test(d) && v && typeof v === "object") {
           const old = p[f][d] || {}; // once a day is marked as started or played, it stays that way
-          p[f][d] = { score: Math.max(+old.score || 0, +v.score || 0), n: Math.max(+old.n || 0, +v.n || 0), started: 1, guest: old.guest || (v.guest ? 1 : 0) || undefined };
-          if (!p[f][d].guest) delete p[f][d].guest;
+          p[f][d] = { score: Math.max(+old.score || 0, +v.score || 0), n: Math.max(+old.n || 0, +v.n || 0), started: 1, guest: old.guest || (v.guest ? 1 : 0) || undefined, r2: old.r2 || (v.r2 ? 1 : 0) || undefined };
+          if (!p[f][d].guest) delete p[f][d].guest; if (!p[f][d].r2) delete p[f][d].r2;
         }
         const ks = Object.keys(p[f]).sort(); ks.slice(0, Math.max(0, ks.length - 120)).forEach(d => delete p[f][d]);
       }
