@@ -977,6 +977,7 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .htab-stats .stats-sec{display:grid;gap:14px}
 .hjoin{margin-top:16px;padding:16px!important;display:grid;gap:10px}
 .hjoin-row{display:flex;gap:8px;flex-wrap:wrap}.hjoin-row #nick{flex:1 1 100%}.hjoin-row #joincode{flex:1 1 0;min-width:0;text-transform:uppercase;letter-spacing:.25em}.hjoin-row .btn{flex:0 0 auto}
+.hero-main h1.party-h{margin:0;font-size:clamp(30px,8vw,38px)!important;line-height:1.05;letter-spacing:-.02em;font-weight:800}
 .dc-lb{display:grid;gap:10px}.dc-lbin{display:grid;gap:10px}.dc-lbin[hidden]{display:none}.dc-lbtog{justify-self:start}
 .dc-tabs{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:999px;padding:3px;gap:3px}
 .dc-tabs button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:14px;font-weight:600;min-height:42px;padding:8px 10px;border-radius:999px;cursor:pointer;touch-action:manipulation}
@@ -3322,6 +3323,8 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -6901,9 +6904,8 @@ try{ matchMedia("(max-width:860px)").addEventListener("change", ()=>{ if(HOME_TA
 const HTABS=[["daily","Daily"],["party","Party"],["stats","Stats"]];
 function homePartyHTML(){ return `
     <section class="panel hero-main">
-      <div class="eyebrow">Party mode</div>
-      <h1 class="mega"><span>Your friends.</span><span class="o">Your rounds.</span><span>One spotlight<i>.</i></span></h1>
-      <p>Host a party, pick from eleven rounds and play live on your own phones.</p>
+      <h1 class="party-h">Party mode</h1>
+      <p>Host a game or join your friends. Everyone plays on their own phone.</p>
       ${Room.init()?`<div class="room3d home3d" id="room3d"></div>`:""}
       <div style="display:grid;gap:16px;margin-top:22px;position:relative">
         <div class="field"><label for="nick">Your name</label><input class="input" id="nick" maxlength="18" placeholder="e.g. Sam" value="${esc(me.nick)}" autocomplete="nickname"></div>
