@@ -3486,6 +3486,8 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -9327,8 +9329,8 @@ function subjCardHTML(){ const o=subjLoad(), list=Object.entries(o).map(([k,[r,t
   const title=`<div class="row" style="justify-content:space-between;align-items:baseline"><div class="eyebrow">Your subjects</div><span class="muted" style="font-size:12px">party games and daily quizzes</span></div>`;
   if(!list.length) return `<div class="stat-card">${title}<p class="muted" style="margin:6px 0 0;font-size:14px">Answer some questions in party games or the daily quiz to see your best and worst subjects.</p></div>`;
   const {best,worst}=subjBestWorst(list), pc=x=>Math.round(x.p*100)+"%";
-  const head = best ? `<div class="subj-top"><div><span class="eyebrow">Best</span><b>${esc(best.k)}</b><span class="num">${pc(best)} right</span></div>${worst?`<div><span class="eyebrow">Needs work</span><b>${esc(worst.k)}</b><span class="num">${pc(worst)} right</span></div>`:""}</div>` : `<p class="muted" style="margin:6px 0 0;font-size:13px">Answer at least ${SUBJ_MIN} questions in a subject to rank it.</p>`;
-  return `<div class="stat-card">${title}${head}<div class="subj-list">${list.map(x=>`<div class="subj-row${x.t<SUBJ_MIN?" few":""}"><span class="subj-n">${esc(x.k)}</span><span class="subj-bar"><i style="width:${Math.round(x.p*100)}%"></i></span><span class="num subj-p">${pc(x)}</span><span class="muted num subj-c">${x.r}/${x.t}</span></div>`).join("")}</div></div>`; }
+  const head = best ? `<div class="subj-top"><div><span class="eyebrow">Best</span><b>${esc(best.k)}</b><span class="num">${pc(best)} right</span></div>${worst?`<div><span class="eyebrow">Worst</span><b>${esc(worst.k)}</b><span class="num">${pc(worst)} right</span></div>`:""}</div>` : `<p class="muted" style="margin:6px 0 0;font-size:13px">Answer at least ${SUBJ_MIN} questions in a subject to rank it.</p>`;
+  return `<div class="stat-card">${title}${head}<div class="subj-list">${list.map(x=>`<div class="subj-row"><span class="subj-n">${esc(x.k)}</span><span class="subj-bar"><i style="width:${Math.round(x.p*100)}%"></i></span><span class="num subj-p">${pc(x)}</span><span class="muted num subj-c">${x.r}/${x.t}</span></div>`).join("")}</div></div>`; }
 function statsHTML(){ return `<section class="stats-sec"><h3 style="margin:0">Your stats</h3>${statsCardHTML("dq")}${subjCardHTML()}${statsCardHTML("dg")}</section>`; }
 function dayKeyBack(i){ const d=new Date(); d.setDate(d.getDate()-i); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 async function acctInit(){
