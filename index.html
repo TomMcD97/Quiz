@@ -3270,13 +3270,23 @@ function avSrc(t,o,px){ px=Math.round((px||360)*(AV_MOBILE?.66:1));
   if(px<130 && AV_MOBILE) return l; /* small tiles on phones stay in the lighter style */
   if(AVR.bad<3 && !AVR.q.some(j=>j.k===k)){ AVR.q.push({k,t,o,l,px}); setTimeout(avPump,0); }
   return l; }
-function avPump(){ if(AVR.busy) return; let job=null;
-  while(AVR.q.length){ const j=AVR.q.shift(); if([...document.images].some(im=>im.src===j.l)){ job=j; break; } }
+/* finished face pictures are kept on the device (IndexedDB), so the next visit shows them straight away */
+const AVDB={p:null, v:"r"+(typeof toonSVG==="function"?toonSVG.toString().length.toString(36):"0"),
+  open(){ if(this.p) return this.p; this.p=new Promise(res=>{ try{ const r=indexedDB.open("sq-av",1); r.onupgradeneeded=()=>{ try{ r.result.createObjectStore("png"); }catch(e){} }; r.onsuccess=()=>res(r.result); r.onerror=()=>res(null); r.onblocked=()=>res(null); }catch(e){ res(null); } }); return this.p; },
+  async get(k){ if(k.includes("|ph")) return null; const db=await this.open(); if(!db) return null; return new Promise(res=>{ try{ const q=db.transaction("png").objectStore("png").get(this.v+"|"+avHashK(k)); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); }catch(e){ res(null); } }); },
+  async set(k,png){ if(k.includes("|ph")) return; const db=await this.open(); if(!db) return; try{ db.transaction("png","readwrite").objectStore("png").put(png, this.v+"|"+avHashK(k)); }catch(e){} } };
+/* only draw faces you can see: not ones inside a closed drop-down or a hidden tab */
+const onScreen=im=>{ if(!im.isConnected || !im.getClientRects().length) return false; const d=im.closest("details"); if(d && !d.open && !im.closest("summary")) return false; try{ if(im.checkVisibility && !im.checkVisibility()) return false; }catch(e){} return true; };
+function avPump(){ if(AVR.busy) return; let job=null; const later=[];
+  while(AVR.q.length){ const j=AVR.q.shift(); const ims=[...document.images].filter(im=>im.src===j.l); if(!ims.length) continue; if(!ims.some(onScreen)){ later.push(j); continue; } job=j; break; }
+  AVR.q.push(...later); /* off-screen faces wait until they're shown (opening a panel or switching tab calls avPump again) */
   if(!job) return; AVR.busy=1;
-  avRaster(job.t,job.o,job.px).then(png=>{ AVR.busy=0;
-    if(png){ AVR.good++; avNote("ok"); if(AVR.png.size>300) AVR.png.clear(); AVR.png.set(job.k,png); for(const im of document.images) if(im.src===job.l) im.src=png; }
-    else { AVR.bad++; if(AVR.bad>=3 && !AVR.good) AVR.q.length=0; }
-    setTimeout(avPump,AV_MOBILE?350:30); }); }
+  const apply=png=>{ if(AVR.png.size>300) AVR.png.clear(); AVR.png.set(job.k,png); for(const im of document.images) if(im.src===job.l) im.src=png; };
+  AVDB.get(job.k).then(hit=>{ if(hit){ AVR.busy=0; AVR.good++; apply(hit); setTimeout(avPump,0); return; }
+    avRaster(job.t,job.o,job.px).then(png=>{ AVR.busy=0;
+      if(png){ AVR.good++; avNote("ok"); apply(png); AVDB.set(job.k,png); }
+      else { AVR.bad++; if(AVR.bad>=3 && !AVR.good) AVR.q.length=0; }
+      setTimeout(avPump,AV_MOBILE?200:30); }); }); }
 function svgSized(svg,W){ const vb=((svg.match(/viewBox="([^"]+)"/)||[])[1]||"0 0 200 200").trim().split(/[\s,]+/).map(Number); const H=Math.round(W*vb[3]/vb[2]); return {svg:svg.replace("<svg ",`<svg width="${W}" height="${H}" `), W, H}; }
 function avRaster(t,o,px){ return new Promise(res=>{ let S; try{ S=svgSized(toonSVG(t,Object.assign({},o||{})),px); }catch(e){ return res(null); }
   const img=new Image(); let done=false; const fin=v=>{ if(!done){ done=true; clearTimeout(to); res(v); } }; const to=setTimeout(()=>{ avNote("timed out"); fin(null); },AV_MOBILE?25000:10000);
@@ -3366,6 +3376,11 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -4450,8 +4465,19 @@ const CF={ pool:null, jobs:{}, jid:0, cache:new Map(), pending:new Map(), queue:
   pump(){ if(!this.pool) return; while(this.queue.length){ const slot=this.pool.find(s=>!s.busy && !s.dead);
       if(!slot){ if(this.pool.length && this.pool.some(s=>!s.dead)) return; const j=this.queue.shift(); setTimeout(()=>{ try{ j.res(buildCharGeo(j.id)); }catch(err){ j.rej(err); } this.pump(); }, 16); return; }
       const j=this.queue.shift(); slot.busy=true; this.jobs[j.job]=j; slot.w.postMessage({job:j.job,id:j.id}); } },
+  /* built characters are also kept on the device (IndexedDB), so a returning player or bot appears without rebuilding */
+  db:null, dbv:null,
+  dbOpen(){ if(this.db) return this.db; this.db=new Promise(res=>{ try{ const r=indexedDB.open("sq-char",1); r.onupgradeneeded=()=>{ try{ r.result.createObjectStore("g"); }catch(e){} }; r.onsuccess=()=>res(r.result); r.onerror=()=>res(null); r.onblocked=()=>res(null); }catch(e){ res(null); } }); return this.db; },
+  dbKey(id){ if(!this.dbv){ const lib=document.getElementById("sculptlib"); this.dbv="v"+(lib?lib.textContent.length.toString(36):"0"); } return this.dbv+"|"+id; },
+  async dbGet(id){ const db=await this.dbOpen(); if(!db) return null; return new Promise(res=>{ try{ const q=db.transaction("g").objectStore("g").get(this.dbKey(id)); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); }catch(e){ res(null); } }); },
+  async dbPut(id,g){ const db=await this.dbOpen(); if(!db) return; try{ const tx=db.transaction("g","readwrite"), st=tx.objectStore("g"); st.put(g,this.dbKey(id));
+      const keys=JSON.parse(localStorage.getItem("sq-charkeys")||"[]").filter(k=>k!==id); keys.push(id); while(keys.length>40){ const old=keys.shift(); st.delete(this.dbKey(old)); } localStorage.setItem("sq-charkeys",JSON.stringify(keys)); }catch(e){} },
   get(id, urgent){ if(this.cache.has(id)){ const g=this.cache.get(id); this.cache.delete(id); this.cache.set(id,g); return Promise.resolve(g); }
     if(this.pending.has(id)){ if(urgent){ const i=this.queue.findIndex(q=>q.id===id); if(i>0){ const [q]=this.queue.splice(i,1); this.queue.unshift(q); } } return this.pending.get(id); }
+    const keep=g=>{ this.cache.set(id,g); while(this.cache.size>10) this.cache.delete(this.cache.keys().next().value); return g; };
+    const p0=this.dbGet(id).then(hit=>{ if(hit && hit.body){ this.pending.delete(id); return keep(hit); } this.pending.delete(id); return this.build(id, urgent).then(g=>{ this.dbPut(id,g); return g; }); });
+    this.pending.set(id,p0); return p0; },
+  build(id, urgent){
     this.start();
     const p=new Promise((res,rej)=>{ const j={job:++this.jid, id, res:(g)=>{ this.pending.delete(id); this.cache.set(id,g); while(this.cache.size>10) this.cache.delete(this.cache.keys().next().value); res(g); }, rej:(e)=>{ this.pending.delete(id); rej(e); }}; if(urgent) this.queue.unshift(j); else this.queue.push(j); this.pump(); });
     this.pending.set(id,p); return p; }
@@ -4629,8 +4655,8 @@ const Room={
     this.order.forEach((pid,i)=>{ const c=this.chars[pid]; if(!c) return; const r=Math.floor(i/per), inRow=Math.min(per, n-r*per), k=i-r*per; c.row=r;
       c.x=(k-(inRow-1)/2)*gap + (rows>1 && inRow===per ? (r%2?gap/4:-gap/4) : 0); c.z = rows>1 ? .95-r*1.2 : .5; c.baseLift = r>0 ? .66*r : 0; c.ry=-c.x*.06; });
     const across=Math.min(n,per); this.span=Math.max(1.8,(across-1)*gap+1.5+(rows>1?gap/2:0)); },
-  loop(){ const f=(ts)=>{ if(!this.cv.isConnected){ this.raf=0; return; } this.raf=requestAnimationFrame(f); if(document.hidden) return; const dt=Math.min(.05,this.last?(ts-this.last)/1000:.016); this.last=ts; this.time=(this.time||0)+dt; this.frame(dt); }; this.raf=requestAnimationFrame(f); },
-  frame(dt){ const cv=this.cv, dpr=Math.min(2,window.devicePixelRatio||1), W=Math.max(10,Math.round(cv.clientWidth*dpr)), H=Math.max(10,Math.round(cv.clientHeight*dpr)); if(cv.width!==W||cv.height!==H){ cv.width=W; cv.height=H; this.layout(); }
+  loop(){ const f=(ts)=>{ if(!this.cv.isConnected){ this.raf=0; return; } this.raf=requestAnimationFrame(f); if(document.hidden) return; const LOWFPS=typeof AV_MOBILE!=="undefined"&&AV_MOBILE; if(LOWFPS && this.last && ts-this.last<30) return; const dt=Math.min(LOWFPS?.07:.05,this.last?(ts-this.last)/1000:.016); this.last=ts; this.time=(this.time||0)+dt; this.frame(dt); }; this.raf=requestAnimationFrame(f); },
+  frame(dt){ const cv=this.cv, dpr=Math.min((typeof AV_MOBILE!=="undefined"&&AV_MOBILE)?1.5:2,window.devicePixelRatio||1), W=Math.max(10,Math.round(cv.clientWidth*dpr)), H=Math.max(10,Math.round(cv.clientHeight*dpr)); if(cv.width!==W||cv.height!==H){ cv.width=W; cv.height=H; this.layout(); }
     const asp=W/H, fov=38*Math.PI/180, rows=this.rows||1, t=this.time;
     if(Math.abs((this.boardHue||0)-ACC.hue)>25) this.drawBoard();
     const need=(this.span/2+.5)/(Math.tan(fov/2)*asp), needV=(1.15+rows*.3)/Math.tan(fov/2); const dist=Math.max(4.2, need*1.08, needV)+(rows-1)*.6+(this.pod?1.3:0);
@@ -6951,6 +6977,7 @@ function render(){
   if(app.view==="daily"){ renderDaily(); renderDailyBoard(); }
   if(app.view==="dgrid"){ renderDGrid(); renderDGridBoard(); }
   renderStatus();
+  setTimeout(()=>{ try{ avPump(); }catch(e){} },60); /* faces that just came on screen (a new tab, an opened panel) get drawn */
 }
 
 /* home page: your avatar standing on the studio stage, so the first screen shows the look you'll play with */
@@ -9824,7 +9851,7 @@ document.addEventListener("keydown", e=>{
   if(!e.target.closest("input") && S && S.phase==="q" && S.q.t==="hl" && !myAns && app.view==="party"){ if(e.key==="ArrowUp"||e.key.toLowerCase()==="h"){ e.preventDefault(); submitAnswer(0); } if(e.key==="ArrowDown"||e.key.toLowerCase()==="l"){ e.preventDefault(); submitAnswer(1); } }
 });
 document.addEventListener("change", e=>{ const t=e.target; if(t && t.id==="mkface" && t.files && t.files[0]){ faceEditorOpen(t.files[0]); t.value=""; } else if(t && t.id==="mkphoto" && t.files && t.files[0]){ avatarFromPhoto(t.files[0]); t.value=""; } else if(t && t.dataset && t.dataset.mk){ app.mk[t.dataset.mk]= t.type==="checkbox"?t.checked:t.value; renderMaker(); } });
-document.addEventListener("toggle", e=>{ const t=e.target; if(t && t.classList && t.classList.contains("lb-look")) app.lookOpen=t.open; if(t && t.classList && t.classList.contains("av-drop")) app.homeLookOpen=t.open; }, true);
+document.addEventListener("toggle", e=>{ const t=e.target; if(t && t.classList && t.classList.contains("lb-look")) app.lookOpen=t.open; if(t && t.classList && t.classList.contains("av-drop")) app.homeLookOpen=t.open; if(t && t.open) setTimeout(()=>{ try{ avPump(); }catch(e){} },30); }, true);
 document.addEventListener("keydown", e=>{ if(e.key==="Escape" && document.getElementById("mkmodal")) closeMaker(); if(e.key==="Escape" && document.getElementById("acctmodal")) closeAcct(); });
 document.addEventListener("input", e=>{
   const id=e.target.id;
