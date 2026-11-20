@@ -773,7 +773,7 @@ p{color:#B8B8BE}
 .rounds-preview{gap:0;border-left:1px solid var(--line);border-top:1px solid var(--line);margin-top:0}
 .rp{background:transparent;border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;padding:22px;position:relative;counter-increment:rp}
 .rounds-preview{counter-reset:rp}
-.rp::before{content:"0" counter(rp);position:absolute;right:18px;top:18px;font-family:var(--f-mono);font-size:11px;color:var(--muted);letter-spacing:.1em}
+.rp::before{content:counter(rp,decimal-leading-zero);position:absolute;right:18px;top:18px;font-family:var(--f-mono);font-size:11px;color:var(--muted);letter-spacing:.1em}
 .rp b{font-family:var(--f-display);text-transform:uppercase;font-size:13px;letter-spacing:.04em;font-weight:700}
 .rp span{color:var(--muted)}
 .rp svg{color:var(--ink);opacity:.9}
@@ -947,6 +947,13 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .toast{border-radius:999px;font-family:var(--f-body);letter-spacing:0;font-weight:600}
 .lobby-code .code{text-shadow:none}
 .room3d{border-radius:var(--r);border:1px solid var(--line)}
+.home3d{height:clamp(240px,62vw,340px)!important;margin:18px 0 0!important}
+.home-stats{margin-top:18px;display:grid;gap:14px}
+.hs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.hs-c{border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.hs-c b{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.05;overflow-wrap:anywhere}
+.hs-c span{font-size:12px;color:var(--muted)}
+.hs-c.hs-sub b{font-size:18px;color:var(--acc)}.hs-c.hs-sub.bad b{color:var(--bad)}
 .room-tag{background:rgba(255,255,255,.94)!important;color:#0A0A0B!important;border:0!important;border-radius:999px;font-family:var(--f-body)!important;font-size:12px!important;font-weight:700!important;letter-spacing:0;text-transform:none;padding:4px 10px!important;backdrop-filter:none}
 .room-tag.me{background:var(--acc)!important;color:#000!important;box-shadow:none}
 .room-load{font-family:var(--f-body)!important;letter-spacing:0;font-size:13px!important;color:#2A2A2C!important;background:rgba(255,255,255,.8)!important;border:0;border-radius:999px;padding:5px 12px}
@@ -3282,6 +3289,9 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -6406,6 +6416,7 @@ function setMyAv(id){
 function avPush(){ const id=LS.get("sq-av-sync"); if(!id || !app.acct || !window.SQ_AUTH) return;
   window.SQ_AUTH.saveProfile({av:id}).then(p=>{ if(p && p.av===id && LS.get("sq-av-sync")===id){ LS.set("sq-av-sync",null); app.acct.av=id; } }).catch(()=>{}); }
 function avEverywhere(){
+  if(app.view==="home") try{ renderHomeStage(); }catch(e){}
   if(app.party){ setMyPresence({av:me.av}); try{ sharePhoto(); }catch(e){} renderBoard(); try{ renderLobbyStage(); }catch(e){} if(S && ["intro","roundEnd","final"].includes(S.phase)){ stageKey=""; renderStage(); } }
   document.querySelectorAll("#avpick").forEach(pk=>{ const tmp=document.createElement("div"); tmp.innerHTML=avPickerHTML(); pk.replaceWith(...tmp.childNodes); });
   try{ AVR.png.clear(); }catch(e){}
@@ -6827,13 +6838,16 @@ function render(){
   else if(app.view==="party") v.innerHTML = `<div class="show" id="show"><div class="beam l" aria-hidden="true"></div><div class="beam r" aria-hidden="true"></div><div class="crowd" aria-hidden="true">${crowdSVG()}</div><section class="stage panel" id="stage"></section><footer class="contestants" id="board" aria-label="Players and scores"></footer></div>`;
   else if(app.view==="daily") v.innerHTML = `<div class="game"><section class="stage panel" id="dstage"></section><aside class="board panel" id="dboard"></aside></div>`;
   else if(app.view==="dgrid") v.innerHTML = `<div class="game"><section class="stage panel" id="gstage"></section><aside class="board panel" id="gboard"></aside></div>`;
-  if(app.view==="home"){ renderParties(); loadHomeDaily(); }
+  if(app.view==="home"){ renderParties(); loadHomeDaily(); renderHomeStage(); }
   if(app.view==="party"){ renderStage(); renderBoard(); }
   if(app.view==="daily"){ renderDaily(); renderDailyBoard(); }
   if(app.view==="dgrid"){ renderDGrid(); renderDGridBoard(); }
   renderStatus();
 }
 
+/* home page: your avatar standing on the studio stage, so the first screen shows the look you'll play with */
+function renderHomeStage(){ if(app.view!=="home") return; const r3=$("#room3d"); if(!r3 || !Room.attach(r3)) return;
+  const av=me.av||AVATARS[0]; Room.sync([{pid:me.pid, av, label:(me.nick||"You"), me:true, color:pcol(me.pid), ph:photoOf(me.pid,av)}]); Room.setPodium(null); Room.setBoard("", "Pick your look below, then host or join", "Ready when you are"); }
 function homeHTML(){
   const rp = ROUND_ORDER.map(t=>`<div class="rp">${ICON[t]}<b>${RT[t].name}</b><span>${esc(RT[t].short)}</span></div>`).join("");
   return `
@@ -6841,7 +6855,8 @@ function homeHTML(){
     <section class="panel hero-main">
       <div class="eyebrow">01 — Party mode</div>
       <h1 class="mega"><span>Your friends.</span><span class="o">Your rounds.</span><span>One spotlight<i>.</i></span></h1>
-      <p>Host a party, pick the rounds you want, and play live from your own devices. Questions are written fresh for every game, including on the specialist subjects you choose.</p>
+      <p>Host a party, pick from eleven rounds and play live on your own phones.</p>
+      ${Room.init()?`<div class="room3d home3d" id="room3d"></div>`:""}
       <div style="display:grid;gap:16px;margin-top:22px;position:relative">
         <div class="field"><label for="nick">Your name</label><input class="input" id="nick" maxlength="18" placeholder="e.g. Sam" value="${esc(me.nick)}" autocomplete="nickname"></div>
         <div class="field"><label>Your avatar</label>${avPickerHTML()}</div>
@@ -6862,11 +6877,10 @@ function homeHTML(){
       <div class="eyebrow">Daily word grid</div>
       <p class="muted" style="margin:0">One grid for everyone today. Find as many words as you can in 60 seconds.</p>
       <div id="gridinfo"></div>
-      <p class="muted" id="avdiag" style="font-size:12px;margin:8px 0 0">${typeof avDiagText==="function"?esc(avDiagText()):""}</p>
     </section>
   </div>
   <div class="rounds-preview">${rp}</div>
-  <p class="foot">To play together, invite friends to this page by email from Share. People who open it through a public link can't join live parties. Invite them as Editors if you want their daily scores on the leaderboard.</p>`;
+  ${window.SQ_STANDALONE?"":`<p class="foot">To play together, invite friends to this page by email from Share. People who open it through a public link can't join live parties. Invite them as Editors if you want their daily scores on the leaderboard.</p>`}`;
 }
 
 function renderParties(){
@@ -9300,10 +9314,19 @@ let subjTimer=null;
 function subjPush(){ clearTimeout(subjTimer); subjTimer=setTimeout(()=>{ const d=LS.get("sq-subj-pend"); if(!d || !app.acct) return; LS.set("sq-subj-pend",null);
   window.SQ_AUTH.saveProfile({sjd:d}).then(p=>{ if(p && p.sj) LS.set("sq-subj",p.sj); }).catch(()=>{ const now=LS.get("sq-subj-pend")||{}; for(const k in d){ const x=now[k]||[0,0]; x[0]+=d[k][0]; x[1]+=d[k][1]; now[k]=x; } LS.set("sq-subj-pend",now); }); }, 2500); }
 const SUBJ_MIN=5;
+function subjBestWorst(list){ if(!list.length) return {best:null,worst:null}; const best=list[0], low=list.slice().sort((a,b)=>a.p-b.p||b.t-a.t)[0]; return {best, worst: list.length>1&&low!==best?low:null}; }
+function subjList(){ return Object.entries(subjLoad()).map(([k,[r,t]])=>({k,r:+r||0,t:+t||0})).filter(x=>x.t>0).map(x=>({...x,p:x.r/x.t})).sort((a,b)=>b.p-a.p||b.t-a.t); }
+/* home page stats strip: daily record and best/worst subject at a glance */
+function homeStatsHTML(){ const st=statsOf("dq"), L=subjList(), {best,worst}=subjBestWorst(L), pc=x=>Math.round(x.p*100)+"%";
+  const cell=(v,l,cls="")=>`<div class="hs-c ${cls}"><b class="num">${v}</b><span>${l}</span></div>`;
+  if(!st && !L.length) return `<section class="panel home-stats"><div class="eyebrow">03 — Your stats</div><p class="muted" style="margin:6px 0 0">Play today's quiz or a party game and your streak, best score and best subjects will show up here.</p></section>`;
+  const cells=(st?cell(st.cur,st.cur===1?"day streak":"day streak")+cell(st.best.toLocaleString("en-GB"),"best daily")+cell(st.avg.toLocaleString("en-GB"),"daily average")+cell(st.n,st.n===1?"daily played":"dailies played"):"")
+    +(best?cell(esc(best.k),"best subject · "+pc(best),"hs-sub"):"")+(worst?cell(esc(worst.k),"needs work · "+pc(worst),"hs-sub bad"):"");
+  return `<section class="panel home-stats"><div class="row" style="justify-content:space-between;align-items:baseline"><div class="eyebrow">03 — Your stats</div>${ACCT.on&&app.acct?`<button class="btn small" data-act="acct">All stats</button>`:""}</div><div class="hs-grid">${cells}</div></section>`; }
 function subjCardHTML(){ const o=subjLoad(), list=Object.entries(o).map(([k,[r,t]])=>({k,r,t,p:t?r/t:0})).filter(x=>x.t>0).sort((a,b)=>b.p-a.p||b.t-a.t);
   const title=`<div class="row" style="justify-content:space-between;align-items:baseline"><div class="eyebrow">Your subjects</div><span class="muted" style="font-size:12px">party games and daily quizzes</span></div>`;
   if(!list.length) return `<div class="stat-card">${title}<p class="muted" style="margin:6px 0 0;font-size:14px">Answer some questions in party games or the daily quiz to see your best and worst subjects.</p></div>`;
-  const ok=list.filter(x=>x.t>=SUBJ_MIN), best=ok[0], worst=ok.length>1?ok[ok.length-1]:null, pc=x=>Math.round(x.p*100)+"%";
+  const {best,worst}=subjBestWorst(list), pc=x=>Math.round(x.p*100)+"%";
   const head = best ? `<div class="subj-top"><div><span class="eyebrow">Best</span><b>${esc(best.k)}</b><span class="num">${pc(best)} right</span></div>${worst?`<div><span class="eyebrow">Needs work</span><b>${esc(worst.k)}</b><span class="num">${pc(worst)} right</span></div>`:""}</div>` : `<p class="muted" style="margin:6px 0 0;font-size:13px">Answer at least ${SUBJ_MIN} questions in a subject to rank it.</p>`;
   return `<div class="stat-card">${title}${head}<div class="subj-list">${list.map(x=>`<div class="subj-row${x.t<SUBJ_MIN?" few":""}"><span class="subj-n">${esc(x.k)}</span><span class="subj-bar"><i style="width:${Math.round(x.p*100)}%"></i></span><span class="num subj-p">${pc(x)}</span><span class="muted num subj-c">${x.r}/${x.t}</span></div>`).join("")}</div></div>`; }
 function statsHTML(){ return `<section class="stats-sec"><h3 style="margin:0">Your stats</h3>${statsCardHTML("dq")}${subjCardHTML()}${statsCardHTML("dg")}</section>`; }
@@ -9482,7 +9505,7 @@ document.addEventListener("toggle", e=>{ const t=e.target; if(t && t.classList &
 document.addEventListener("keydown", e=>{ if(e.key==="Escape" && document.getElementById("mkmodal")) closeMaker(); if(e.key==="Escape" && document.getElementById("acctmodal")) closeAcct(); });
 document.addEventListener("input", e=>{
   const id=e.target.id;
-  if(id==="nick"){ me.nick=e.target.value.trim().slice(0,18); }
+  if(id==="nick"){ me.nick=e.target.value.trim().slice(0,18); clearTimeout(window._hsT); window._hsT=setTimeout(()=>{ try{ renderHomeStage(); }catch(e){} },250); }
   if(id==="estr"||id==="destr"){ const q = id==="estr" ? (S&&S.q) : D.qs[D.i]; if(!q) return; const v=snap(+e.target.value, q.min, q.max, q.unit, q.int); if(id==="estr") draft=v; else D.draft=v; const ro=$("#"+id+"-ro"); if(ro) ro.textContent=fmtNum(v, q.unit)+unitTxt(q.unit); const lb=$(id==="estr"?"#lockest":"#dlockest"); if(lb) lb.disabled=false; }
   if(id==="wordin" && gridNow()){ const w=e.target.value.toLowerCase().replace(/[^a-z]/g,""); gridPath = w ? (findPath(gridNow(), w)||[]) : []; paintTiles(); }
 });
