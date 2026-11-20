@@ -973,6 +973,7 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .htabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;margin:0 0 16px;border:1px solid var(--line);border-radius:999px;background:var(--bg,#000)}
 .htabs button{border:0;background:transparent;color:var(--muted);font:inherit;font-weight:700;font-size:15px;min-height:44px;border-radius:999px;cursor:pointer;touch-action:manipulation}
 .htabs button[aria-selected="true"]{background:var(--acc);color:#000}
+.htab-page{max-width:640px;margin-inline:auto}
 .hero.htab-one{grid-template-columns:1fr!important}.hero.htab-one>.daily-card{order:0!important;margin-bottom:0!important}
 .htab-stats .stats-sec{display:grid;gap:14px}
 .hjoin{margin-top:16px;padding:16px!important;display:grid;gap:10px}
@@ -3323,6 +3324,7 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -6899,8 +6901,9 @@ function renderHomeStage(){ if(app.view!=="home") return; const r3=$("#room3d");
   const av=me.av||AVATARS[0]; Room.sync([{pid:me.pid, av, label:(me.nick||"You"), me:true, color:pcol(me.pid), ph:photoOf(me.pid,av)}]); Room.setPodium(null); Room.setBoard("", "Pick your look below, then host or join", "Ready when you are"); }
 /* HOME_TABS (trial, separate test version): Daily / Party / Stats tabs instead of one long page */
 var HOME_TABS=true;
-function homeNarrow(){ try{ return matchMedia("(max-width:860px)").matches; }catch(e){ return true; } }
-try{ matchMedia("(max-width:860px)").addEventListener("change", ()=>{ if(HOME_TABS && app.view==="home") render(); }); }catch(e){}
+const HTAB_MQ="(max-width:1100px)"; /* phones and upright tablets (including iPad Pro) get tabs; wider screens get the side-by-side page */
+function homeNarrow(){ try{ return matchMedia(HTAB_MQ).matches; }catch(e){ return true; } }
+try{ matchMedia(HTAB_MQ).addEventListener("change", ()=>{ if(HOME_TABS && app.view==="home") render(); }); }catch(e){}
 const HTABS=[["daily","Daily"],["party","Party"],["stats","Stats"]];
 function homePartyHTML(){ return `
     <section class="panel hero-main">
@@ -6936,7 +6939,7 @@ function homeHTML(){
       <section class="panel hjoin"><div class="eyebrow">Got a party code?</div><div class="hjoin-row">${me.nick?"":`<input class="input" id="nick" maxlength="18" placeholder="Your name" aria-label="Your name" autocomplete="nickname">`}<input class="input" id="joincode" maxlength="4" placeholder="CODE" aria-label="Party code"><button class="btn primary" data-act="join">Join</button></div></section>`;
     else if(tab==="party") inner=`<div class="hero htab-one">${homePartyHTML()}</div>${homeRoundsHTML()}`;
     else inner=`<div class="htab-stats">${statsHTML()}</div>`;
-    return bar+inner+`${window.SQ_STANDALONE?"":`<p class="foot">To play together, invite friends to this page by email from Share. People who open it through a public link can't join live parties. Invite them as Editors if you want their daily scores on the leaderboard.</p>`}`; }
+    return `<div class="htab-page">`+bar+inner+`</div>`+`${window.SQ_STANDALONE?"":`<p class="foot">To play together, invite friends to this page by email from Share. People who open it through a public link can't join live parties. Invite them as Editors if you want their daily scores on the leaderboard.</p>`}`; }
   return `
   <div class="hero">
 ${homePartyHTML()}
