@@ -3530,6 +3530,7 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -6926,7 +6927,7 @@ function homeDailyHTML(){ return `
     </section>`; }
 function homeRoundsHTML(){ return `<div class="rounds-preview">${ROUND_ORDER.map(t=>`<div class="rp">${ICON[t]}<b>${RT[t].name}</b><span>${esc(RT[t].short)}</span></div>`).join("")}</div>`; }
 function homeHTML(){
-  if(HOME_TABS && homeNarrow()){ const tab=HTABS.some(t=>t[0]===app.homeTab)?app.homeTab:(LS.get("sq-htab")||"party"); /* first visit opens on Party; after that, the tab you used last */
+  if(HOME_TABS && homeNarrow()){ const tab=HTABS.some(t=>t[0]===app.homeTab)?app.homeTab:"daily"; /* every visit opens on Daily (it has its own join box); the tab you pick sticks until you leave */
     const bar=`<nav class="htabs" role="tablist" aria-label="Home">${HTABS.map(([k,l])=>`<button type="button" role="tab" data-act="htab" data-v="${k}" aria-selected="${k===tab}">${l}</button>`).join("")}</nav>`;
     let inner="";
     if(tab==="daily") inner=`<div class="hero htab-one">${homeDailyHTML()}</div>
@@ -9486,7 +9487,7 @@ document.addEventListener("click", async e=>{
   if(a==="ready" && S && (S.phase==="lobby"||S.phase==="intro")){ const k=rdyKey(); setMyPresence({rdy: myPres.rdy===k?null:k}); if(S.phase==="lobby") lbLive(); else rdyLive(); if(app.isHost) hostTick(); return; }
   if(a==="emote"){ sendEmote(b.dataset.e); return; }
   if(a==="dclbshow"){ const off=!LS.get("sq-dclb-off"); LS.set("sq-dclb-off", off?1:null); b.setAttribute("aria-pressed", String(!off)); const w=$(".dc-lbin"); if(w) w.hidden=off; return; }
-  if(a==="htab"){ app.homeTab=b.dataset.v; LS.set("sq-htab", app.homeTab); render(); window.scrollTo(0,0); return; }
+  if(a==="htab"){ app.homeTab=b.dataset.v; render(); window.scrollTo(0,0); return; }
   if(a==="dclb"){ app.dcTab=b.dataset.v; const g=app.dcTab==="g"; const q=$("#homelb"), gr=$("#homegridlb"); if(q) q.hidden=g; if(gr) gr.hidden=!g; document.querySelectorAll('[data-act="dclb"]').forEach(x=>x.setAttribute("aria-selected", String(x.dataset.v===app.dcTab))); return; }
   if(a==="bighead"){ BIG.set(!BIG.on); document.querySelectorAll('[data-act="bighead"]').forEach(x=>x.setAttribute("aria-pressed",String(BIG.on))); document.querySelectorAll("img[data-pav]").forEach(im=>{ const u=Portrait.get(im.dataset.pav); im.src=u||(im.dataset.flat?im.src:avURI(im.dataset.pav)); im.classList.toggle("r3",!!u); }); return; }
   if(a==="maker"){ if(document.getElementById("mkmodal")) closeMaker(); else { app.mkOpen=true; app.mk=null; mkState(); openMaker(); } return; }
