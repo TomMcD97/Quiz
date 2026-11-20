@@ -273,6 +273,49 @@ async function callClaude(b) {
   return content.slice(last + 1).filter(c => c.type === "text").map(c => c.text).join("");
 }
 
+/* ---------------- reports, error log, owner stats (Nov 2026) ---------------- */
+const STATIC = { "/og.png": ["og.png", "image/png"], "/icon-192.png": ["icon-192.png", "image/png"], "/icon-512.png": ["icon-512.png", "image/png"], "/apple-touch-icon.png": ["icon-180.png", "image/png"], "/manifest.webmanifest": ["manifest.webmanifest", "application/manifest+json"] };
+const hits = new Map(); /* simple per-IP rate limit for reports and error logs */
+function tooMany(req, kind, max) { const k = kind + ":" + ipOf(req), now = Date.now(), h = (hits.get(k) || []).filter(t => now - t < 3600e3); h.push(now); hits.set(k, h); return h.length > max; }
+const clip = (v, n) => String(v == null ? "" : v).slice(0, n);
+async function reportRoute(req, res) {
+  if (tooMany(req, "rep", 30)) return json(res, 429, { error: "slow_down" });
+  const b = await readBody(req, 4000); const id = Date.now().toString(36) + "-" + crypto.randomBytes(3).toString("hex");
+  store["reports/" + id] = { text: clip(b.text, 300), answer: clip(b.answer, 300), t: clip(b.t, 8), cat: clip(b.cat, 40), reason: clip(b.reason, 60), src: clip(b.src, 10), day: clip(b.day, 10), by: clip(b.by, 18), at: Date.now() };
+  save("reports/" + id); return json(res, 200, { ok: true });
+}
+const errRing = [];
+async function logRoute(req, res) {
+  if (tooMany(req, "log", 60)) return json(res, 429, { error: "slow_down" });
+  const b = await readBody(req, 4000); const e = { msg: clip(b.msg, 300), src: clip(b.src, 120), line: +b.line || 0, ua: clip(req.headers["user-agent"], 120), at: Date.now(), v: clip(b.v, 20) };
+  errRing.push(e); if (errRing.length > 300) errRing.shift();
+  const day = new Date().toISOString().slice(0, 10), k = "errlog/" + day, cur = store[k] || { items: [] };
+  if (cur.items.length < 200) { cur.items.push(e); store[k] = cur; save(k); }
+  return json(res, 200, { ok: true });
+}
+/* count parties per day: a live party is a room called sq-xxxx */
+function noteParty(name, isNew) { if (!/^(p:)?sq-[a-z]{4}$/.test(name)) return; const day = new Date().toISOString().slice(0, 10), k = "stats/" + day, s = store[k] || { parties: 0, joins: 0 };
+  if (isNew) s.parties++; s.joins++; store[k] = s; save(k); }
+function adminRoute(req, res, url) {
+  const key = process.env.ADMIN_KEY || "";
+  if (!key || url.searchParams.get("key") !== key) { res.writeHead(403, { "content-type": "text/plain" }); return res.end(key ? "Wrong key" : "Set ADMIN_KEY in Render's environment settings to use this page."); }
+  const days = []; for (let i = 0; i < 14; i++) days.push(new Date(Date.now() - i * 864e5).toISOString().slice(0, 10));
+  const keys = Object.keys(store), count = re => keys.filter(k => re.test(k)).length;
+  const rows = days.map(d => { const st = store["stats/" + d] || {}; return { d, dq: count(new RegExp("^dq\\d*/" + d + "/scores/")), dg: count(new RegExp("^dg\\d*/" + d + "/scores/")), parties: st.parties || 0, joins: st.joins || 0 }; });
+  const users = count(/^users\/[^/]+$/), reps = keys.filter(k => k.startsWith("reports/")).map(k => store[k]).sort((a, b) => b.at - a.at).slice(0, 60);
+  const errs = errRing.slice(-40).reverse(), live = [...rooms.keys()].filter(n => /^(p:)?sq-[a-z]{4}$/.test(n) && rooms.get(n).members.size);
+  const e = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const t = new Date().toLocaleString("en-GB", { timeZone: "Europe/London" });
+  const html = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Spotlight Quiz admin</title><style>body{font:15px/1.45 system-ui,sans-serif;background:#0b0b0c;color:#eee;margin:0;padding:20px max(16px,env(safe-area-inset-left))}h1{font-size:24px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}table{border-collapse:collapse;width:100%;font-size:14px}td,th{border-bottom:1px solid #2a2a2e;padding:7px 6px;text-align:left;vertical-align:top}th{color:#999;font-weight:600}.n{font-variant-numeric:tabular-nums;text-align:right}.m{color:#999}.box{overflow-x:auto}.big{display:flex;gap:12px;flex-wrap:wrap}.big div{border:1px solid #2a2a2e;border-radius:12px;padding:12px 16px}.big b{display:block;font-size:26px}</style>
+<h1>Spotlight Quiz</h1><div class="m">Owner stats · ${e(t)}</div>
+<div class="big" style="margin-top:16px"><div><b>${rows[0].dq}</b>daily quiz players today</div><div><b>${rows[0].dg}</b>word grid players today</div><div><b>${rows[0].parties}</b>parties today</div><div><b>${live.length}</b>parties live now</div><div><b>${users}</b>accounts</div></div>
+<h2>Last 14 days</h2><div class="box"><table><tr><th>Day</th><th class="n">Daily quiz</th><th class="n">Word grid</th><th class="n">Parties</th><th class="n">Party joins</th></tr>${rows.map(r => `<tr><td>${r.d}</td><td class="n">${r.dq}</td><td class="n">${r.dg}</td><td class="n">${r.parties}</td><td class="n">${r.joins}</td></tr>`).join("")}</table></div>
+<p class="m">Daily counts are players with an account on the leaderboard. Party counts started on the day this page went live.</p>
+<h2>Reported questions (${reps.length})</h2><div class="box"><table><tr><th>When</th><th>Reason</th><th>Question</th><th>Answer given</th><th>Where</th></tr>${reps.map(r => `<tr><td class="m">${e(new Date(r.at).toLocaleString("en-GB", { timeZone: "Europe/London" }))}</td><td>${e(r.reason)}</td><td>${e(r.text)}</td><td>${e(r.answer)}</td><td class="m">${e(r.src)}${r.cat ? " · " + e(r.cat) : ""}${r.by ? " · " + e(r.by) : ""}</td></tr>`).join("") || `<tr><td colspan="5" class="m">None yet</td></tr>`}</table></div>
+<h2>Recent errors from players' phones (${errs.length})</h2><div class="box"><table><tr><th>When</th><th>Error</th><th>Device</th></tr>${errs.map(x => `<tr><td class="m">${e(new Date(x.at).toLocaleTimeString("en-GB", { timeZone: "Europe/London" }))}</td><td>${e(x.msg)}<div class="m">${e(x.src)}:${x.line}</div></td><td class="m">${e(x.ua)}</td></tr>`).join("") || `<tr><td colspan="3" class="m">None since the last restart</td></tr>`}</table></div>`;
+  res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" }); res.end(html);
+}
+
 /* ---------------- HTTP ---------------- */
 function readBody(req, max) {
   return new Promise((res, rej) => { let n = 0; const chunks = [];
@@ -357,6 +400,10 @@ const server = http.createServer(async (req, res) => {
       try { return json(res, 200, { text: await callClaude(b) }); }
       catch (e) { return json(res, 502, { code: "upstream", message: String(e.message || e) }); }
     }
+    if (url.pathname === "/api/report" && req.method === "POST") { await ready; return reportRoute(req, res); }
+    if (url.pathname === "/api/log" && req.method === "POST") { await ready; return logRoute(req, res); }
+    if (url.pathname === "/admin" && req.method === "GET") { await ready; return adminRoute(req, res, url); }
+    if (req.method === "GET" && STATIC[url.pathname]) { const f = STATIC[url.pathname]; try { const body = fs.readFileSync(path.join(__dirname, f[0])); res.writeHead(200, { "content-type": f[1], "cache-control": "public, max-age=86400" }); return res.end(body); } catch (e) {} }
     if (url.pathname === "/api/db" && req.method === "POST") {
       await ready; const b = await readBody(req, 100000); const r = dbOp(b, b.op === "set" ? await userOf(req) : null);
       return json(res, r.error ? (r.code === "login_required" ? 401 : 400) : 200, r);
@@ -380,7 +427,7 @@ function broadcast(name) {
 function leaveRoom(c, name) { const r = rooms.get(name); if (r && r.members.delete(c.id)) { c.rooms.delete(name); broadcast(name); } }
 function handle(c, m) {
   if (!m || typeof m !== "object" || typeof m.room !== "string" || m.room.length > 80) return;
-  if (m.t === "join") { if (c.rooms.size >= 4 && !c.rooms.has(m.room)) return; const r = roomOf(m.room); if (r.members.size >= 60 && !r.members.has(c.id)) return c.send(JSON.stringify({ t: "full", room: m.room }));
+  if (m.t === "join") { if (c.rooms.size >= 4 && !c.rooms.has(m.room)) return; const isNew = !rooms.has(m.room); const r = roomOf(m.room); if (!r.members.has(c.id)) { try { noteParty(m.room, isNew); } catch (e) {} } if (r.members.size >= 60 && !r.members.has(c.id)) return c.send(JSON.stringify({ t: "full", room: m.room }));
     r.members.set(c.id, { pres: (m.pres && typeof m.pres === "object") ? m.pres : {}, at: Date.now() }); c.rooms.add(m.room); broadcast(m.room); }
   else if (m.t === "pres") { const r = rooms.get(m.room); const me = r && r.members.get(c.id); if (!me || !m.patch || typeof m.patch !== "object") return;
     for (const k in m.patch) { if (m.patch[k] === null) delete me.pres[k]; else me.pres[k] = m.patch[k]; } me.at = Date.now(); broadcast(m.room); }

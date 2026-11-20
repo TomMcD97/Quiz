@@ -1,5 +1,12 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Spotlight Quiz: a live party quiz you play together on your phones.">
+<title>Spotlight Quiz</title>
+<meta property="og:type" content="website"><meta property="og:site_name" content="Spotlight Quiz"><meta property="og:title" content="Spotlight Quiz – quiz night, on everyone's phone">
+<meta property="og:description" content="A daily quiz, a daily word grid and live party quiz games you play together on your phones. No app needed.">
+<meta property="og:image" content="https://spotlightquiz.app/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:url" content="https://spotlightquiz.app/">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://spotlightquiz.app/og.png">
+<meta name="theme-color" content="#000000"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Spotlight"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
 <script>/* Stand-in for the Claude runtime when the game runs on its own server. */
 (function(){
@@ -79,6 +86,7 @@
       async acquire(o){ return op({op:"acquire",path,holder:(o||{}).holder,ttlMs:(o||{}).ttlMs}); } }; }
     function collection(path){ const q={orderBy:null,dir:"asc",limit:20};
       const api={ orderBy(f,d){ q.orderBy=f; q.dir=d||"asc"; return api; }, limit(n){ q.limit=n; return api; },
+        async get(){ const r=await op({op:"query",path,orderBy:q.orderBy,dir:q.dir,limit:q.limit}); const docs=(r.docs||[]).map(d=>({id:d.id, data:()=>d.data})); return {docs, empty:!docs.length, size:docs.length}; },
         onSnapshot(fn,err){ let stop=false; const tick=async()=>{ if(stop) return; try{ const r=await op({op:"query",path,orderBy:q.orderBy,dir:q.dir,limit:q.limit}); if(stop) return;
             const docs=r.docs.map(d=>({id:d.id, data:()=>d.data})); fn({docs, empty:!docs.length, size:docs.length, metadata:{fromCache:false}}); }catch(e){ if(err) err(e); } if(!stop) setTimeout(tick, 8000); };
           tick(); return ()=>{ stop=true; }; } };
@@ -979,6 +987,40 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .hjoin{margin-top:16px;padding:16px!important;display:grid;gap:10px}
 .hjoin-row{display:flex;gap:8px;flex-wrap:wrap}.hjoin-row #nick{flex:1 1 100%}.hjoin-row #joincode{flex:1 1 0;min-width:0;text-transform:uppercase;letter-spacing:.25em}.hjoin-row .btn{flex:0 0 auto}
 .hero-main h1.party-h{margin:0;font-size:clamp(30px,8vw,38px)!important;line-height:1.05;letter-spacing:-.02em;font-weight:800}
+.lb-invite{border:1px solid var(--line);border-radius:16px;margin:14px 0;padding:0}
+.lb-invite>summary{list-style:none;cursor:pointer;padding:12px 16px;font-weight:700}.lb-invite>summary::-webkit-details-marker{display:none}.lb-invite>summary::after{content:" ▾";color:var(--muted)}.lb-invite[open]>summary::after{content:" ▴"}
+.inv-in{display:flex;gap:16px;align-items:center;padding:0 16px 16px;flex-wrap:wrap}
+.inv-qr{width:150px;height:150px;flex:0 0 150px;border-radius:12px;overflow:hidden;background:#fff}.inv-qr svg{width:100%;height:100%;display:block}
+.inv-t{flex:1 1 180px;min-width:0;display:flex;flex-direction:column;gap:6px}.inv-t b{font-size:18px}.inv-t .muted{font-size:13px}
+.inv-url{font-size:13px;word-break:break-all;padding:6px 8px;border:1px solid var(--line);border-radius:8px}
+.rep-row{display:flex;justify-content:center;margin-top:10px}.rep-btn{background:transparent;border:0;color:var(--muted);font:inherit;font-size:12px;padding:8px 10px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.rep-sheet{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:grid;place-items:end center;padding:16px max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.rep-card{width:min(460px,100%);background:var(--panel,#111);border:1px solid var(--line);border-radius:18px;padding:18px;display:grid;gap:10px}.rep-card p{margin:0;font-size:13px}.rep-opts{display:grid;gap:8px}
+.lg{border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:4px;margin-bottom:10px}
+.lg-h{display:flex;justify-content:space-between;gap:8px;align-items:baseline;margin-bottom:4px}.lg-h .muted{font-size:12px}
+.lg-cols,.lg-r{display:grid;grid-template-columns:1fr 64px 64px;gap:6px;align-items:center;font-size:14px}.lg-cols{font-size:11px;text-transform:uppercase;letter-spacing:.08em}.lg-cols span,.lg-r>b,.lg-r>span:last-child{text-align:right}
+.lg-r{padding:5px 0;border-top:1px solid var(--line)}.lg-r.me{color:var(--acc)}.lg-r .rk{display:inline-block;width:20px;color:var(--muted)}
+.lg-form{display:grid;gap:8px}.lg-f{display:flex;gap:8px}.lg-f .input{flex:1;min-width:0}.lg-more>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:6px 0}
+.lb-x.sure{width:auto!important;padding:0 8px!important;font-size:12px!important;background:var(--bad)!important;color:#fff!important}
+/* TV mode: a big-screen spectator view of a party (no answering) */
+body.tvmode{zoom:1.2}
+body.tvmode .emotes,body.tvmode .bigrow,body.tvmode .lb-go,body.tvmode .hostcfg,body.tvmode .pset,body.tvmode .lb-look,body.tvmode .rep-row,body.tvmode .answer-row,body.tvmode .hostbar,body.tvmode .lb-x{display:none!important}
+body.tvmode .opts,body.tvmode .hl-btns,body.tvmode .rk,body.tvmode .mf-grid,body.tvmode .map,body.tvmode input{pointer-events:none}
+body.tvmode .lb-invite{max-width:520px}body.tvmode .inv-qr{width:220px;height:220px;flex-basis:220px}
+.inv-tv{font-size:12px;margin:4px 0 0}
+.howto{place-items:center}.ht-s{display:grid;grid-template-columns:32px 1fr;gap:10px;align-items:start}.ht-s>span{width:32px;height:32px;border-radius:50%;background:var(--acc);color:#000;display:grid;place-items:center;font-weight:800}.ht-s p{margin:2px 0 0;font-size:14px}
+.home2d{margin-top:18px;border:1px solid var(--line);border-radius:var(--r,16px);height:200px;display:grid;place-items:center;background:radial-gradient(circle at 50% 70%,rgba(255,255,255,.08),transparent 60%),#050507}.h2-av{width:120px;height:120px;border-radius:50%;overflow:hidden;border:3px solid var(--acc)}.h2-av svg,.h2-av img,.h2-av .avimg{width:100%;height:100%}
+.htabs{display:flex!important}.htabs>button{flex:1 0 auto}.htabs button{font-size:clamp(12px,3.4vw,14px)!important;letter-spacing:-.01em;padding:0 8px!important;white-space:nowrap}.htabs{gap:2px!important;padding:3px!important}
+.rep-btn[hidden],[hidden].rep-btn{display:none!important}
+.dc-teaser{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:14px;border-top:1px solid var(--line);padding-top:12px}
+.dc-go{background:transparent;border:0;color:var(--acc);font:inherit;font-weight:700;font-size:14px;cursor:pointer;padding:6px 0;touch-action:manipulation}
+.lbtab{padding:16px!important;display:grid;gap:12px}
+.lbt-seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:999px;padding:3px;gap:3px}
+.lbt-seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:14px;font-weight:700;min-height:42px;border-radius:999px;cursor:pointer;touch-action:manipulation}.lbt-seg button[aria-selected="true"]{background:var(--acc);color:#000}
+.lbt-chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}.lbt-chips::-webkit-scrollbar{display:none}
+.lbc{flex:0 0 auto;border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:13px;font-weight:600;padding:8px 14px;border-radius:999px;cursor:pointer;white-space:nowrap;touch-action:manipulation}.lbc[aria-pressed="true"]{border-color:var(--acc);color:var(--acc)}
+.lbt-lg>summary{cursor:pointer;font-weight:600;font-size:14px;padding:6px 0}.lbt-lg .lg-form{margin-top:8px}.lbt-lgact{gap:8px;align-items:center}
+.donerank:empty{display:none}.donerank{margin:6px 0 10px}.dr-in{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid var(--acc);border-radius:14px;padding:10px 14px;font-size:15px}
 .dc-lb{display:grid;gap:10px}.dc-lbin{display:grid;gap:10px}.dc-lbin[hidden]{display:none}.dc-lbtog{justify-self:start}
 .dc-tabs{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:999px;padding:3px;gap:3px}
 .dc-tabs button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:14px;font-weight:600;min-height:42px;padding:8px 10px;border-radius:999px;cursor:pointer;touch-action:manipulation}
@@ -3324,6 +3366,20 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -6672,7 +6728,7 @@ function boot(){
   }).catch(()=>{});
   C.use("room").then(r=>{ app.room=r; if(r){ r.onPeers(c=>{ app.lobbyPeers=c.peers; if(app.view==="home") renderParties(); }, ()=>{}); r.onConnection(()=>renderStatus(), ()=>{}); } renderStatus(); if(app.view==="home") renderParties(); }).catch(()=>{});
   C.use("sample").then(s=>{ app.sample=s; renderStatus(); }).catch(()=>{});
-  C.use("db").then(d=>{ app.db=d; if(app.view==="home") loadHomeDaily(); postPending(); }).catch(()=>{});
+  C.use("db").then(d=>{ app.db=d; if(app.view==="home"){ loadHomeDaily(); try{ loadTeaser(); loadLBTab(); }catch(e){} } postPending(); }).catch(()=>{});
   acctInit();
 }
 /* answer time: never more than 15 seconds a question (10 on Hard); Word Grid keeps its own clock */
@@ -6889,7 +6945,7 @@ function render(){
   else if(app.view==="party") v.innerHTML = `<div class="show" id="show"><div class="beam l" aria-hidden="true"></div><div class="beam r" aria-hidden="true"></div><div class="crowd" aria-hidden="true">${crowdSVG()}</div><section class="stage panel" id="stage"></section><footer class="contestants" id="board" aria-label="Players and scores"></footer></div>`;
   else if(app.view==="daily") v.innerHTML = `<div class="game"><section class="stage panel" id="dstage"></section><aside class="board panel" id="dboard"></aside></div>`;
   else if(app.view==="dgrid") v.innerHTML = `<div class="game"><section class="stage panel" id="gstage"></section><aside class="board panel" id="gboard"></aside></div>`;
-  if(app.view==="home"){ renderParties(); loadHomeDaily(); renderHomeStage(); }
+  if(app.view==="home"){ renderParties(); loadHomeDaily(); renderHomeStage(); loadLBTab(); loadTeaser(); }
   if(app.view==="party"){ renderStage(); renderBoard(); }
   if(app.view==="daily"){ renderDaily(); renderDailyBoard(); }
   if(app.view==="dgrid"){ renderDGrid(); renderDGridBoard(); }
@@ -6900,16 +6956,181 @@ function render(){
 function renderHomeStage(){ if(app.view!=="home") return; const r3=$("#room3d"); if(!r3 || !Room.attach(r3)) return;
   const av=me.av||AVATARS[0]; Room.sync([{pid:me.pid, av, label:(me.nick||"You"), me:true, color:pcol(me.pid), ph:photoOf(me.pid,av)}]); Room.setPodium(null); Room.setBoard("", "Pick your look below, then host or join", "Ready when you are"); }
 /* HOME_TABS (trial, separate test version): Daily / Party / Stats tabs instead of one long page */
+/* tiny QR code generator (byte mode, error correction M, versions 1-10), after Project Nayuki's reference design */
+const QR=(function(){
+  const ECC_M_CW=[0,10,16,26,18,24,16,18,22,22,26], ECC_M_BLK=[0,1,1,1,2,2,4,4,4,5,5];
+  const ALIGN=[[],[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50]];
+  function rawModules(v){ let r=(16*v+128)*v+64; if(v>=2){ const n=Math.floor(v/7)+2; r-=(25*n-10)*n-55; if(v>=7) r-=36; } return r; }
+  function dataCw(v){ return Math.floor(rawModules(v)/8)-ECC_M_CW[v]*ECC_M_BLK[v]; }
+  function gfMul(x,y){ let z=0; for(let i=7;i>=0;i--){ z=(z<<1)^((z>>>7)*0x11D); z^=((y>>>i)&1)*x; } return z&255; }
+  function rsDivisor(deg){ const r=new Array(deg).fill(0); r[deg-1]=1; let root=1; for(let i=0;i<deg;i++){ for(let j=0;j<r.length;j++){ r[j]=gfMul(r[j],root); if(j+1<r.length) r[j]^=r[j+1]; } root=gfMul(root,2); } return r; }
+  function rsRem(data,div){ const r=div.map(()=>0); for(const b of data){ const f=b^r.shift(); r.push(0); div.forEach((c,i)=>r[i]^=gfMul(c,f)); } return r; }
+  function encode(text){
+    const bytes=Array.from(new TextEncoder().encode(text));
+    let v=1; for(;v<=10;v++){ const cap=dataCw(v)*8, need=4+(v<10?8:16)+bytes.length*8; if(need<=cap) break; } if(v>10) throw new Error("too long");
+    const bits=[]; const put=(val,len)=>{ for(let i=len-1;i>=0;i--) bits.push((val>>>i)&1); };
+    put(4,4); put(bytes.length, v<10?8:16); bytes.forEach(b=>put(b,8));
+    const cap=dataCw(v)*8; put(0, Math.min(4,cap-bits.length)); put(0,(8-bits.length%8)%8);
+    for(let p=0xEC; bits.length<cap; p^=0xEC^0x11) put(p,8);
+    const data=[]; for(let i=0;i<bits.length;i+=8){ let b=0; for(let j=0;j<8;j++) b=(b<<1)|bits[i+j]; data.push(b); }
+    /* split into blocks, add error correction, interleave */
+    const nb=ECC_M_BLK[v], ecl=ECC_M_CW[v], raw=Math.floor(rawModules(v)/8), nShort=nb-raw%nb, shortLen=Math.floor(raw/nb);
+    const div=rsDivisor(ecl), blocks=[]; let k=0;
+    for(let i=0;i<nb;i++){ const dl=shortLen-ecl+(i<nShort?0:1); const d=data.slice(k,k+dl); k+=dl; const e=rsRem(d,div); if(i<nShort) d.push(0); blocks.push(d.concat(e)); }
+    const all=[]; for(let i=0;i<blocks[0].length;i++) blocks.forEach((b,j)=>{ if(i!==shortLen-ecl||j>=nShort) all.push(b[i]); });
+    /* draw the grid */
+    const n=v*4+17, M=[...Array(n)].map(()=>Array(n).fill(false)), F=[...Array(n)].map(()=>Array(n).fill(false));
+    const set=(x,y,d)=>{ M[y][x]=d; F[y][x]=true; };
+    for(let i=0;i<n;i++){ set(6,i,i%2===0); set(i,6,i%2===0); }
+    const finder=(x,y)=>{ for(let dy=-4;dy<=4;dy++) for(let dx=-4;dx<=4;dx++){ const d=Math.max(Math.abs(dx),Math.abs(dy)), xx=x+dx, yy=y+dy; if(xx>=0&&xx<n&&yy>=0&&yy<n) set(xx,yy,d!==2&&d!==4); } };
+    finder(3,3); finder(n-4,3); finder(3,n-4);
+    const al=ALIGN[v]; for(let i=0;i<al.length;i++) for(let j=0;j<al.length;j++){ if((i===0&&j===0)||(i===0&&j===al.length-1)||(i===al.length-1&&j===0)) continue; for(let dy=-2;dy<=2;dy++) for(let dx=-2;dx<=2;dx++) set(al[i]+dx,al[j]+dy,Math.max(Math.abs(dx),Math.abs(dy))!==1); }
+    const drawFormat=(mask)=>{ const d=(0<<3)|mask; let r=d; for(let i=0;i<10;i++) r=(r<<1)^((r>>>9)*0x537); const b=((d<<10)|r)^0x5412; const g=i=>((b>>>i)&1)!==0;
+      for(let i=0;i<=5;i++) set(8,i,g(i)); set(8,7,g(6)); set(8,8,g(7)); set(7,8,g(8)); for(let i=9;i<15;i++) set(14-i,8,g(i));
+      for(let i=0;i<8;i++) set(n-1-i,8,g(i)); for(let i=8;i<15;i++) set(8,n-15+i,g(i)); set(8,n-8,true); };
+    drawFormat(0);
+    if(v>=7){ let r=v; for(let i=0;i<12;i++) r=(r<<1)^((r>>>11)*0x1F25); const b=(v<<12)|r; for(let i=0;i<18;i++){ const bt=((b>>>i)&1)!==0, a=n-11+i%3, c=Math.floor(i/3); set(a,c,bt); set(c,a,bt); } }
+    let i=0; for(let right=n-1;right>=1;right-=2){ if(right===6) right=5; for(let vert=0;vert<n;vert++) for(let j=0;j<2;j++){ const x=right-j, up=((right+1)&2)===0, y=up?n-1-vert:vert; if(!F[y][x] && i<all.length*8){ M[y][x]=((all[i>>>3]>>>(7-(i&7)))&1)!==0; i++; } } }
+    const maskF=[(x,y)=>(x+y)%2===0,(x,y)=>y%2===0,(x,y)=>x%3===0,(x,y)=>(x+y)%3===0,(x,y)=>(Math.floor(x/3)+Math.floor(y/2))%2===0,(x,y)=>x*y%2+x*y%3===0,(x,y)=>(x*y%2+x*y%3)%2===0,(x,y)=>((x+y)%2+x*y%3)%2===0];
+    const applyMask=m=>{ for(let y=0;y<n;y++) for(let x=0;x<n;x++) if(!F[y][x]&&maskF[m](x,y)) M[y][x]=!M[y][x]; };
+    const penalty=()=>{ let p=0; const line=get=>{ for(let a=0;a<n;a++){ let run=1; for(let b=1;b<n;b++){ if(get(a,b)===get(a,b-1)){ run++; if(run===5) p+=3; else if(run>5) p++; } else run=1; } } };
+      line((a,b)=>M[a][b]); line((a,b)=>M[b][a]);
+      for(let y=0;y<n-1;y++) for(let x=0;x<n-1;x++){ const c=M[y][x]; if(c===M[y][x+1]&&c===M[y+1][x]&&c===M[y+1][x+1]) p+=3; }
+      const pat=[true,false,true,true,true,false,true]; for(let y=0;y<n;y++) for(let x=0;x<=n-7;x++){ let h=true,vv=true; for(let q=0;q<7;q++){ if(M[y][x+q]!==pat[q]) h=false; if(M[x+q][y]!==pat[q]) vv=false; } if(h){ const L=x>=4&&[1,2,3,4].every(q=>!M[y][x-q]), R=x+11<=n&&[7,8,9,10].every(q=>!M[y][x+q]); if(L||R) p+=40; } if(vv){ const L=x>=4&&[1,2,3,4].every(q=>!M[x-q][y]), R=x+11<=n&&[7,8,9,10].every(q=>!M[x+q][y]); if(L||R) p+=40; } }
+      let dark=0; M.forEach(r=>r.forEach(c=>{ if(c) dark++; })); const tot=n*n; p+=Math.floor(Math.abs(dark*20-tot*10)/tot)*10; return p; };
+    let best=0, bp=1e9; for(let m=0;m<8;m++){ applyMask(m); drawFormat(m); const pp=penalty(); if(pp<bp){ bp=pp; best=m; } applyMask(m); }
+    applyMask(best); drawFormat(best); return M; }
+  function svg(text, fg, bg){ const M=encode(text), n=M.length, q=4; let d=""; for(let y=0;y<n;y++) for(let x=0;x<n;x++) if(M[y][x]) d+=`M${x+q},${y+q}h1v1h-1z`;
+    return `<svg viewBox="0 0 ${n+q*2} ${n+q*2}" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" role="img" aria-label="QR code"><rect width="100%" height="100%" fill="${bg||"#fff"}"/><path d="${d}" fill="${fg||"#000"}"/></svg>`; }
+  return {encode, svg};
+})();
+
 var HOME_TABS=true;
+var FEAT={share:1, joinlink:1, report:1, leagues:1, weekly:1, tv:1, kick:1, howto:1, lowend:1, errlog:1};
+const SITE_URL="spotlightquiz.app";
+function joinUrl(code){ return (window.SQ_STANDALONE?location.origin:"https://"+SITE_URL)+"/?join="+encodeURIComponent(code); }
+function inviteHTML(code, host){ if(!FEAT.joinlink||!code) return ""; const url=joinUrl(code);
+  return `<details class="lb-invite"${host?" open":""}><summary>Invite friends</summary><div class="inv-in"><div class="inv-qr">${QR.svg(url,"#000","#fff")}</div><div class="inv-t"><b>Scan to join</b><span class="muted">Point a phone camera at the code, or send the link:</span><code class="inv-url">${esc(url.replace(/^https?:\/\//,""))}</code><div class="row">${canNativeShare()?`<button class="btn small primary" data-act="sharelink">Share link</button>`:""}<button class="btn small" data-act="copylink">Copy link</button></div>${FEAT.tv?`<p class="muted inv-tv">Got a TV or laptop? Open <b>${esc((tvUrl(code)).replace(/^https?:\/\//,""))}</b> on it to show the stage and scores on the big screen.</p>`:""}</div></div></details>`; }
+function tvUrl(code){ return (window.SQ_STANDALONE?location.origin:"https://"+SITE_URL)+"/?tv="+encodeURIComponent(code); }
+function handleJoinLink(){ if(!FEAT.joinlink) return; let code=null, tv=null; try{ const q=new URLSearchParams(location.search); code=q.get("join"); tv=q.get("tv"); }catch(e){} if(!tv){ const m=/^#tv-([a-z]{4})$/i.exec(location.hash||""); if(m) tv=m[1]; }
+  if(FEAT.tv && tv){ tv=tv.toUpperCase().replace(/[^A-Z]/g,"").slice(0,4); if(tv.length===4){ try{ history.replaceState(null,"",location.pathname); }catch(e){} app.tvMode=true; openParty(tv,false); return; } } if(!code){ const m=/^#join-([a-z]{4})$/i.exec(location.hash||""); if(m) code=m[1]; }
+  code=(code||"").toUpperCase().replace(/[^A-Z]/g,"").slice(0,4); if(code.length!==4) return;
+  try{ history.replaceState(null,"",location.pathname); }catch(e){}
+  if(me.nick){ openParty(code,false); return; }
+  app.homeTab="party"; if(app.view==="home") render(); setTimeout(()=>{ const j=$("#joincode"); if(j) j.value=code; const n=$("#nick"); if(n) n.focus(); toast("Add your name, then tap Join"); },60); }
+/* report a question: players flag a wrong or unclear question; reports are kept for the owner (see /admin on the site) */
+function qAnswerText(q){ try{ if(!q) return ""; if(q.t==="gk"||q.t==="lead"||q.t==="sp") return q.opts?q.opts[q.ans]:String(q.ans); if(q.t==="est") return String(q.ans)+(q.unit?" "+q.unit:""); if(q.t==="pin"||q.t==="ctry") return q.place||""; if(q.t==="hl") return (q.a&&q.b)?`${q.a.l}: ${q.a.f} / ${q.b.l}: ${q.b.f}`:""; if(q.t==="rank") return (q.correct||[]).map(i=>q.items[i]).join(" > "); return ""; }catch(e){ return ""; } }
+function reportBtnHTML(src){ return FEAT.report?`<div class="rep-row"><button type="button" class="rep-btn" data-act="reportq" data-src="${src}">⚑ Report this question</button></div>`:""; }
+let repQ=null;
+function openReport(q, src){ repQ={q,src}; let el=$("#repsheet"); if(el) el.remove(); el=document.createElement("div"); el.id="repsheet"; el.className="rep-sheet"; el.setAttribute("role","dialog"); el.setAttribute("aria-label","Report this question");
+  el.innerHTML=`<div class="rep-card"><b>What's wrong with this question?</b><p class="muted">${esc(String(q.text||q.place||"").slice(0,140))}</p><div class="rep-opts">${["The answer is wrong","The question is unclear","More than one answer is right","Something else"].map(r=>`<button type="button" class="btn" data-act="repsend" data-r="${esc(r)}">${esc(r)}</button>`).join("")}</div><button type="button" class="btn ghost small" data-act="repclose">Cancel</button></div>`;
+  document.body.appendChild(el); }
+async function sendReport(reason){ const R=repQ; repQ=null; const el=$("#repsheet"); if(el) el.remove(); if(!R) return;
+  const q=R.q, id=Date.now().toString(36)+"-"+rid(6), data={text:String(q.text||q.place||"").slice(0,300), answer:String(qAnswerText(q)).slice(0,300), t:q.t||"", cat:q.cat||"", reason, src:R.src, day:todayKey(), at:Date.now(), by:String(me.nick||"").slice(0,18)};
+  try{ if(window.SQ_STANDALONE) await fetch("/api/report",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(data)}); else if(app.db) await app.db.doc("reports/"+id).set(data); toast("Thanks, we'll check that question"); }catch(e){ toast("Couldn't send that report. Try again later."); } }
+/* daily leaderboards: today (quiz, grid), this week (quiz totals Mon-Sun) and friends leagues */
+function dcT(){ const t=app.dcTab||"q"; if(t==="w"&&!FEAT.weekly) return "q"; if(t==="l"&&!FEAT.leagues) return "q"; return t; }
+function dcTabsHTML(){ const tabs=[["q","Quiz"],["g","Grid"]].concat(FEAT.weekly?[["w","Week"]]:[]).concat(FEAT.leagues?[["l","Leagues"]]:[]);
+  return `<div class="dc-tabs" role="tablist" style="grid-template-columns:repeat(${tabs.length},1fr)">${tabs.map(([k,l])=>`<button type="button" role="tab" data-act="dclb" data-v="${k}" aria-selected="${dcT()===k}">${l}</button>`).join("")}</div>`; }
+function weekDays(){ const out=[], d=new Date(), dow=(d.getDay()+6)%7; for(let i=dow;i>=0;i--){ const t=new Date(d); t.setDate(d.getDate()-i); out.push(t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0")); } return out; }
+async function dayScores(day){ if(!app.db) return []; try{ const snap=await app.db.collection(`${DQ_DB}/${day}/scores`).orderBy("score","desc").limit(100).get(); return snap.docs.map(d=>({id:d.id, ...(d.data()||{})})); }catch(e){ return []; } }
+let weekBusy=false;
+async function loadWeekLB(){ const el=$("#homeweek"); if(!el||weekBusy) return; if(!app.db){ el.innerHTML=`<p class="muted" style="font-size:13px;margin:0">The leaderboard can't be reached right now.</p>`; return; }
+  weekBusy=true; el.innerHTML=`<p class="muted" style="font-size:13px;margin:0">Adding up this week…</p>`;
+  try{ const days=weekDays(), all=await Promise.all(days.map(dayScores)), tot={}; all.forEach(L=>L.forEach(r=>{ const t=tot[r.id]||(tot[r.id]={nick:r.nick||"Player",score:0,n:0}); t.score+=Number(r.score)||0; t.n++; t.nick=r.nick||t.nick; }));
+    const rows=Object.entries(tot).sort((a,b)=>b[1].score-a[1].score).slice(0,10);
+    el.innerHTML = rows.length ? `<div class="eyebrow" style="margin:6px 0">This week · ${days.length} day${days.length===1?"":"s"} so far</div><ol class="lb">${rows.map(([id,r],i)=>`<li class="${id===myScoreId()?"me":""}"><span class="rk">${i+1}</span><span>${esc(String(r.nick).slice(0,18))} <span class="muted" style="font-size:12px">· ${r.n}/${days.length}</span></span><b class="num">${r.score.toLocaleString("en-GB")}</b></li>`).join("")}</ol>` : `<p class="muted" style="font-size:13px;margin:0">Nobody has played this week yet.</p>`;
+  }finally{ weekBusy=false; } }
+function myLeagues(){ const L=LS.get("sq-leagues"); return Array.isArray(L)?L.filter(c=>/^[A-Z0-9]{5}$/.test(c)):[]; }
+function leagueId(){ return myScoreId(); }
+function leagueNeedsLogin(){ return ACCT.on && !app.acct; }
+async function leagueDoc(code){ try{ const r=await app.db.doc("leagues/"+code).get(); return r.exists?r.data():null; }catch(e){ return null; } }
+async function leagueCreate(name){ name=String(name||"").trim().slice(0,30); if(!name){ toast("Give your league a name"); return; } if(leagueNeedsLogin()){ openAcct(); return; } if(!app.db){ toast("Leagues can't be reached right now"); return; }
+  const code=Array.from({length:5},()=>"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*32)]).join("");
+  await app.db.doc("leagues/"+code).set({name, at:Date.now(), members:{[leagueId()]:String(me.nick||(app.acct&&app.acct.name)||"Player").slice(0,18)}});
+  LS.set("sq-leagues", [code,...myLeagues()].slice(0,6)); lgNameSet(code,name); toast(`League made. Code ${code}`); afterLeague(code); }
+function afterLeague(code){ if(app.view==="home" && HOME_TABS && homeNarrow()){ app.homeTab="lb"; app.lbWhen=code?"L:"+code:"t"; render(); } else loadLeagues(); }
+async function leagueJoin(code){ code=String(code||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,5); if(code.length!==5){ toast("League codes are 5 characters"); return; } if(leagueNeedsLogin()){ app.pendLeague=code; openAcct(); return; } if(!app.db){ toast("Leagues can't be reached right now"); return; }
+  const L=await leagueDoc(code); if(!L){ toast("No league with that code"); return; } const m=Object.assign({}, L.members||{}); if(Object.keys(m).length>=40 && !m[leagueId()]){ toast("That league is full"); return; }
+  m[leagueId()]=String(me.nick||(app.acct&&app.acct.name)||"Player").slice(0,18); await app.db.doc("leagues/"+code).set(Object.assign({}, L, {members:m}));
+  LS.set("sq-leagues", [code,...myLeagues().filter(c=>c!==code)].slice(0,6)); lgNameSet(code,L.name); toast(`You're in "${L.name}"`); app.dcTab="l"; afterLeague(code); }
+async function leagueLeave(code){ LS.set("sq-leagues", myLeagues().filter(c=>c!==code)); try{ const L=await leagueDoc(code); if(L&&L.members){ const m=Object.assign({},L.members); delete m[leagueId()]; await app.db.doc("leagues/"+code).set(Object.assign({},L,{members:m})); } }catch(e){} afterLeague(null); }
+let lgBusy=false;
+async function loadLeagues(){ const el=$("#homeleague"); if(!el||lgBusy) return; lgBusy=true;
+  try{ const codes=myLeagues(); let h="";
+    const form=`<div class="lg-form">${(me.nick||app.acct)?"":`<input class="input" id="lgnick" maxlength="18" placeholder="Your name" aria-label="Your name" autocomplete="nickname">`}<div class="lg-f"><input class="input" id="lgcode" maxlength="5" placeholder="League code" aria-label="League code"><button class="btn small" data-act="lgjoin">Join</button></div><div class="lg-f"><input class="input" id="lgname" maxlength="30" placeholder="New league name, e.g. The Office" aria-label="New league name"><button class="btn small" data-act="lgcreate">Create</button></div>${leagueNeedsLogin()?`<p class="muted" style="font-size:12px;margin:0">You'll need to log in so your scores count for your league.</p>`:""}</div>`;
+    if(!codes.length){ el.innerHTML=`<p class="muted" style="font-size:13px;margin:0 0 8px">Make a league for your friends, family or office, and see who wins the daily each day and each week.</p>${form}`; return; }
+    el.innerHTML=`<p class="muted" style="font-size:13px;margin:0">Loading your leagues…</p>`;
+    const days=weekDays(), today=days[days.length-1], all=app.db?await Promise.all(days.map(dayScores)):days.map(()=>[]);
+    for(const code of codes){ const L=app.db?await leagueDoc(code):null; const mine=L&&L.members&&L.members[leagueId()], nm=String(me.nick||(app.acct&&app.acct.name)||"").slice(0,18);
+      if(L && mine && nm && mine!==nm){ L.members[leagueId()]=nm; try{ await app.db.doc("leagues/"+code).set(L); }catch(e){} } if(!L){ h+=`<div class="lg"><div class="lg-h"><b>${esc(code)}</b><span class="muted">couldn't load</span></div></div>`; continue; }
+      const ids=Object.keys(L.members||{}), rows=ids.map(id=>{ let wk=0, td=null; all.forEach((D,i)=>{ const r=D.find(x=>x.id===id); if(r){ wk+=Number(r.score)||0; if(days[i]===today) td=Number(r.score)||0; } }); return {id, nick:L.members[id], wk, td}; }).sort((a,b)=>(b.td??-1)-(a.td??-1)||b.wk-a.wk);
+      h+=`<div class="lg"><div class="lg-h"><b>${esc(L.name)}</b><span class="muted num">${esc(code)} · ${ids.length} player${ids.length===1?"":"s"}</span></div>
+        <div class="lg-cols muted"><span></span><span>Today</span><span>Week</span></div>
+        ${rows.map((r,i)=>`<div class="lg-r ${r.id===myScoreId()?"me":""}"><span><span class="rk">${i+1}</span>${esc(String(r.nick).slice(0,18))}</span><b class="num">${r.td==null?`<span class="muted">–</span>`:r.td.toLocaleString("en-GB")}</b><span class="num">${r.wk.toLocaleString("en-GB")}</span></div>`).join("")}
+        <div class="row" style="margin-top:8px"><button class="btn small" data-act="lgshare" data-code="${esc(code)}" data-name="${esc(L.name)}">Invite</button><button class="btn ghost small" data-act="lgleave" data-code="${esc(code)}">Leave</button></div></div>`; }
+    el.innerHTML=h+`<details class="lg-more"><summary>Join or create another league</summary>${form}</details>`;
+  }finally{ lgBusy=false; } }
+/* ---- Leaderboards tab (phones): what (quiz/grid) x when (today/this week/a league) ---- */
+const ORD=n=>{ const s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); };
+function lgNames(){ return LS.get("sq-lgnames")||{}; }
+function lgNameSet(code,name){ const m=lgNames(); if(m[code]!==name){ m[code]=name; LS.set("sq-lgnames",m); } }
+function lbTabHTML(){ const what=app.lbWhat==="g"?"g":"q", Ls=FEAT.leagues?myLeagues():[]; let when=app.lbWhen||"t"; if(when.startsWith("L:") && !Ls.includes(when.slice(2))) when="t"; if(when==="w"&&!FEAT.weekly) when="t";
+  const chip=(k,l)=>`<button type="button" class="lbc" data-act="lbwhen" data-v="${k}" aria-pressed="${when===k}">${esc(l)}</button>`, N=lgNames();
+  const lgCode=when.startsWith("L:")?when.slice(2):null;
+  const form=`<div class="lg-form">${(me.nick||app.acct)?"":`<input class="input" id="lgnick" maxlength="18" placeholder="Your name" aria-label="Your name" autocomplete="nickname">`}<div class="lg-f"><input class="input" id="lgcode" maxlength="5" placeholder="League code" aria-label="League code"><button class="btn small" data-act="lgjoin">Join</button></div><div class="lg-f"><input class="input" id="lgname" maxlength="30" placeholder="New league, e.g. The Office" aria-label="New league name"><button class="btn small" data-act="lgcreate">Create</button></div>${leagueNeedsLogin()?`<p class="muted" style="font-size:12px;margin:0">You'll need to log in so your scores count for your league.</p>`:""}</div>`;
+  return `<section class="panel lbtab"><div class="lbt-seg" role="tablist" aria-label="Which game"><button type="button" role="tab" data-act="lbwhat" data-v="q" aria-selected="${what==="q"}">Daily quiz</button><button type="button" role="tab" data-act="lbwhat" data-v="g" aria-selected="${what==="g"}">Word grid</button></div>
+    <div class="lbt-chips">${chip("t","Today")}${FEAT.weekly?chip("w","This week"):""}${Ls.map(c=>chip("L:"+c, N[c]||c)).join("")}</div>
+    <div id="lbmain"><p class="muted" style="font-size:13px;margin:0">Loading…</p></div>
+    ${lgCode?`<div class="row lbt-lgact"><button class="btn small" data-act="lgshare" data-code="${esc(lgCode)}" data-name="${esc(N[lgCode]||lgCode)}">Invite to this league</button><button class="btn ghost small" data-act="lgleave" data-code="${esc(lgCode)}">Leave</button><span class="muted" style="font-size:12px">Code ${esc(lgCode)}</span></div>`:""}
+    ${FEAT.leagues?`<details class="lbt-lg"${Ls.length?"":" open"}><summary>${Ls.length?"Create or join another league":"Play against your friends: create or join a league"}</summary>${Ls.length?"":`<p class="muted" style="font-size:13px;margin:8px 0">Make a league for your friends, family or office and see who wins the daily, today and every week.</p>`}${form}</details>`:""}
+  </section>`; }
+async function scoresOf(kind, day){ const db=kind==="g"?DG_DB:DQ_DB; if(!app.db) return []; try{ const snap=await app.db.collection(`${db}/${day}/scores`).orderBy("score","desc").limit(100).get(); return snap.docs.map(d=>({id:d.id, ...(d.data()||{})})); }catch(e){ return []; } }
+const lbRow=(i,id,nick,val,sub)=>`<li class="${id===myScoreId()?"me":""}"><span class="rk">${i+1}</span><span>${esc(String(nick||"Player").slice(0,18))}${sub?` <span class="muted" style="font-size:12px">· ${sub}</span>`:""}</span><b class="num">${val}</b></li>`;
+let lbSeq=0;
+async function loadLBTab(){ const el=$("#lbmain"); if(!el) return; const what=app.lbWhat==="g"?"g":"q", Ls=myLeagues(); let when=app.lbWhen||"t"; if(when.startsWith("L:")&&!Ls.includes(when.slice(2))) when="t"; const my=++lbSeq;
+  if(!app.db){ el.innerHTML=`<p class="muted" style="font-size:13px;margin:0">The leaderboard can't be reached right now.</p>`; return; }
+  const today=todayKey(), title=what==="g"?"Today's word grid":"Today's daily quiz";
+  if(when==="t"){ subscribeLB(`${what==="g"?DG_DB:DQ_DB}/${today}/scores`, "#lbmain", 20, title); return; }
+  if(LBS["#lbmain"]){ try{ LBS["#lbmain"](); }catch(e){} delete LBS["#lbmain"]; }
+  const days=weekDays(), all=await Promise.all(days.map(d=>scoresOf(what,d))); if(my!==lbSeq || !$("#lbmain")) return;
+  if(when==="w"){ const tot={}; all.forEach(L=>L.forEach(r=>{ const t=tot[r.id]||(tot[r.id]={nick:r.nick,score:0,n:0}); t.score+=Number(r.score)||0; t.n++; t.nick=r.nick||t.nick; }));
+    const rows=Object.entries(tot).sort((a,b)=>b[1].score-a[1].score).slice(0,20);
+    el.innerHTML=rows.length?`<div class="eyebrow" style="margin:0 0 6px">This week · Monday to today</div><ol class="lb">${rows.map(([id,r],i)=>lbRow(i,id,r.nick,r.score.toLocaleString("en-GB"),`${r.n} of ${days.length} days`)).join("")}</ol>`:`<p class="muted" style="font-size:13px;margin:0">Nobody has played this week yet.</p>`; return; }
+  const code=when.slice(2), L=await leagueDoc(code); if(my!==lbSeq) return; if(!L){ el.innerHTML=`<p class="muted" style="font-size:13px;margin:0">Couldn't load that league.</p>`; return; } lgNameSet(code, L.name);
+  const ids=Object.keys(L.members||{}), rows=ids.map(id=>{ let wk=0, td=null; all.forEach((D,i)=>{ const r=D.find(x=>x.id===id); if(r){ wk+=Number(r.score)||0; if(days[i]===today) td=Number(r.score)||0; } }); return {id, nick:L.members[id], wk, td}; }).sort((a,b)=>(b.td??-1)-(a.td??-1)||b.wk-a.wk);
+  el.innerHTML=`<div class="eyebrow" style="margin:0 0 6px">${esc(L.name)} · ${ids.length} player${ids.length===1?"":"s"}</div><div class="lg-cols muted"><span></span><span>Today</span><span>Week</span></div>${rows.map((r,i)=>`<div class="lg-r ${r.id===myScoreId()?"me":""}"><span><span class="rk">${i+1}</span>${esc(String(r.nick).slice(0,18))}</span><b class="num">${r.td==null?`<span class="muted">–</span>`:r.td.toLocaleString("en-GB")}</b><span class="num">${r.wk.toLocaleString("en-GB")}</span></div>`).join("")}`; }
+/* results screen: where you finished today, with a jump to the leaderboards */
+async function fillDoneRank(){ const el=$("#donerank"); if(!el || !app.db) return; await new Promise(r=>setTimeout(r,1500)); const L=await scoresOf("q", todayKey()); const e2=$("#donerank"); if(!e2) return;
+  const i=L.findIndex(r=>r.id===myScoreId()); if(i<0){ e2.innerHTML=`<button type="button" class="dc-go" data-act="golb">See today's leaderboard →</button>`; return; }
+  e2.innerHTML=`<div class="dr-in"><span>You're <b>${ORD(i+1)}</b> of ${L.length}${L.length>=100?"+":""} today${i===0?" 🥇":i<3?" 🏅":""}</span><button type="button" class="dc-go" data-act="golb">See leaderboards →</button></div>`; }
+/* the teaser line on the Daily tab: who's top today, and where you are */
+async function loadTeaser(){ const el=$("#dcteaser"); if(!el) return; const go=`<button type="button" class="dc-go" data-act="htab" data-v="lb">Leaderboards →</button>`;
+  if(!app.db){ el.innerHTML=go; return; } const L=await scoresOf("q", todayKey()); if(!$("#dcteaser")) return;
+  if(!L.length){ el.innerHTML=`<span class="muted">Nobody's on today's leaderboard yet. Be first.</span>${go}`; return; }
+  const top=L[0], mine=L.findIndex(r=>r.id===myScoreId());
+  el.innerHTML=`<span>🥇 <b>${esc(String(top.nick||"Player").slice(0,18))}</b> <span class="num">${(Number(top.score)||0).toLocaleString("en-GB")}</span>${mine>0?` · You're ${ORD(mine+1)}`:mine===0?" · That's you!":""}</span>${go}`; }
+function handleLeagueLink(){ if(!FEAT.leagues) return; let c=null; try{ c=new URLSearchParams(location.search).get("league"); }catch(e){} if(!c){ const m=/^#league-([a-z0-9]{5})$/i.exec(location.hash||""); if(m) c=m[1]; } if(!c) return; try{ history.replaceState(null,"",location.pathname); }catch(e){} app.homeTab="lb"; app.dcTab="l"; if(app.view==="home") render(); setTimeout(()=>leagueJoin(c), 1500); }
+function howtoHTML(){ return `<div class="rep-sheet howto" id="howto" role="dialog" aria-label="How to play"><div class="rep-card"><b style="font-size:20px">How Spotlight Quiz works</b>
+  <div class="ht-s"><span>1</span><div><b>The Daily</b><p class="muted">Fifteen questions, the same for everyone, new every day. Answer fast: points count down. Share your score and keep your streak going.</p></div></div>
+  <div class="ht-s"><span>2</span><div><b>Party mode</b><p class="muted">One person hosts and gets a 4-letter code. Friends join on their own phones with the code, the link or the QR code.</p></div></div>
+  <div class="ht-s"><span>3</span><div><b>Eleven rounds</b><p class="muted">From general knowledge to maps, word grids and Heist, where you can steal points off the leader. Highest score at the end wins.</p></div></div>
+  ${window.SQ_STANDALONE?`<p class="muted" style="font-size:13px;margin:0">Tip: add Spotlight to your home screen so it opens like an app. On iPhone, tap Share then <b>Add to Home Screen</b>.</p>`:""}
+  <button class="btn primary" data-act="howtoclose">Let's play</button></div></div>`; }
+let installEv=null; window.addEventListener("beforeinstallprompt", e=>{ e.preventDefault(); installEv=e; const b=$("#installbtn"); if(b) b.hidden=false; });
+function maybeHowto(){ if(!FEAT.howto || LS.get("sq-howto") || app.view!=="home" || $("#howto")) return; const d=document.createElement("div"); d.innerHTML=howtoHTML(); document.body.appendChild(d.firstChild); }
+function lowEnd(){ if(!FEAT.lowend) return false; try{ const m=navigator.deviceMemory, c=navigator.hardwareConcurrency; return (m && m<=2) || (c && c<=2) || LS.get("sq-lowend")===1; }catch(e){ return false; } }
+function canNativeShare(){ return FEAT.share && window.SQ_STANDALONE && navigator.share; }
+async function shareOrCopy(txt){ if(canNativeShare()){ try{ await navigator.share({text:txt}); return; }catch(e){ if(e && e.name==="AbortError") return; } } try{ await navigator.clipboard.writeText(txt); toast("Copied. Paste it into your group chat"); }catch(err){ toast("Select the text above to copy it"); const s=$("#sharetxt"); if(s){ const r=document.createRange(); r.selectNodeContents(s); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); } } }
 const HTAB_MQ="(max-width:1100px)"; /* phones and upright tablets (including iPad Pro) get tabs; wider screens get the side-by-side page */
 function homeNarrow(){ try{ return matchMedia(HTAB_MQ).matches; }catch(e){ return true; } }
 try{ matchMedia(HTAB_MQ).addEventListener("change", ()=>{ if(HOME_TABS && app.view==="home") render(); }); }catch(e){}
-const HTABS=[["daily","Daily"],["party","Party"],["stats","Stats"]];
+const HTABS=[["daily","Daily"],["party","Party"],["lb","Leaderboards"],["stats","Stats"]];
 function homePartyHTML(){ return `
     <section class="panel hero-main">
       <h1 class="party-h">Party mode</h1>
       <p>Host a game or join your friends. Everyone plays on their own phone.</p>
-      ${Room.init()?`<div class="room3d home3d" id="room3d"></div>`:""}
+      ${!lowEnd()&&Room.init()?`<div class="room3d home3d" id="room3d"></div>`:`<div class="home2d"><div class="h2-av">${avSVG(me.av||AVATARS[0])}</div></div>`}
       <div style="display:grid;gap:16px;margin-top:22px;position:relative">
         <div class="field"><label for="nick">Your name</label><input class="input" id="nick" maxlength="18" placeholder="e.g. Sam" value="${esc(me.nick)}" autocomplete="nickname"></div>
         <details class="av-drop"${app.homeLookOpen?" open":""}><summary><span class="avcur" aria-hidden="true">${avSVG(me.av||AVATARS[0])}</span><span class="avd-t"><b>Your avatar</b><small>Tap to change your look</small></span><span class="avd-chev" aria-hidden="true">▾</span></summary><div class="avd-in">${avPickerHTML()}</div></details>
@@ -6921,32 +7142,33 @@ function homePartyHTML(){ return `
         <div id="parties" class="parties"></div>
       </div>
     </section>`; }
-function homeDailyHTML(){ return `
+function homeDailyHTML(tabs){ return `
     <section class="panel daily-card dc-compact" id="dailycard">
       <div class="dc-head"><span class="eyebrow">Today's daily</span><span class="dc-date">${new Date().toLocaleDateString("en-GB",{weekday:"short", day:"numeric", month:"short"})}</span></div>
       <div class="dc-tiles">
         <div class="dc-tile"><b>Daily quiz</b><small>15 questions, same for everyone</small><div id="dailyinfo"></div></div>
         <div class="dc-tile"><b>Word grid</b><small>60 seconds, one grid</small><div id="gridinfo"></div></div>
       </div>
-      <div class="dc-lb"><button type="button" class="bigtog dc-lbtog" data-act="dclbshow" aria-pressed="${!LS.get("sq-dclb-off")}"><span class="sw" aria-hidden="true"></span>Show leaderboard</button><div class="dc-lbin"${LS.get("sq-dclb-off")?" hidden":""}><div class="dc-tabs" role="tablist"><button type="button" role="tab" data-act="dclb" data-v="q" aria-selected="${app.dcTab!=="g"}">Quiz leaderboard</button><button type="button" role="tab" data-act="dclb" data-v="g" aria-selected="${app.dcTab==="g"}">Grid leaderboard</button></div><div id="homelb"${app.dcTab==="g"?" hidden":""}></div><div id="homegridlb"${app.dcTab==="g"?"":" hidden"}></div></div></div>
+      ${tabs?`<div class="dc-teaser" id="dcteaser"></div>`:`      <div class="dc-lb"><button type="button" class="bigtog dc-lbtog" data-act="dclbshow" aria-pressed="${!LS.get("sq-dclb-off")}"><span class="sw" aria-hidden="true"></span>Show leaderboard</button><div class="dc-lbin"${LS.get("sq-dclb-off")?" hidden":""}>${dcTabsHTML()}<div id="homelb"${dcT()!=="q"?" hidden":""}></div><div id="homegridlb"${dcT()!=="g"?" hidden":""}></div><div id="homeweek"${dcT()!=="w"?" hidden":""}></div><div id="homeleague"${dcT()!=="l"?" hidden":""}></div></div></div>`}
     </section>`; }
 function homeRoundsHTML(){ return `<div class="rounds-preview">${ROUND_ORDER.map(t=>`<div class="rp">${ICON[t]}<b>${RT[t].name}</b><span>${esc(RT[t].short)}</span></div>`).join("")}</div>`; }
 function homeHTML(){
   if(HOME_TABS && homeNarrow()){ const tab=HTABS.some(t=>t[0]===app.homeTab)?app.homeTab:"daily"; /* every visit opens on Daily (it has its own join box); the tab you pick sticks until you leave */
     const bar=`<nav class="htabs" role="tablist" aria-label="Home">${HTABS.map(([k,l])=>`<button type="button" role="tab" data-act="htab" data-v="${k}" aria-selected="${k===tab}">${l}</button>`).join("")}</nav>`;
     let inner="";
-    if(tab==="daily") inner=`<div class="hero htab-one">${homeDailyHTML()}</div>
+    if(tab==="daily") inner=`<div class="hero htab-one">${homeDailyHTML(true)}</div>
       <section class="panel hjoin"><div class="eyebrow">Got a party code?</div><div class="hjoin-row">${me.nick?"":`<input class="input" id="nick" maxlength="18" placeholder="Your name" aria-label="Your name" autocomplete="nickname">`}<input class="input" id="joincode" maxlength="4" placeholder="CODE" aria-label="Party code"><button class="btn primary" data-act="join">Join</button></div></section>`;
     else if(tab==="party") inner=`<div class="hero htab-one">${homePartyHTML()}</div>${homeRoundsHTML()}`;
+    else if(tab==="lb") inner=lbTabHTML();
     else inner=`<div class="htab-stats">${statsHTML()}</div>`;
-    return `<div class="htab-page">`+bar+inner+`</div>`+`${window.SQ_STANDALONE?"":`<p class="foot">To play together, invite friends to this page by email from Share. People who open it through a public link can't join live parties. Invite them as Editors if you want their daily scores on the leaderboard.</p>`}`; }
+    return `<div class="htab-page">`+bar+inner+`</div>`+`${FEAT.howto?`<div class="rep-row"><button type="button" class="rep-btn" data-act="howto">How to play</button><button type="button" class="rep-btn" id="installbtn" data-act="install"${installEv?"":" hidden"}>Add to home screen</button></div>`:""}${window.SQ_STANDALONE?"":`<p class="foot">To play together, invite friends to this page by email from Share. People who open it through a public link can't join live parties. Invite them as Editors if you want their daily scores on the leaderboard.</p>`}`; }
   return `
   <div class="hero">
 ${homePartyHTML()}
 ${homeDailyHTML()}
   </div>
   ${homeRoundsHTML()}
-  ${window.SQ_STANDALONE?"":`<p class="foot">To play together, invite friends to this page by email from Share. People who open it through a public link can't join live parties. Invite them as Editors if you want their daily scores on the leaderboard.</p>`}`;
+  ${FEAT.howto?`<div class="rep-row"><button type="button" class="rep-btn" data-act="howto">How to play</button><button type="button" class="rep-btn" id="installbtn" data-act="install"${installEv?"":" hidden"}>Add to home screen</button></div>`:""}${window.SQ_STANDALONE?"":`<p class="foot">To play together, invite friends to this page by email from Share. People who open it through a public link can't join live parties. Invite them as Editors if you want their daily scores on the leaderboard.</p>`}`;
 }
 
 function renderParties(){
@@ -6960,6 +7182,11 @@ function renderParties(){
 async function loadHomeDaily(){
   const el=$("#dailyinfo"); if(!el) return;
   const key=todayKey(); const mine=LS.get(DQ_LS+key);
+  /* played on another device or browser? the leaderboard knows, so pick the score up from there */
+  if(app.db && app._lbChecked!==key+"|"+myScoreId()){ app._lbChecked=key+"|"+myScoreId(); const id=myScoreId(); Promise.all([app.db.doc(`${DQ_DB}/${key}/scores/${id}`).get().catch(()=>null), app.db.doc(`${DG_DB}/${key}/scores/${id}`).get().catch(()=>null)]).then(([q,g])=>{ let ch=false;
+      if(q && q.exists && !LS.get(DQ_LS+key)){ const d=q.data()||{}; LS.set(DQ_LS+key,{score:Number(d.score)||0, pts:d.pts||[], posted:1, at:d.at||Date.now(), acct:app.acct?app.acct.id:null, r4:1}); ch=true; }
+      if(g && g.exists && !LS.get(DG_LS+key)){ const d=g.data()||{}; LS.set(DG_LS+key,{score:Number(d.score)||0, n:Number(d.n)||(d.words||[]).length||0, words:d.words||[], posted:1}); ch=true; }
+      if(ch && app.view==="home") loadHomeDaily(); }); }
   const streak=calcStreak();
   let h = "";
   if(mine){ h += `<div class="row"><div class="scoreline num">${mine.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts</span></div><div class="muted">You've played today.${streak>1?` ${streak}-day streak.`:""}</div></div><div class="row"><button class="btn" data-act="dailyresult">See results</button></div>`; }
@@ -6998,7 +7225,8 @@ async function openParty(code, host, solo){
   myAns=null; draft=null; S=null;
   pr.onPeers(onPartyPeers, ()=>{ toast("Lost connection to the party"); });
   app.phRoom=null; if(app.room && !pr.local){ app.room.join("sq-"+code.toLowerCase()+"-ph").then(r=>{ if(app.party!==pr){ try{ r.leave(); }catch(e){} return; } app.phRoom=r; r.onPeers(c=>{ let ch=false; for(const p of c.peers||[]){ const q=p.presence||{}; if(!q.pid || p.isMe) continue; const ph=photoFromPres(q); if((PHOTOS[q.pid]||null)!==ph){ PHOTOS[q.pid]=ph; ch=true; } } if(ch){ renderBoard(); if(S && ["lobby","intro","roundEnd","final"].includes(S.phase)){ stageKey=""; renderStage(); } } }); sharePhoto(); }).catch(()=>{}); }
-  setMyPresence({role: host?"host":"player", pid:me.pid, nick:me.nick, av:me.av, topic:null, wc:null, ans:null, emo:null, sd:dayList().slice(-220).join(".")||null});
+  try{ document.body.classList.toggle("tvmode", !!app.tvMode); }catch(e){}
+  setMyPresence({role: app.tvMode?"tv":(host?"host":"player"), pid:me.pid, nick:app.tvMode?"TV":me.nick, av:me.av, topic:null, wc:null, ans:null, emo:null, sd:dayList().slice(-220).join(".")||null});
   if(host){
     const saved = SS.get("sq-host-"+code);
     if(saved && saved.G){ G=saved.G; plan=saved.plan; }
@@ -7016,6 +7244,7 @@ let myPres = {};
 function setMyPresence(patch){ Object.assign(myPres, patch); for(const k in patch) if(patch[k]===null) delete myPres[k]; if(app.party) app.party.presence(patch).catch(e=>console.warn("presence", e)); }
 
 function leaveParty(){
+  if(app.tvMode){ app.tvMode=false; try{ document.body.classList.remove("tvmode"); }catch(e){} }
   if(app.party){ try{ app.party.leave(); }catch(e){} }
   if(app.phRoom){ try{ app.phRoom.leave(); }catch(e){} app.phRoom=null; }
   if(app.isHost && app.code) SS.del("sq-host-"+app.code);
@@ -7085,8 +7314,9 @@ function players(){
   const out=[]; const seen=new Set();
   for(const p of partyPeers()){ const pr=p.presence||{}; if(!pr.pid || (pr.role!=="host" && pr.role!=="player")) continue; if(seen.has(pr.pid)) continue; seen.add(pr.pid);
     out.push({pid:String(pr.pid).slice(0,64), nick:String(pr.nick||"Player").slice(0,18), topicReq:(pr.topic && typeof pr.topic==="object")?pr.topic:null, wc:pr.wc, av:validAv(pr.av)?pr.av:null, emo:(pr.emo && typeof pr.emo==="object" && EMO_IDS.includes(pr.emo.e))?pr.emo:null, host:pr.role==="host", ans:pr.ans, rdy:typeof pr.rdy==="string"?pr.rdy.slice(0,40):null, sd:typeof pr.sd==="string"?pr.sd.slice(0,2400):null, isMe:pr.pid===me.pid}); }
-  if(!seen.has(me.pid) && app.party) out.push({pid:me.pid, nick:me.nick, topicReq:myPres.topic||null, wc:myPres.wc, av:me.av, host:app.isHost, ans:myPres.ans, rdy:myPres.rdy||null, isMe:true});
+  if(!seen.has(me.pid) && app.party && !app.tvMode) out.push({pid:me.pid, nick:me.nick, topicReq:myPres.topic||null, wc:myPres.wc, av:me.av, host:app.isHost, ans:myPres.ans, rdy:myPres.rdy||null, isMe:true});
   if(app.party) for(const b of botList()){ if(!b || seen.has(b.pid)) continue; seen.add(b.pid); out.push({pid:b.pid, nick:String(b.nick).slice(0,18), av:validAv(b.av)?b.av:null, bot:true, lv:b.lv}); }
+  const K=((app.isHost?G:S)||{}).kicked; if(FEAT.kick && Array.isArray(K) && K.length) return out.filter(p=>p.isMe||!K.includes(p.pid));
   return out;
 }
 
@@ -7105,6 +7335,7 @@ function subjFromReveal(g){ if(!g || g.phase!=="reveal" || !g.rev || !g.q || !g.
   const r=g.rev.rows.find(x=>x.p===me.pid); if(!r || r.a==null && r.v==null && r.pts==null) return; const subject=subjOf(Object.assign({}, g.q, {t:g.rev.t||g.q.t})); if(!subject) return;
   const right = typeof r.ok==="boolean" ? r.ok : (r.pts||0)>=50; subjNote(subject, right); }
 function onState(g){
+  if(FEAT.kick && !app.isHost && Array.isArray(g.kicked) && g.kicked.includes(me.pid)){ toast("The host removed you from this party"); setTimeout(()=>{ try{ leaveParty(); }catch(e){} },50); return; }
   const prev=S; S=g; try{ subjFromReveal(g); }catch(e){}
   if(g.q && (!prev || !prev.q || prev.q.k!==g.q.k)){ try{ noteDay(qDayKeys(g.q)); }catch(e){}
     myAns=null; app.hsSteal=false; draft=null; gridWords=[]; gridPath=[]; qLocalEnd=Date.now()+g.q.dur*1000-300; qShownAt=Date.now(); if(myPres.ans) setMyPresence({ans:null}); }
@@ -7941,7 +8172,7 @@ function renderStage(){
   else if(S.phase==="q") h = questionHTML(S.q);
   else if(S.phase==="topics") h = topicsHTML();
   else if(S.phase==="judging") h = `${qHead(S.q, false)}<div class="qtext">${esc(S.q.text)}</div><div class="intro"><div class="spinner"></div><p>Checking answers…</p></div>`;
-  else if(S.phase==="reveal") h = revealHTML(S.q, S.rev);
+  else if(S.phase==="reveal") h = revealHTML(S.q, S.rev)+(S.q&&S.q.t!=="mf"&&S.q.t!=="grid"&&S.q.t!=="uniq"?reportBtnHTML("party"):"");
   else if(S.phase==="roundEnd") h = roundSummaryHTML(R);
   else if(S.phase==="final") h = finalHTML();
   if(hostGone) h = `<div class="banner">The host has left, so this game can't continue.</div>` + h;
@@ -8030,7 +8261,7 @@ function lbStatsHTML(){ const ps=players(), on=S.rounds.filter(r=>r.on && !(r.t=
 function lbCastHTML(){
   const ps=players(), host=app.isHost, local=app.party&&app.party.local;
   const rk=rdyKey(), tag=p=> (p.host?`<span class="lb-tag host">Host</span>` : p.bot?`<span class="lb-tag">${esc(p.lv||"")} bot</span>` : `<span class="lb-tag">Player</span>`)+(isRdy(p,rk)?`<span class="lb-tag rdy">Ready</span>`:`<span class="lb-tag wait">Not ready</span>`);
-  let h=ps.map((p,i)=>`<div class="lb-card${p.isMe?" me":""}${p.bot?" bot":""}${isRdy(p,rk)?" isrdy":""}" style="--i:${i}"><div class="lb-av">${avatar(p.pid,"lg")}</div><div class="lb-nm"><b>${esc(p.nick)}${p.isMe?` <span class="muted">(you)</span>`:""}</b><span class="lb-tags">${tag(p)}</span></div>${host&&p.bot?`<button type="button" class="lb-x" data-act="rmbot" data-pid="${esc(p.pid)}" aria-label="Remove ${esc(p.nick)}">×</button>`:""}</div>`).join("");
+  let h=ps.map((p,i)=>`<div class="lb-card${p.isMe?" me":""}${p.bot?" bot":""}${isRdy(p,rk)?" isrdy":""}" style="--i:${i}"><div class="lb-av">${avatar(p.pid,"lg")}</div><div class="lb-nm"><b>${esc(p.nick)}${p.isMe?` <span class="muted">(you)</span>`:""}</b><span class="lb-tags">${tag(p)}</span></div>${host&&p.bot?`<button type="button" class="lb-x" data-act="rmbot" data-pid="${esc(p.pid)}" aria-label="Remove ${esc(p.nick)}">×</button>`:""}${FEAT.kick&&host&&!p.bot&&!p.isMe?(()=>{ const sure=app.kickSure&&app.kickSure.pid===p.pid&&Date.now()-app.kickSure.t<6000; return `<button type="button" class="lb-x${sure?" sure":""}" data-act="kick" data-pid="${esc(p.pid)}" data-n="${esc(p.nick)}" aria-label="${sure?"Tap again to remove":"Remove"} ${esc(p.nick)} from the party">${sure?"Remove?":"×"}</button>`; })():""}</div>`).join("");
   const open=Math.max(local?0:1, (ps.length<4?4:ps.length<8?8:ps.length)-ps.length);
   for(let k=0;k<Math.min(open, local?0:3);k++) h+=`<div class="lb-card seat"><div class="lb-av"><span class="lb-seat-ic" aria-hidden="true"></span></div><div class="lb-nm"><b>Seat open</b><span class="muted">${k===0?`Join with code ${esc(S.code)}`:"Waiting for a player"}</span></div></div>`;
   if(host) h+=`<div class="lb-card add"><div class="lb-nm"><b>Add a bot</b><span class="muted">Fill the stage with computer players</span></div><div class="lb-addrow"><button type="button" class="btn small" data-act="addbot" data-lv="easy">Easy</button><button type="button" class="btn small" data-act="addbot" data-lv="medium">Medium</button><button type="button" class="btn small" data-act="addbot" data-lv="hard">Hard</button></div></div>`;
@@ -8057,7 +8288,7 @@ function lobbyHTML(){
       <div class="lb-coderow"><div class="lb-code"><span class="eyebrow">Party code</span><b class="code">${esc(S.code)}</b></div>
         <div class="lb-codeact">${!local?`<button class="btn small" data-act="copycode">Copy code</button>`:""}<span class="lb-chip">${local?"Solo vs bots":S.pub?"Public party":"Private party"}</span></div></div>
     </div></section>
-  <div class="lb-stats" id="lbstats">${lbStatsHTML()}</div>`;
+  <div class="lb-stats" id="lbstats">${lbStatsHTML()}</div>${!local?inviteHTML(S.code, host||app.tvMode):""}`;
   h+=`<div class="lb-stage">${stageHTML(host ? (local?((G.bots||[]).length?"Solo game against bots. Add or remove bots below, then start.":"Solo game. Add some bots below to play against."):"Friends join from the home screen with this code.") : `You're in. Waiting for ${esc(hp?hp.nick:"the host")} to start the game.`)}</div>`;
   h+=`<div class="lb-grid"><section class="lb-sec"><div class="lb-sh"><span class="eyebrow">The cast</span><details class="lb-look"${app.lookOpen?" open":""}><summary>Change your look</summary><div class="lb-lookin">${avPickerHTML()}</div></details></div><div class="lb-cast" id="lbcast">${lbCastHTML()}</div></section>
     <section class="lb-sec"><div class="lb-sh"><span class="eyebrow">Running order</span><span class="muted lb-diff">${S.diff==="hard"?"Hard":"Easy"} mode</span></div><div id="lbprog">${lbProgHTML()}</div></section></div>`;
@@ -9202,7 +9433,9 @@ function dailyTick(now){
   const pa=$("#dpav"); if(pa){ const q=D.qs[D.i]; if(q.t==="gk"||q.t==="hl") pa.textContent=dailyAvail(q, now-D.start); }
   if(now>D.end){ const q=D.qs[D.i]; let v=null; if(q.t==="pin"||q.t==="ctry"||q.t==="est") v=D.draft; if(q.t==="rank" && rkMoved==="daily-"+D.i && Array.isArray(draft)) v=draft.join(","); dailyAnswer(v); }
 }
-function shareText(res){ const sq=(res.pts||[]).map((p,i)=>["⬜","🟧","🟨","🟩"][res.pmax?tier(p,res.pmax[i]):p]||"⬜").join(""); return `Spotlight Quiz · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}\n${sq}\n${res.score.toLocaleString("en-GB")} points`; }
+function shareText(res){ const sq=(res.pts||[]).map((p,i)=>["⬜","🟧","🟨","🟩"][res.pmax?tier(p,res.pmax[i]):p]||"⬜").join(""); const st=calcStreak();
+  if(!FEAT.share) return `Spotlight Quiz · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}\n${sq}\n${res.score.toLocaleString("en-GB")} points`;
+  return `Spotlight Daily · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}\n${sq.slice(0,5)}\n${sq.slice(5,10)}\n${sq.slice(10)}\n${res.score.toLocaleString("en-GB")} points${st>1?` · 🔥 ${st}-day streak`:""}\nCan you beat me? ${SITE_URL}`; }
 function renderDaily(){
   const el=$("#dstage"); if(!el) return;
   if(mapView){ mapView.destroy(); mapView=null; }
@@ -9223,16 +9456,17 @@ function renderDaily(){
     else if(q.t==="pin") h += (fb?`<div class="bigans"><div class="eyebrow">Answer</div><b>${esc(q.place)}</b> ${D.answers[D.i]?`<span class="num">· ${Math.round(km(D.answers[D.i],q)).toLocaleString("en-GB")} km from your pin</span>`:""}</div>`:"") + `<div class="map" id="map"></div>` + (fb?"":`<div class="row"><span class="maphint grow">Tap the map to drop your pin. Drag to move the map, and pinch or use + and − to zoom.</span><button class="btn primary" data-act="dlockpin" id="dlockpin" disabled>Lock in pin</button></div>`);
     else if(q.t==="ctry"){ const a=D.answers[D.i]; let note=""; if(fb && a){ const f=ctryFeature(q.place); const inside=f?inRings(f,a):km(a,q)<200; note=inside?`<span class="num ctry-in">· inside</span>`:`<span class="num">· ${Math.round(f?kmToFeature(f,a):km(a,q)).toLocaleString("en-GB")} km off</span>`; }
       h += (fb?`<div class="bigans"><div class="eyebrow">The country</div><b>${esc(q.place)}</b> ${note}</div>`:"") + `<div class="map" id="map"></div>` + (fb?"":`<div class="row"><span class="maphint grow">Tap anywhere inside the country. There are no names on the map. Drag to move, pinch or use + and − to zoom.</span><button class="btn primary" data-act="dlockpin" id="dlockpin" disabled>Lock in</button></div>`); }
-    if(fb) h += `<div class="hostbar"><button class="btn primary" data-act="dnext">${D.i+1<D.qs.length?"Next question":"See my score"}</button></div>`;
+    if(fb) h += `<div class="hostbar"><button class="btn primary" data-act="dnext">${D.i+1<D.qs.length?"Next question":"See my score"}</button></div>`+reportBtnHTML("daily");
   }
   else if(D.phase==="done"){
     const r=D.result||{score:0,pts:[]};
     const M=resMax(r), f=r.score/M;
     if(f>=0.6) setTimeout(()=>confetti(f>=0.8?180:90), 400);
     const txt=shareText(r);
-    h=`<div class="intro"><div class="eyebrow">Today's score</div><div class="scoreline num">${r.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts</span></div><p>${f>=0.8?"Brilliant.":f>=0.53?"Solid effort.":"Tomorrow's another quiz."} ${calcStreak()>1?`You're on a ${calcStreak()}-day streak.`:""} Come back tomorrow for a new set.</p></div>${guestDone(r)?acctCTA("Guest scores don't go on the leaderboard. Log in before tomorrow's quiz to get ranked."):""}<div class="share" id="sharetxt">${esc(txt)}</div><div class="row"><button class="btn" data-act="copyshare">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div><div style="margin-top:18px">${statsCardHTML("dq")}${subjCardHTML()}</div>`;
+    h=`<div class="intro"><div class="eyebrow">Today's score</div><div class="scoreline num">${r.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts</span></div><p>${f>=0.8?"Brilliant.":f>=0.53?"Solid effort.":"Tomorrow's another quiz."} ${calcStreak()>1?`You're on a ${calcStreak()}-day streak.`:""} Come back tomorrow for a new set.</p></div>${guestDone(r)?acctCTA("Guest scores don't go on the leaderboard. Log in before tomorrow's quiz to get ranked."):""}<div id="donerank" class="donerank"></div><div class="share" id="sharetxt">${esc(txt)}</div><div class="row">${canNativeShare()?`<button class="btn primary" data-act="nshare">Share</button>`:""}<button class="btn" data-act="copyshare">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div><div style="margin-top:18px">${statsCardHTML("dq")}${subjCardHTML()}</div>`;
   }
   el.innerHTML=h;
+  if(D.phase==="done") fillDoneRank();
   if((D.phase==="q"||D.phase==="fb") && (D.qs[D.i].t==="pin"||D.qs[D.i].t==="ctry")){
     const q=D.qs[D.i], ct=q.t==="ctry";
     if(D.phase==="q") mapView=new MapView($("#map"),{labels:ct?false:undefined, pick:ll=>{ D.draft=ll; mapView.setPins([{...ll,color:pcol(me.pid),label:"You",av:me.av}]); const b=$("#dlockpin"); if(b) b.disabled=false; }});
@@ -9293,7 +9527,7 @@ async function dgFinish(){
   if(app.acct) window.SQ_AUTH.saveProfile({dg:{[DG.key]:{score, n:ws.length}}}).catch(()=>{});
   await postScore("dg", DG.key, res);
 }
-function gridShareText(r){ return `Spotlight Word Grid · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}\n${r.n} word${r.n===1?"":"s"} · ${Number(r.score).toLocaleString("en-GB")} points${r.words&&r.words[0]?`\nLongest: ${r.words[0].length} letters`:""}`; }
+function gridShareText(r){ return `Spotlight Word Grid · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}\n${r.n} word${r.n===1?"":"s"} · ${Number(r.score).toLocaleString("en-GB")} points${r.words&&r.words[0]?`\nLongest: ${r.words[0].length} letters`:""}${FEAT.share?`\nCan you beat me? ${SITE_URL}`:""}`; }
 function renderDGrid(){
   const el=$("#gstage"); if(!el) return;
   const date=esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}));
@@ -9308,7 +9542,7 @@ function renderDGrid(){
     h=`<div class="intro"><div class="eyebrow">Today's word grid</div><div class="scoreline num">${Number(r.score).toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> points</span></div><p>${r.n} word${r.n===1?"":"s"}${DG.all?` out of ${DG.all.length} in the grid`:""}. Come back tomorrow for a new grid.</p></div>`;
     if(DG.grid) h+=`<div class="wgwrap"><div class="wg" style="max-width:220px">${DG.grid.map(c=>`<div class="tile" style="font-size:22px">${esc(c)}</div>`).join("")}</div><div style="display:grid;gap:10px;min-width:0">${(r.words||[]).length?`<div><div class="eyebrow" style="margin-bottom:6px">Your words</div><div class="words">${r.words.map(w=>`<span class="w">${esc(w.toUpperCase())}<sup>${wordPts(w.length)}</sup></span>`).join("")}</div></div>`:""}${missed.length?`<div><div class="eyebrow" style="margin-bottom:6px">Longest words you missed</div><div class="words">${missed.map(w=>`<span class="w pend">${esc(w.toUpperCase())}<sup>${wordPts(w.length)}</sup></span>`).join("")}</div></div>`:""}</div></div>`;
     if(guestDone(r)) h+=acctCTA("Guest scores don't go on the leaderboard. Log in before tomorrow's grid to get ranked.");
-    h+=`<div class="share" id="sharetxt">${esc(gridShareText(r))}</div><div class="row"><button class="btn" data-act="copygrid">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div>`;
+    h+=`<div class="share" id="sharetxt">${esc(gridShareText(r))}</div><div class="row">${canNativeShare()?`<button class="btn primary" data-act="nsharegrid">Share</button>`:""}<button class="btn" data-act="copygrid">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div>`;
   }
   el.innerHTML=h;
   if(DG.phase==="play"){ renderWordList(); paintTiles(); }
@@ -9484,6 +9718,9 @@ document.addEventListener("click", async e=>{
   if(a==="solo"){ if(!readNick()) return; const code=Array.from(crypto.getRandomValues(new Uint8Array(4)), x=>"ABCDEFGHJKMNPQRSTUVWXYZ"[x%23]).join(""); openParty(code, true, true).then(()=>{ if(G && !(G.bots||[]).length){ addBot("easy"); addBot("medium"); addBot("hard"); } }); return; }
   if(a==="addbot"){ addBot(b.dataset.lv); return; }
   if(a==="rmbot"){ removeBot(b.dataset.pid); return; }
+  if(a==="kick"){ if(!app.isHost||!G) return; const pid=b.dataset.pid, ks=app.kickSure;
+    if(!(ks && ks.pid===pid && Date.now()-ks.t<6000)){ app.kickSure={pid,t:Date.now()}; b.textContent="Remove?"; b.classList.add("sure"); setTimeout(()=>{ if(app.kickSure&&app.kickSure.pid===pid&&Date.now()-app.kickSure.t>=5900){ app.kickSure=null; try{ renderBoard(); }catch(e){} } },6000); return; }
+    app.kickSure=null; G.kicked=(G.kicked||[]).concat(pid).slice(-30); if(G.scores) delete G.scores[pid]; pushState(); toast(`${b.dataset.n||"Player"} removed`); try{ renderBoard(); }catch(e){} return; }
   if(a==="host"){ if(!readNick()) return; const code=Array.from(crypto.getRandomValues(new Uint8Array(4)), x=>"ABCDEFGHJKMNPQRSTUVWXYZ"[x%23]).join(""); openParty(code, true); return; }
   if(a==="join"||a==="joinlist"){ if(!readNick()) return; const code=(a==="join"?($("#joincode").value||""):b.dataset.code).toUpperCase().replace(/[^A-Z]/g,"").slice(0,4); if(code.length!==4){ toast("Party codes are 4 letters"); return; } openParty(code, false); return; }
   if(a==="music"){ MUSIC.cycle(); return; }
@@ -9493,7 +9730,15 @@ document.addEventListener("click", async e=>{
   if(a==="emote"){ sendEmote(b.dataset.e); return; }
   if(a==="dclbshow"){ const off=!LS.get("sq-dclb-off"); LS.set("sq-dclb-off", off?1:null); b.setAttribute("aria-pressed", String(!off)); const w=$(".dc-lbin"); if(w) w.hidden=off; return; }
   if(a==="htab"){ app.homeTab=b.dataset.v; render(); window.scrollTo(0,0); return; }
-  if(a==="dclb"){ app.dcTab=b.dataset.v; const g=app.dcTab==="g"; const q=$("#homelb"), gr=$("#homegridlb"); if(q) q.hidden=g; if(gr) gr.hidden=!g; document.querySelectorAll('[data-act="dclb"]').forEach(x=>x.setAttribute("aria-selected", String(x.dataset.v===app.dcTab))); return; }
+  if(a==="dclb"){ app.dcTab=b.dataset.v; const t=dcT(); [["q","#homelb"],["g","#homegridlb"],["w","#homeweek"],["l","#homeleague"]].forEach(([k,sel])=>{ const e=$(sel); if(e) e.hidden=k!==t; }); document.querySelectorAll('[data-act="dclb"]').forEach(x=>x.setAttribute("aria-selected", String(x.dataset.v===t))); if(t==="w") loadWeekLB(); if(t==="l") loadLeagues(); return; }
+  if((a==="lgcreate"||a==="lgjoin") && !me.nick && !app.acct){ const n=(($("#lgnick")||{}).value||"").trim().slice(0,18); if(!n){ toast("Add your name first"); const i=$("#lgnick"); if(i) i.focus(); return; } me.nick=n; LS.set("sq-nick",n); }
+  if(a==="lbwhat"){ app.lbWhat=b.dataset.v; render(); return; }
+  if(a==="lbwhen"){ app.lbWhen=b.dataset.v; render(); return; }
+  if(a==="golb"){ app.view="home"; app.homeTab="lb"; app.lbWhat="q"; app.lbWhen="t"; stopLBs(); render(); window.scrollTo(0,0); return; }
+  if(a==="lgcreate"){ const n=($("#lgname")||{}).value||""; leagueCreate(n); return; }
+  if(a==="lgjoin"){ const c=($("#lgcode")||{}).value||""; leagueJoin(c); return; }
+  if(a==="lgleave"){ leagueLeave(b.dataset.code); return; }
+  if(a==="lgshare"){ const c=b.dataset.code, u=(window.SQ_STANDALONE?location.origin:"https://"+SITE_URL)+"/?league="+c, t=`Join my Spotlight Quiz league "${b.dataset.name}" and we'll see who wins the daily: ${u}`; shareOrCopy(t); return; }
   if(a==="bighead"){ BIG.set(!BIG.on); document.querySelectorAll('[data-act="bighead"]').forEach(x=>x.setAttribute("aria-pressed",String(BIG.on))); document.querySelectorAll("img[data-pav]").forEach(im=>{ const u=Portrait.get(im.dataset.pav); im.src=u||(im.dataset.flat?im.src:avURI(im.dataset.pav)); im.classList.toggle("r3",!!u); }); return; }
   if(a==="maker"){ if(document.getElementById("mkmodal")) closeMaker(); else { app.mkOpen=true; app.mk=null; mkState(); openMaker(); } return; }
   if(a==="mktab"){ app.mkTab=b.dataset.tab; renderMaker(); const bd=document.getElementById("mkbody"); if(bd) bd.scrollTop=0; return; }
@@ -9511,6 +9756,15 @@ document.addEventListener("click", async e=>{
   if(a==="acctview"){ ACCT.view=b.dataset.v; ACCT.err=""; renderAcct(); return; }
   if(a==="logout"){ window.SQ_AUTH.logout(); app.acct=null; closeAcct(); renderStatus(); toast("Logged out"); if(app.view==="home") render(); else if(app.view==="daily") renderDaily(); else if(app.view==="dgrid") renderDGrid(); return; }
   if(a==="dgstart"){ if($("#nick") && !readNick()) return; dgBegin(); return; }
+  if(a==="install"){ if(installEv){ installEv.prompt(); installEv=null; b.hidden=true; } return; }
+  if(a==="howtoclose"){ LS.set("sq-howto",1); const h=$("#howto"); if(h) h.remove(); return; }
+  if(a==="howto"){ LS.set("sq-howto",null); maybeHowto(); return; }
+  if(a==="reportq"){ let q; if(b.dataset.src==="daily") q=D.qs&&D.qs[D.i]; else if(S&&S.q){ q=Object.assign({}, S.q, S.rev||{}, {text:S.q.text||(S.rev&&S.rev.text)||"", t:S.q.t}); } if(q) openReport(q, b.dataset.src); return; }
+  if(a==="repsend"){ sendReport(b.dataset.r); return; }
+  if(a==="repclose"){ repQ=null; const el=$("#repsheet"); if(el) el.remove(); return; }
+  if(a==="copylink"||a==="sharelink"){ const u=joinUrl(S&&S.code||app.code); if(a==="sharelink"){ try{ await navigator.share({text:"Join my Spotlight Quiz party: "+u}); return; }catch(e){ if(e&&e.name==="AbortError") return; } } try{ await navigator.clipboard.writeText(u); toast("Link copied"); }catch(e){ toast(u); } return; }
+  if(a==="nshare"){ shareOrCopy(shareText(D.result||{score:0,pts:[]})); return; }
+  if(a==="nsharegrid"){ shareOrCopy(gridShareText(DG.result||{score:0,n:0})); return; }
   if(a==="copygrid"){ const txt=gridShareText(DG.result||{score:0,n:0}); try{ await navigator.clipboard.writeText(txt); toast("Copied"); }catch(err){ toast("Select the text above to copy it"); } return; }
   if(a==="copycode"||a==="copyshare"){ const txt = a==="copycode" ? app.code : shareText(D.result||{score:0,pts:[]}); try{ await navigator.clipboard.writeText(txt); toast("Copied"); }catch(err){ toast(a==="copycode"?"Code: "+txt:"Select the text above to copy it"); const s=$("#sharetxt"); if(s){ const r=document.createRange(); r.selectNodeContents(s); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); } } return; }
   if(a==="savetopic"){ const v=($("#topic").value||"").trim().slice(0,60); me.topic=v; LS.set("sq-topic", v); setMyPresence({topic:v}); toast(v?"Subject saved":"Subject cleared"); renderBoard(); return; }
@@ -9578,7 +9832,12 @@ document.addEventListener("input", e=>{
   if(id==="wordin" && gridNow()){ const w=e.target.value.toLowerCase().replace(/[^a-z]/g,""); gridPath = w ? (findPath(gridNow(), w)||[]) : []; paintTiles(); }
 });
 
+/* error log: on the website, send script errors to the server so the owner can see them on /admin (max 8 per visit) */
+(function(){ if(!FEAT.errlog || !window.SQ_STANDALONE) return; let n=0; const send=(msg,src,line)=>{ if(n++>=8) return; try{ fetch("/api/log",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({msg:String(msg||"").slice(0,300),src:String(src||"").slice(-120),line:line||0,v:"2026-11-20"}),keepalive:true}).catch(()=>{}); }catch(e){} };
+  window.addEventListener("error", e=>{ if(e && e.message) send(e.message, e.filename, e.lineno); });
+  window.addEventListener("unhandledrejection", e=>{ const r=e&&e.reason; send("Unhandled: "+(r&&r.message||r), r&&r.stack&&String(r.stack).split("\n")[1], 0); }); })();
 boot();
+setTimeout(()=>{ try{ handleJoinLink(); }catch(e){} try{ handleLeagueLink(); }catch(e){} setTimeout(()=>{ try{ maybeHowto(); }catch(e){} }, 600); }, 400);
 </script>
 
 
