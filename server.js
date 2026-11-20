@@ -51,7 +51,8 @@ const FIXES = [
   { id: "phil-1057-2026-11-17", nick: "PhilEatsToast", score: 1057, kind: "dq" },
   { id: "phil-reset-2026-11-18", nick: "PhilEatsToast", day: "2026-11-18", kind: "dqreset" },
   { id: "new-set-2026-11-20", day: "2026-11-20", kind: "dqresetall" } /* today's daily swapped for a new set: everyone's go on the old set (Tom and Lizzie included) is wiped */,
-  { id: "easier-set-2026-11-20", day: "2026-11-20", kind: "dqresetall" } /* and again for the easier replacement set */
+  { id: "easier-set-2026-11-20", day: "2026-11-20", kind: "dqresetall" }, /* and again for the easier replacement set */
+  { id: "mix-set-2026-11-20", day: "2026-11-20", kind: "dqresetall" } /* and again for the 2 easy / 5 medium / 3 hard set */
 ];
 ready.then(() => {
   for (const f of FIXES) {
@@ -230,8 +231,8 @@ async function authRoute(req, res, url) {
         p[f] = Object.assign({}, p[f] || {});
         for (const [d, v] of Object.entries(b[f])) if (/^\d{4}-\d{2}-\d{2}$/.test(d) && v && typeof v === "object") {
           const old = p[f][d] || {}; // once a day is marked as started or played, it stays that way
-          p[f][d] = { score: Math.max(+old.score || 0, +v.score || 0), n: Math.max(+old.n || 0, +v.n || 0), started: 1, guest: old.guest || (v.guest ? 1 : 0) || undefined, r3: old.r3 || (v.r3 ? 1 : 0) || undefined };
-          if (!p[f][d].guest) delete p[f][d].guest; if (!p[f][d].r3) delete p[f][d].r3;
+          p[f][d] = { score: Math.max(+old.score || 0, +v.score || 0), n: Math.max(+old.n || 0, +v.n || 0), started: 1, guest: old.guest || (v.guest ? 1 : 0) || undefined, r4: old.r4 || (v.r4 ? 1 : 0) || undefined };
+          if (!p[f][d].guest) delete p[f][d].guest; if (!p[f][d].r4) delete p[f][d].r4;
         }
         const ks = Object.keys(p[f]).sort(); ks.slice(0, Math.max(0, ks.length - 120)).forEach(d => delete p[f][d]);
       }
