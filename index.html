@@ -854,6 +854,12 @@ button.mf-tile:hover:not(:disabled){border-color:var(--ink);background:#0E0E10}
 .mf-tile.miss{opacity:.4}
 .mf-last{border:1px solid var(--line);background:transparent;font-family:var(--f-mono)}
 .mf-last.ok{border-color:var(--acc)}
+.mf-last{flex-wrap:nowrap;align-items:center;gap:12px}
+.mf-last>.mf-ico{flex:0 0 38px;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:20px;line-height:1;background:var(--line);color:var(--ink);animation:pop .4s both}
+.mf-last.ok .mf-ico{background:var(--acc);color:#000}.mf-last.bad .mf-ico{background:var(--bad);color:#fff}
+.mf-last>.mf-txt{flex:1 1 auto;min-width:0}
+.mf-last>.mf-pts{flex:0 0 auto;font-weight:800;font-size:20px;letter-spacing:-.01em}
+.mf-last.ok .mf-pts{color:var(--acc)}.mf-last.bad .mf-pts{color:var(--bad)}
 .mf-turn.me{color:var(--acc)}
 /* map + scale */
 .map{background:var(--sea);border:1px solid var(--line);border-radius:0}
@@ -3228,6 +3234,8 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -8353,8 +8361,8 @@ function mfHTML(q){
   h+=`<div class="qtext" style="font-size:clamp(20px,3vw,28px)">${esc(q.prompt)}</div>`;
   if(q.note) h+=`<p class="muted" style="margin:0;font-size:13px">${esc(q.note)}</p>`;
   const L=q.last;
-  if(L && !L.skip) h+=`<div class="mf-last ${L.ok?"ok":"bad"}">${avatar(L.by,"sm")}<span><b>${esc(nameOf(L.by))}</b> picked <b>${esc(L.w)}</b>. ${L.ok?"Right! +100":"It's a trap! −50"}</span></div>`;
-  else if(L && L.skip) h+=`<div class="mf-last">${avatar(L.by,"sm")}<span><b>${esc(nameOf(L.by))}</b> ran out of time.</span></div>`;
+  if(L && !L.skip) h+=`<div class="mf-last ${L.ok?"ok":"bad"}"><span class="mf-ico" aria-hidden="true">${L.ok?"✓":"✕"}</span><span class="mf-txt"><b>${esc(nameOf(L.by))}</b> picked <b>${esc(L.w)}</b>. ${L.ok?"Right!":"It's a trap!"}</span><span class="mf-pts">${L.ok?"+100":"−50"}</span></div>`;
+  else if(L && L.skip) h+=`<div class="mf-last skip"><span class="mf-ico" aria-hidden="true">⏱</span><span class="mf-txt"><b>${esc(nameOf(L.by))}</b> ran out of time.</span></div>`;
   h+=`<div class="mf-grid">${q.tiles.map((t,i)=>`<button class="mf-tile ${t.s===1?"r":t.s===2?"w":""} ${L&&L.i===i?"flip":""}" data-act="mfpick" data-i="${i}" ${mine&&!t.s&&!myAns?"":"disabled"}>${t.by?avatar(t.by,"sm"):""}<span>${esc(t.w)}</span>${t.s===1?'<em>✓</em>':t.s===2?'<em>✕</em>':""}</button>`).join("")}</div>`;
   h+=`<div class="row"><div class="mf-turn ${mine?"me":""}">${mine?(myAns?"Locked in…":"Your turn! Pick one that fits."):`${esc(nameOf(q.turn))}'s turn`}</div><span class="muted">${q.left} right answer${q.left===1?"":"s"} still hidden</span></div>`;
   return h;
