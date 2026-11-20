@@ -952,7 +952,8 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .room-load{font-family:var(--f-body)!important;letter-spacing:0;font-size:13px!important;color:#2A2A2C!important;background:rgba(255,255,255,.8)!important;border:0;border-radius:999px;padding:5px 12px}
 .lstage-cap{font-family:var(--f-body);letter-spacing:.02em;text-transform:none;font-size:13px}
 .emotes{border:0;gap:6px;display:flex;flex-wrap:wrap;justify-content:center}
-.emo{border:1px solid var(--line)!important;border-radius:999px;font-family:var(--f-body);font-size:13px;letter-spacing:0;text-transform:none;font-weight:600;padding:9px 14px}
+.emo{border:1px solid var(--line)!important;border-radius:999px;font-family:var(--f-body);font-size:13px;letter-spacing:0;text-transform:none;font-weight:600;padding:8px 14px 8px 10px;gap:6px;transition:transform .12s ease,background .12s ease}
+.emo .ei{font-size:19px;line-height:1;display:inline-block}.emo:active{transform:scale(.92)}.emo:active .ei{animation:pop .35s both}
 .bigtog{font-family:var(--f-body);letter-spacing:0;text-transform:none;font-size:13px;font-weight:600}
 .bigtog .sw{border-radius:999px!important}.bigtog .sw::after{border-radius:50%}
 .strobe-fx{animation-duration:.45s}
@@ -2474,14 +2475,15 @@ const EXPR={
   chatty:{smile:.55,open:.12,brow:.2,browIn:.1,squint:.2,wide:0,asym:0,chat:.6},
   calm:{smile:.35,open:0,brow:0,browIn:0,squint:.1,wide:0,asym:0,sleepy:.3}
 };
-const EMO_EX={wave:"grin",dance:"laugh",jump:"surprised",clap:"laugh",spin:"laugh",cheer:"laugh",dab:"cheeky",bow:"calm"};
+const EMO_EX={wave:"grin",dance:"laugh",jump:"surprised",clap:"laugh",spin:"laugh",cheer:"laugh",dab:"cheeky",bow:"calm",vibe:"happy",hype:"laugh",heart:"happy",robot:"calm",lol:"laugh",shrug:"cheeky",flex:"cheeky",floss:"laugh"};
 const IDLE_EX=["happy","happy","grin","cheeky","thinking","chatty","chatty","calm","laugh","surprised"];
 function faceUpdate(ch,t,dt){ const f=ch.face||(ch.face={cur:Object.assign({},EXPR.happy),tgt:"happy",tm:1+Math.random()*3});
   f.tm-=dt; if(f.tm<0 && !ch.emote){ f.tgt=IDLE_EX[(Math.random()*IDLE_EX.length)|0]; f.tm=2.2+Math.random()*4; }
   let tg=EXPR[f.tgt]; if(ch.emote){ const el=t-ch.emote.t0; tg=EXPR[ch.emote.e==="jump"&&el>.9?"laugh":EMO_EX[ch.emote.e]||"grin"]; }
   const k=dt>0?Math.min(1,dt*7):1; for(const key of ["smile","open","brow","browIn","squint","wide","asym","chat","sleepy","lookUp"]){ const v=tg[key]||0; f.cur[key]=(f.cur[key]||0)+(v-(f.cur[key]||0))*k; }
   return f.cur; }
-const EM_DUR={wave:2.6,dance:3.2,jump:2.2,clap:2.4,spin:2,cheer:2.6,dab:2.2,bow:2.4};
+const EM_DUR={wave:2.6,dance:3.2,jump:2.2,clap:2.4,spin:2,cheer:2.6,dab:2.2,bow:2.4,vibe:3.4,hype:2.6,heart:2.8,robot:4.2,lol:2.8,shrug:2.2,flex:2.6,floss:3.0};
+const EM_SOFT={wave:170,vibe:150,hype:190,heart:160,robot:300,lol:170,shrug:170,flex:180,floss:210};
 function poseChar(ch, t, dt){
   if(!(dt>=0)) dt=0; if(!isFinite(t)) t=0;
   const J=ch.J;
@@ -2521,7 +2523,7 @@ function poseChar(ch, t, dt){
     const w=Math.min(1,el/.25,(D-el)/.3), sm=x=>x*x*(3-2*x), W=sm(Math.max(0,Math.min(1,w))), p=el;
     const mix=(a,b)=>a+(b-a)*W;
     switch(em.e){
-      case "wave": smile=mix(smile,0.85); brow=mix(brow,0.4); { const w=Math.sin(p*10); J.armR.rz=mix(-.03,-2.0); J.armR.rx=mix(.03,-.25); J.elbR.rz=mix(0,-1.1+w*.32); J.elbR.rx=mix(-.14,-.05); J.handR.ry=mix(.1,-1.5); J.handR.rz=mix(0,w*.15); J.head.rz=mix(0,-.08); J.chest.rz=mix(0,.05); mouthOpen=.25*W; } break;
+      case "wave_old": smile=mix(smile,0.85); brow=mix(brow,0.4); { const w=Math.sin(p*10); J.armR.rz=mix(-.03,-2.0); J.armR.rx=mix(.03,-.25); J.elbR.rz=mix(0,-1.1+w*.32); J.elbR.rx=mix(-.14,-.05); J.handR.ry=mix(.1,-1.5); J.handR.rz=mix(0,w*.15); J.head.rz=mix(0,-.08); J.chest.rz=mix(0,.05); mouthOpen=.25*W; } break;
       case "dance": smile=mix(smile,1); brow=mix(brow,0.3); { const bb=Math.sin(p*8.4), b2=Math.sin(p*4.2); rootY=-Math.abs(bb)*.05*W; J.hips.rz=b2*.12*W; J.spine.rz=-b2*.1*W; J.chest.rz=-b2*.08*W; J.head.rz=b2*.1*W; rootRY=ch.ry+b2*.3*W;
         J.armL.rz=mix(.03,.2); J.armR.rz=mix(-.03,-.2); J.armL.rx=mix(.03,-.35+bb*.4); J.armR.rx=mix(.03,-.35-bb*.4); J.elbL.rx=J.elbR.rx=mix(-.14,-1.5); J.handL.ry=mix(-.1,0); J.handR.ry=mix(.1,0);
         J.kneeL.rx=(.25+Math.max(0,bb)*.35)*W; J.kneeR.rx=(.25+Math.max(0,-bb)*.35)*W; J.legL.rx=-J.kneeL.rx*.5; J.legR.rx=-J.kneeR.rx*.5; J.ankL.rx=-J.kneeL.rx*.5; J.ankR.rx=-J.kneeR.rx*.5; mouthOpen=.45*W; } break;
@@ -2535,6 +2537,52 @@ function poseChar(ch, t, dt){
       case "cheer": smile=mix(smile,1); brow=mix(brow,1); { const bb=Math.abs(Math.sin(p*6)); rootY=bb*.12*W; J.kneeL.rx=J.kneeR.rx=(1-bb)*.35*W; J.legL.rx=J.legR.rx=-(1-bb)*.18*W; J.armL.rz=mix(.03,2.25+Math.sin(p*12)*.12); J.armR.rz=mix(-.03,-2.25-Math.sin(p*12)*.12); J.armL.rx=J.armR.rx=mix(0,-.35); J.elbL.rz=mix(0,.25); J.elbR.rz=mix(0,-.25); J.neck.rx=mix(-.02,-.22); mouthOpen=1*W; } break;
       case "dab": smile=mix(smile,0.55); brow=mix(brow,0.1); { J.armL.rz=mix(.03,2.0); J.armL.rx=mix(0,-.15); J.elbL.rz=mix(0,.1); J.armR.rz=mix(-.03,-1.0); J.armR.rx=mix(0,-1.25); J.armR.ry=mix(0,.9); J.elbR.rx=mix(-.14,-2.05); J.chest.rz=mix(0,.12); J.neck.rx=mix(0,.42); J.head.ry=mix(0,-.55); J.head.rz=mix(0,.15); J.hips.rz=mix(0,-.06); J.legL.rz=mix(.015,.18); } break;
       case "bow": smile=mix(smile,0.6); brow=mix(brow,0.2); { J.spine.rx=mix(.015,.5); J.chest.rx=mix(0,.35); J.neck.rx=mix(0,.2); J.armR.rx=mix(0,-.55); J.armR.rz=mix(-.03,.0); J.elbR.rx=mix(0,-1.5); J.armR.ry=mix(0,.6); J.armL.rx=mix(.03,.45); J.armL.rz=mix(.03,.2); J.elbL.rx=mix(0,-.6); J.hips.rx=mix(0,.1); } break;
+
+      /* modern set (Nov 2026): whole-body moves with bounce and overlap, so they read as loose rather than posed */
+      case "wave": smile=mix(smile,0.9); brow=mix(brow,0.45); { const w=Math.sin(p*9), sw=Math.sin(p*4.5), hop=Math.abs(Math.sin(p*4.5));
+        rootY=hop*.025*W; J.kneeL.rx=J.kneeR.rx=(1-hop)*.12*W; J.hips.rz=sw*.05*W; J.spine.rz=-sw*.04*W; J.chest.rz=mix(0,.07)-sw*.03*W; rootRY=ch.ry+mix(0,-.18);
+        J.armR.rz=mix(-.03,-2.1+w*.08); J.armR.rx=mix(.03,-.35); J.elbR.rz=mix(0,-.9+w*.45); J.elbR.rx=mix(-.14,-.1); J.handR.ry=mix(.1,-1.5); J.handR.rz=mix(0,w*.35);
+        J.armL.rz=mix(.03,.12); J.armL.rx=mix(.03,.1-sw*.08); J.elbL.rx=mix(-.14,-.35); J.head.rz=mix(0,-.12)+sw*.04*W; J.head.ry=mix(J.head.ry,.15); mouthOpen=.35*W; } break;
+      case "vibe": smile=mix(smile,0.85); brow=mix(brow,0.25); { const beat=p*4.2, b=Math.sin(beat*Math.PI), step=Math.sin(beat*Math.PI/2), nod=Math.abs(b);
+        rootX+=step*.11*W; rootY=-nod*.06*W; rootRY=ch.ry+step*.3*W; J.hips.rz=-step*.16*W; J.hips.ry=step*.15*W; J.spine.rz=step*.07*W; J.chest.rz=step*.06*W; J.chest.ry=-step*.12*W;
+        J.kneeL.rx=(.18+Math.max(0,step)*.35)*W; J.kneeR.rx=(.18+Math.max(0,-step)*.35)*W; J.legL.rx=-J.kneeL.rx*.45; J.legR.rx=-J.kneeR.rx*.45; J.ankL.rx=-J.kneeL.rx*.5; J.ankR.rx=-J.kneeR.rx*.5;
+        J.armL.rx=mix(.03,-.35-step*.55); J.armR.rx=mix(.03,-.35+step*.55); J.armL.rz=mix(.03,.3+nod*.15); J.armR.rz=mix(-.03,-.3-nod*.15); J.elbL.rx=mix(-.14,-1.5-nod*.3); J.elbR.rx=mix(-.14,-1.5-nod*.3); J.handL.rz=mix(0,-nod*.3); J.handR.rz=mix(0,nod*.3);
+        J.neck.rx=mix(-.02,nod*.28); J.head.rz=step*.14*W; mouthOpen=.25*W; } break;
+      case "hype": smile=mix(smile,1); brow=mix(brow,0.8); { const hop=Math.abs(Math.sin(p*6.3)), pump=.5+.5*Math.sin(p*12.6), alt=Math.sin(p*3.15)>0;
+        rootY=hop*.1*W; J.kneeL.rx=J.kneeR.rx=(1-hop)*.4*W; J.legL.rx=J.legR.rx=-(1-hop)*.2*W; J.ankL.rx=J.ankR.rx=-(1-hop)*.2*W; J.spine.rx+=(1-hop)*.08*W;
+        const up=alt?"R":"L", dn=alt?"L":"R", sg=up==="R"?-1:1;
+        J["arm"+up].rz=mix(sg*-.03,sg*(1.7+pump*.7)); J["arm"+up].rx=mix(.03,-.4); J["elb"+up].rz=mix(0,sg*(1.3-pump*1.1));
+        J["arm"+dn].rz=mix(-sg*.03,-sg*.25); J["arm"+dn].rx=mix(.03,-.5); J["elb"+dn].rx=mix(-.14,-1.7);
+        J.neck.rx=mix(-.02,-.15+hop*.15); J.chest.rz=(alt?.06:-.06)*W; mouthOpen=(.6+pump*.4)*W; } break;
+      case "heart": smile=mix(smile,1); brow=mix(brow,0.5); { const sw=Math.sin(p*3.4), lift=Math.min(1,p/.5);
+        J.armL.rz=mix(.03,2.55); J.armR.rz=mix(-.03,-2.55); J.armL.rx=J.armR.rx=mix(.03,-.12); J.elbL.rz=mix(0,1.0*lift); J.elbR.rz=mix(0,-1.0*lift); J.elbL.rx=J.elbR.rx=mix(-.14,-.15);
+        J.handL.rz=mix(0,.5); J.handR.rz=mix(0,-.5); J.handL.ry=mix(-.1,.4); J.handR.ry=mix(.1,-.4);
+        rootRY=ch.ry+sw*.12*W; J.hips.rz=sw*.06*W; J.spine.rz=-sw*.05*W; J.head.rz=-sw*.12*W+mix(0,.05); J.neck.rx=mix(-.02,-.08); rootY=Math.abs(Math.sin(p*3.4))*.02*W; mouthOpen=.15*W; } break;
+      case "robot": smile=mix(smile,0.2); brow=mix(brow,0.1); { /* slow robot: glides between held poses with big mechanical twists of the torso */
+        const R=1.5, k=Math.floor(p*R), f=(p*R)%1, e0=Math.min(1,f/.42), snap=e0*e0*(3-2*e0);
+        const POSES=[[1,0,0,0],[1,0,1,1],[0,1,-1,-1],[1,1,0,1],[0,0,-1,0]], P=POSES[k%5], pv=POSES[(k+4)%5], L=i=>pv[i]+(P[i]-pv[i])*snap;
+        const upL=L(0), upR=L(1), hd=L(2), tw=L(3);
+        J.armL.rz=mix(.03,1.5); J.armR.rz=mix(-.03,-1.5); J.armL.rx=J.armR.rx=mix(.03,0);
+        J.elbL.rz=mix(0,upL*1.57-(1-upL)*1.57); J.elbR.rz=mix(0,-(upR*1.57-(1-upR)*1.57));
+        J.handL.rz=mix(0,0); J.handR.rz=mix(0,0); J.handL.ry=mix(-.1,upL*.8); J.handR.ry=mix(.1,-upR*.8);
+        J.hips.ry=tw*.18*W; J.spine.ry=tw*.32*W; J.chest.ry=tw*.38*W; rootRY=ch.ry+tw*.22*W;
+        J.head.ry=mix(J.head.ry,-tw*.35+hd*.7); J.neck.ry=0; J.head.rz=0; J.spine.rz=0; J.hips.rz=0;
+        const dip=Math.abs(tw); J.kneeL.rx=J.kneeR.rx=(.08+dip*.22)*W; J.legL.rx=J.legR.rx=-(.04+dip*.1)*W; J.ankL.rx=J.ankR.rx=-(.04+dip*.1)*W; rootY=-dip*.03*W; mouthOpen=0; } break;
+      case "lol": smile=mix(smile,1); brow=mix(brow,0.7); { const rock=Math.sin(p*2.6), shake=Math.sin(p*22)*.5+.5, back=Math.max(0,rock), fwd=Math.max(0,-rock);
+        J.spine.rx=mix(.015,-.2*back+.5*fwd); J.chest.rx=mix(0,-.12*back+.3*fwd)+shake*.05*W; J.neck.rx=mix(-.02,-.45*back+.1*fwd); rootRY=ch.ry+rock*.15*W; J.chest.sy+=shake*.02*W; rootY=-fwd*.03*W+shake*.008*W;
+        J.armR.rx=mix(.03,-.55); J.armR.ry=mix(0,.55); J.armR.rz=mix(-.03,-.1); J.elbR.rx=mix(-.14,-1.75); J.handR.ry=mix(.1,.6);
+        J.armL.rx=mix(.03,-.2+fwd*.9); J.armL.rz=mix(.03,.3+back*.6); J.elbL.rx=mix(-.14,-.4-fwd*.3); J.elbL.rz=mix(0,back*.8); J.kneeL.rx=J.kneeR.rx=fwd*.4*W; J.legL.rx=J.legR.rx=-fwd*.15*W; J.head.rz=rock*.1*W; mouthOpen=(.7+shake*.3)*W; } break;
+      case "shrug": smile=mix(smile,0.4); brow=mix(brow,0.9); { const q=Math.sin(Math.min(1,p/1.6)*Math.PI), qq=q*q*(3-2*q), bob=Math.sin(p*7)*.5+.5;
+        J.armL.rz=mix(.03,.2+.25*qq); J.armR.rz=mix(-.03,-.2-.25*qq); J.armL.rx=J.armR.rx=mix(.03,-.15); J.elbL.rx=J.elbR.rx=mix(-.14,-1.5*qq-.2); J.handL.ry=mix(-.1,-1.4*qq); J.handR.ry=mix(.1,1.4*qq); J.handL.rz=mix(0,.4*qq); J.handR.rz=mix(0,-.4*qq);
+        J.chest.sy+=.05*qq*W; J.neck.rx=mix(-.02,.08*qq); J.head.rz=mix(0,.22*qq); J.head.ry=mix(J.head.ry,-.15*qq); J.hips.rz=mix(0,.06*qq); rootY=.02*qq*bob*W; J.kneeR.rx=.15*qq*W; J.legR.rx=-.05*qq*W; mouthOpen=.1*W; } break;
+      case "flex": smile=mix(smile,0.7); brow=mix(brow,0.5); { const tw=Math.sin(p*3.6), sq=.5+.5*Math.sin(p*7.2), hop=Math.abs(Math.sin(p*3.6));
+        J.armL.rz=mix(.03,1.45+tw*.12); J.armR.rz=mix(-.03,-1.45+tw*.12); J.armL.rx=J.armR.rx=mix(.03,-.15); J.elbL.rz=mix(0,1.7+sq*.15); J.elbR.rz=mix(0,-1.7-sq*.15); J.handL.rz=mix(0,.3); J.handR.rz=mix(0,-.3);
+        J.chest.rx=mix(0,-.12); J.chest.sy+=.04*W; J.chest.ry=tw*.22*W; J.spine.ry=tw*.1*W; rootRY=ch.ry+tw*.15*W; J.neck.rx=mix(-.02,-.1); J.head.ry=mix(J.head.ry,-tw*.2);
+        J.kneeL.rx=J.kneeR.rx=(.15+(1-hop)*.15)*W; J.legL.rz=mix(.015,.12); J.legR.rz=mix(-.015,-.12); rootY=-.02*W; mouthOpen=.15*W; } break;
+      case "floss": smile=mix(smile,0.95); brow=mix(brow,0.4); { const ph=p*7.5, s=Math.sin(ph), c=Math.cos(ph*2), hp=-s;
+        J.armL.rz=mix(.03,.3-s*.7); J.armR.rz=mix(-.03,-.3-s*.7); J.armL.rx=mix(.03,c*.85); J.armR.rx=mix(.03,-c*.85); J.elbL.rx=J.elbR.rx=mix(-.14,-.08); J.handL.ry=mix(-.1,0); J.handR.ry=mix(.1,0);
+        rootX+=hp*.1*W; J.hips.rz=hp*.24*W; J.spine.rz=-hp*.1*W; J.chest.rz=-hp*.06*W; J.kneeL.rx=(.15+Math.max(0,hp)*.2)*W; J.kneeR.rx=(.15+Math.max(0,-hp)*.2)*W;
+        J.legL.rz=mix(.015,.08); J.legR.rz=mix(-.015,-.08); J.head.rz=s*.06*W; J.neck.rx=mix(-.02,.06); rootY=-Math.abs(c)*.02*W; mouthOpen=.4*W; } break;
     } } }
   const hs=HEAD_S, chat=(ex.chat||0)*Math.max(0,Math.sin(T*9.3)*.5+Math.sin(T*5.1)*.5);
   const op=Math.max(ex.open+chat*.35, mouthOpen*.6+ex.open*.4); J.jaw.rx=Math.min(1,op)*.36; ch.mouthOp=Math.min(1,op);
@@ -2546,7 +2594,7 @@ function poseChar(ch, t, dt){
   if(ex.lookUp>.3){ ch.lookTarget=[.15,-.25]; }
   J.head.rz+=ex.asym*.06; J.neck.rx-=ex.brow*.03;
   /* follow-through: joints chase their target pose like real limbs (a little lag and settle) instead of snapping to it */
-  if(dt>0 && dt<.2){ const S=ch.spr||(ch.spr={}), K=ch.emote?260:110, C=2*.62*Math.sqrt(K), h=Math.min(dt,.05);
+  if(dt>0 && dt<.2){ const S=ch.spr||(ch.spr={}), K=ch.emote?(EM_SOFT[ch.emote.e]||260):110, C=2*.62*Math.sqrt(K), h=Math.min(dt,.05);
     for(const n of ["spine","chest","neck","head","armL","armR","elbL","elbR","handL","handR"]){ const j=J[n], st=S[n]||(S[n]={rx:[j.rx,0],ry:[j.ry,0],rz:[j.rz,0]});
       for(const ax of ["rx","ry","rz"]){ const q=st[ax], tg=j[ax]; for(let it=0;it<2;it++){ const hh=h/2, acc=K*(tg-q[0])-C*q[1]; q[1]+=acc*hh; q[0]+=q[1]*hh; } j[ax]=q[0]; } } }
   J.root.off=[ch.x+rootX, rootY+(ch.lift||0), ch.z]; J.root.ry=rootRY;
@@ -3234,6 +3282,12 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -4136,14 +4190,15 @@ const EXPR={
   chatty:{smile:.55,open:.12,brow:.2,browIn:.1,squint:.2,wide:0,asym:0,chat:.6},
   calm:{smile:.35,open:0,brow:0,browIn:0,squint:.1,wide:0,asym:0,sleepy:.3}
 };
-const EMO_EX={wave:"grin",dance:"laugh",jump:"surprised",clap:"laugh",spin:"laugh",cheer:"laugh",dab:"cheeky",bow:"calm"};
+const EMO_EX={wave:"grin",dance:"laugh",jump:"surprised",clap:"laugh",spin:"laugh",cheer:"laugh",dab:"cheeky",bow:"calm",vibe:"happy",hype:"laugh",heart:"happy",robot:"calm",lol:"laugh",shrug:"cheeky",flex:"cheeky",floss:"laugh"};
 const IDLE_EX=["happy","happy","grin","cheeky","thinking","chatty","chatty","calm","laugh","surprised"];
 function faceUpdate(ch,t,dt){ const f=ch.face||(ch.face={cur:Object.assign({},EXPR.happy),tgt:"happy",tm:1+Math.random()*3});
   f.tm-=dt; if(f.tm<0 && !ch.emote){ f.tgt=IDLE_EX[(Math.random()*IDLE_EX.length)|0]; f.tm=2.2+Math.random()*4; }
   let tg=EXPR[f.tgt]; if(ch.emote){ const el=t-ch.emote.t0; tg=EXPR[ch.emote.e==="jump"&&el>.9?"laugh":EMO_EX[ch.emote.e]||"grin"]; }
   const k=dt>0?Math.min(1,dt*7):1; for(const key of ["smile","open","brow","browIn","squint","wide","asym","chat","sleepy","lookUp"]){ const v=tg[key]||0; f.cur[key]=(f.cur[key]||0)+(v-(f.cur[key]||0))*k; }
   return f.cur; }
-const EM_DUR={wave:2.6,dance:3.2,jump:2.2,clap:2.4,spin:2,cheer:2.6,dab:2.2,bow:2.4};
+const EM_DUR={wave:2.6,dance:3.2,jump:2.2,clap:2.4,spin:2,cheer:2.6,dab:2.2,bow:2.4,vibe:3.4,hype:2.6,heart:2.8,robot:4.2,lol:2.8,shrug:2.2,flex:2.6,floss:3.0};
+const EM_SOFT={wave:170,vibe:150,hype:190,heart:160,robot:300,lol:170,shrug:170,flex:180,floss:210};
 function poseChar(ch, t, dt){
   if(!(dt>=0)) dt=0; if(!isFinite(t)) t=0;
   const J=ch.J;
@@ -4183,7 +4238,7 @@ function poseChar(ch, t, dt){
     const w=Math.min(1,el/.25,(D-el)/.3), sm=x=>x*x*(3-2*x), W=sm(Math.max(0,Math.min(1,w))), p=el;
     const mix=(a,b)=>a+(b-a)*W;
     switch(em.e){
-      case "wave": smile=mix(smile,0.85); brow=mix(brow,0.4); { const w=Math.sin(p*10); J.armR.rz=mix(-.03,-2.0); J.armR.rx=mix(.03,-.25); J.elbR.rz=mix(0,-1.1+w*.32); J.elbR.rx=mix(-.14,-.05); J.handR.ry=mix(.1,-1.5); J.handR.rz=mix(0,w*.15); J.head.rz=mix(0,-.08); J.chest.rz=mix(0,.05); mouthOpen=.25*W; } break;
+      case "wave_old": smile=mix(smile,0.85); brow=mix(brow,0.4); { const w=Math.sin(p*10); J.armR.rz=mix(-.03,-2.0); J.armR.rx=mix(.03,-.25); J.elbR.rz=mix(0,-1.1+w*.32); J.elbR.rx=mix(-.14,-.05); J.handR.ry=mix(.1,-1.5); J.handR.rz=mix(0,w*.15); J.head.rz=mix(0,-.08); J.chest.rz=mix(0,.05); mouthOpen=.25*W; } break;
       case "dance": smile=mix(smile,1); brow=mix(brow,0.3); { const bb=Math.sin(p*8.4), b2=Math.sin(p*4.2); rootY=-Math.abs(bb)*.05*W; J.hips.rz=b2*.12*W; J.spine.rz=-b2*.1*W; J.chest.rz=-b2*.08*W; J.head.rz=b2*.1*W; rootRY=ch.ry+b2*.3*W;
         J.armL.rz=mix(.03,.2); J.armR.rz=mix(-.03,-.2); J.armL.rx=mix(.03,-.35+bb*.4); J.armR.rx=mix(.03,-.35-bb*.4); J.elbL.rx=J.elbR.rx=mix(-.14,-1.5); J.handL.ry=mix(-.1,0); J.handR.ry=mix(.1,0);
         J.kneeL.rx=(.25+Math.max(0,bb)*.35)*W; J.kneeR.rx=(.25+Math.max(0,-bb)*.35)*W; J.legL.rx=-J.kneeL.rx*.5; J.legR.rx=-J.kneeR.rx*.5; J.ankL.rx=-J.kneeL.rx*.5; J.ankR.rx=-J.kneeR.rx*.5; mouthOpen=.45*W; } break;
@@ -4197,6 +4252,52 @@ function poseChar(ch, t, dt){
       case "cheer": smile=mix(smile,1); brow=mix(brow,1); { const bb=Math.abs(Math.sin(p*6)); rootY=bb*.12*W; J.kneeL.rx=J.kneeR.rx=(1-bb)*.35*W; J.legL.rx=J.legR.rx=-(1-bb)*.18*W; J.armL.rz=mix(.03,2.25+Math.sin(p*12)*.12); J.armR.rz=mix(-.03,-2.25-Math.sin(p*12)*.12); J.armL.rx=J.armR.rx=mix(0,-.35); J.elbL.rz=mix(0,.25); J.elbR.rz=mix(0,-.25); J.neck.rx=mix(-.02,-.22); mouthOpen=1*W; } break;
       case "dab": smile=mix(smile,0.55); brow=mix(brow,0.1); { J.armL.rz=mix(.03,2.0); J.armL.rx=mix(0,-.15); J.elbL.rz=mix(0,.1); J.armR.rz=mix(-.03,-1.0); J.armR.rx=mix(0,-1.25); J.armR.ry=mix(0,.9); J.elbR.rx=mix(-.14,-2.05); J.chest.rz=mix(0,.12); J.neck.rx=mix(0,.42); J.head.ry=mix(0,-.55); J.head.rz=mix(0,.15); J.hips.rz=mix(0,-.06); J.legL.rz=mix(.015,.18); } break;
       case "bow": smile=mix(smile,0.6); brow=mix(brow,0.2); { J.spine.rx=mix(.015,.5); J.chest.rx=mix(0,.35); J.neck.rx=mix(0,.2); J.armR.rx=mix(0,-.55); J.armR.rz=mix(-.03,.0); J.elbR.rx=mix(0,-1.5); J.armR.ry=mix(0,.6); J.armL.rx=mix(.03,.45); J.armL.rz=mix(.03,.2); J.elbL.rx=mix(0,-.6); J.hips.rx=mix(0,.1); } break;
+
+      /* modern set (Nov 2026): whole-body moves with bounce and overlap, so they read as loose rather than posed */
+      case "wave": smile=mix(smile,0.9); brow=mix(brow,0.45); { const w=Math.sin(p*9), sw=Math.sin(p*4.5), hop=Math.abs(Math.sin(p*4.5));
+        rootY=hop*.025*W; J.kneeL.rx=J.kneeR.rx=(1-hop)*.12*W; J.hips.rz=sw*.05*W; J.spine.rz=-sw*.04*W; J.chest.rz=mix(0,.07)-sw*.03*W; rootRY=ch.ry+mix(0,-.18);
+        J.armR.rz=mix(-.03,-2.1+w*.08); J.armR.rx=mix(.03,-.35); J.elbR.rz=mix(0,-.9+w*.45); J.elbR.rx=mix(-.14,-.1); J.handR.ry=mix(.1,-1.5); J.handR.rz=mix(0,w*.35);
+        J.armL.rz=mix(.03,.12); J.armL.rx=mix(.03,.1-sw*.08); J.elbL.rx=mix(-.14,-.35); J.head.rz=mix(0,-.12)+sw*.04*W; J.head.ry=mix(J.head.ry,.15); mouthOpen=.35*W; } break;
+      case "vibe": smile=mix(smile,0.85); brow=mix(brow,0.25); { const beat=p*4.2, b=Math.sin(beat*Math.PI), step=Math.sin(beat*Math.PI/2), nod=Math.abs(b);
+        rootX+=step*.11*W; rootY=-nod*.06*W; rootRY=ch.ry+step*.3*W; J.hips.rz=-step*.16*W; J.hips.ry=step*.15*W; J.spine.rz=step*.07*W; J.chest.rz=step*.06*W; J.chest.ry=-step*.12*W;
+        J.kneeL.rx=(.18+Math.max(0,step)*.35)*W; J.kneeR.rx=(.18+Math.max(0,-step)*.35)*W; J.legL.rx=-J.kneeL.rx*.45; J.legR.rx=-J.kneeR.rx*.45; J.ankL.rx=-J.kneeL.rx*.5; J.ankR.rx=-J.kneeR.rx*.5;
+        J.armL.rx=mix(.03,-.35-step*.55); J.armR.rx=mix(.03,-.35+step*.55); J.armL.rz=mix(.03,.3+nod*.15); J.armR.rz=mix(-.03,-.3-nod*.15); J.elbL.rx=mix(-.14,-1.5-nod*.3); J.elbR.rx=mix(-.14,-1.5-nod*.3); J.handL.rz=mix(0,-nod*.3); J.handR.rz=mix(0,nod*.3);
+        J.neck.rx=mix(-.02,nod*.28); J.head.rz=step*.14*W; mouthOpen=.25*W; } break;
+      case "hype": smile=mix(smile,1); brow=mix(brow,0.8); { const hop=Math.abs(Math.sin(p*6.3)), pump=.5+.5*Math.sin(p*12.6), alt=Math.sin(p*3.15)>0;
+        rootY=hop*.1*W; J.kneeL.rx=J.kneeR.rx=(1-hop)*.4*W; J.legL.rx=J.legR.rx=-(1-hop)*.2*W; J.ankL.rx=J.ankR.rx=-(1-hop)*.2*W; J.spine.rx+=(1-hop)*.08*W;
+        const up=alt?"R":"L", dn=alt?"L":"R", sg=up==="R"?-1:1;
+        J["arm"+up].rz=mix(sg*-.03,sg*(1.7+pump*.7)); J["arm"+up].rx=mix(.03,-.4); J["elb"+up].rz=mix(0,sg*(1.3-pump*1.1));
+        J["arm"+dn].rz=mix(-sg*.03,-sg*.25); J["arm"+dn].rx=mix(.03,-.5); J["elb"+dn].rx=mix(-.14,-1.7);
+        J.neck.rx=mix(-.02,-.15+hop*.15); J.chest.rz=(alt?.06:-.06)*W; mouthOpen=(.6+pump*.4)*W; } break;
+      case "heart": smile=mix(smile,1); brow=mix(brow,0.5); { const sw=Math.sin(p*3.4), lift=Math.min(1,p/.5);
+        J.armL.rz=mix(.03,2.55); J.armR.rz=mix(-.03,-2.55); J.armL.rx=J.armR.rx=mix(.03,-.12); J.elbL.rz=mix(0,1.0*lift); J.elbR.rz=mix(0,-1.0*lift); J.elbL.rx=J.elbR.rx=mix(-.14,-.15);
+        J.handL.rz=mix(0,.5); J.handR.rz=mix(0,-.5); J.handL.ry=mix(-.1,.4); J.handR.ry=mix(.1,-.4);
+        rootRY=ch.ry+sw*.12*W; J.hips.rz=sw*.06*W; J.spine.rz=-sw*.05*W; J.head.rz=-sw*.12*W+mix(0,.05); J.neck.rx=mix(-.02,-.08); rootY=Math.abs(Math.sin(p*3.4))*.02*W; mouthOpen=.15*W; } break;
+      case "robot": smile=mix(smile,0.2); brow=mix(brow,0.1); { /* slow robot: glides between held poses with big mechanical twists of the torso */
+        const R=1.5, k=Math.floor(p*R), f=(p*R)%1, e0=Math.min(1,f/.42), snap=e0*e0*(3-2*e0);
+        const POSES=[[1,0,0,0],[1,0,1,1],[0,1,-1,-1],[1,1,0,1],[0,0,-1,0]], P=POSES[k%5], pv=POSES[(k+4)%5], L=i=>pv[i]+(P[i]-pv[i])*snap;
+        const upL=L(0), upR=L(1), hd=L(2), tw=L(3);
+        J.armL.rz=mix(.03,1.5); J.armR.rz=mix(-.03,-1.5); J.armL.rx=J.armR.rx=mix(.03,0);
+        J.elbL.rz=mix(0,upL*1.57-(1-upL)*1.57); J.elbR.rz=mix(0,-(upR*1.57-(1-upR)*1.57));
+        J.handL.rz=mix(0,0); J.handR.rz=mix(0,0); J.handL.ry=mix(-.1,upL*.8); J.handR.ry=mix(.1,-upR*.8);
+        J.hips.ry=tw*.18*W; J.spine.ry=tw*.32*W; J.chest.ry=tw*.38*W; rootRY=ch.ry+tw*.22*W;
+        J.head.ry=mix(J.head.ry,-tw*.35+hd*.7); J.neck.ry=0; J.head.rz=0; J.spine.rz=0; J.hips.rz=0;
+        const dip=Math.abs(tw); J.kneeL.rx=J.kneeR.rx=(.08+dip*.22)*W; J.legL.rx=J.legR.rx=-(.04+dip*.1)*W; J.ankL.rx=J.ankR.rx=-(.04+dip*.1)*W; rootY=-dip*.03*W; mouthOpen=0; } break;
+      case "lol": smile=mix(smile,1); brow=mix(brow,0.7); { const rock=Math.sin(p*2.6), shake=Math.sin(p*22)*.5+.5, back=Math.max(0,rock), fwd=Math.max(0,-rock);
+        J.spine.rx=mix(.015,-.2*back+.5*fwd); J.chest.rx=mix(0,-.12*back+.3*fwd)+shake*.05*W; J.neck.rx=mix(-.02,-.45*back+.1*fwd); rootRY=ch.ry+rock*.15*W; J.chest.sy+=shake*.02*W; rootY=-fwd*.03*W+shake*.008*W;
+        J.armR.rx=mix(.03,-.55); J.armR.ry=mix(0,.55); J.armR.rz=mix(-.03,-.1); J.elbR.rx=mix(-.14,-1.75); J.handR.ry=mix(.1,.6);
+        J.armL.rx=mix(.03,-.2+fwd*.9); J.armL.rz=mix(.03,.3+back*.6); J.elbL.rx=mix(-.14,-.4-fwd*.3); J.elbL.rz=mix(0,back*.8); J.kneeL.rx=J.kneeR.rx=fwd*.4*W; J.legL.rx=J.legR.rx=-fwd*.15*W; J.head.rz=rock*.1*W; mouthOpen=(.7+shake*.3)*W; } break;
+      case "shrug": smile=mix(smile,0.4); brow=mix(brow,0.9); { const q=Math.sin(Math.min(1,p/1.6)*Math.PI), qq=q*q*(3-2*q), bob=Math.sin(p*7)*.5+.5;
+        J.armL.rz=mix(.03,.2+.25*qq); J.armR.rz=mix(-.03,-.2-.25*qq); J.armL.rx=J.armR.rx=mix(.03,-.15); J.elbL.rx=J.elbR.rx=mix(-.14,-1.5*qq-.2); J.handL.ry=mix(-.1,-1.4*qq); J.handR.ry=mix(.1,1.4*qq); J.handL.rz=mix(0,.4*qq); J.handR.rz=mix(0,-.4*qq);
+        J.chest.sy+=.05*qq*W; J.neck.rx=mix(-.02,.08*qq); J.head.rz=mix(0,.22*qq); J.head.ry=mix(J.head.ry,-.15*qq); J.hips.rz=mix(0,.06*qq); rootY=.02*qq*bob*W; J.kneeR.rx=.15*qq*W; J.legR.rx=-.05*qq*W; mouthOpen=.1*W; } break;
+      case "flex": smile=mix(smile,0.7); brow=mix(brow,0.5); { const tw=Math.sin(p*3.6), sq=.5+.5*Math.sin(p*7.2), hop=Math.abs(Math.sin(p*3.6));
+        J.armL.rz=mix(.03,1.45+tw*.12); J.armR.rz=mix(-.03,-1.45+tw*.12); J.armL.rx=J.armR.rx=mix(.03,-.15); J.elbL.rz=mix(0,1.7+sq*.15); J.elbR.rz=mix(0,-1.7-sq*.15); J.handL.rz=mix(0,.3); J.handR.rz=mix(0,-.3);
+        J.chest.rx=mix(0,-.12); J.chest.sy+=.04*W; J.chest.ry=tw*.22*W; J.spine.ry=tw*.1*W; rootRY=ch.ry+tw*.15*W; J.neck.rx=mix(-.02,-.1); J.head.ry=mix(J.head.ry,-tw*.2);
+        J.kneeL.rx=J.kneeR.rx=(.15+(1-hop)*.15)*W; J.legL.rz=mix(.015,.12); J.legR.rz=mix(-.015,-.12); rootY=-.02*W; mouthOpen=.15*W; } break;
+      case "floss": smile=mix(smile,0.95); brow=mix(brow,0.4); { const ph=p*7.5, s=Math.sin(ph), c=Math.cos(ph*2), hp=-s;
+        J.armL.rz=mix(.03,.3-s*.7); J.armR.rz=mix(-.03,-.3-s*.7); J.armL.rx=mix(.03,c*.85); J.armR.rx=mix(.03,-c*.85); J.elbL.rx=J.elbR.rx=mix(-.14,-.08); J.handL.ry=mix(-.1,0); J.handR.ry=mix(.1,0);
+        rootX+=hp*.1*W; J.hips.rz=hp*.24*W; J.spine.rz=-hp*.1*W; J.chest.rz=-hp*.06*W; J.kneeL.rx=(.15+Math.max(0,hp)*.2)*W; J.kneeR.rx=(.15+Math.max(0,-hp)*.2)*W;
+        J.legL.rz=mix(.015,.08); J.legR.rz=mix(-.015,-.08); J.head.rz=s*.06*W; J.neck.rx=mix(-.02,.06); rootY=-Math.abs(c)*.02*W; mouthOpen=.4*W; } break;
     } } }
   const hs=HEAD_S, chat=(ex.chat||0)*Math.max(0,Math.sin(T*9.3)*.5+Math.sin(T*5.1)*.5);
   const op=Math.max(ex.open+chat*.35, mouthOpen*.6+ex.open*.4); J.jaw.rx=Math.min(1,op)*.36; ch.mouthOp=Math.min(1,op);
@@ -4208,7 +4309,7 @@ function poseChar(ch, t, dt){
   if(ex.lookUp>.3){ ch.lookTarget=[.15,-.25]; }
   J.head.rz+=ex.asym*.06; J.neck.rx-=ex.brow*.03;
   /* follow-through: joints chase their target pose like real limbs (a little lag and settle) instead of snapping to it */
-  if(dt>0 && dt<.2){ const S=ch.spr||(ch.spr={}), K=ch.emote?260:110, C=2*.62*Math.sqrt(K), h=Math.min(dt,.05);
+  if(dt>0 && dt<.2){ const S=ch.spr||(ch.spr={}), K=ch.emote?(EM_SOFT[ch.emote.e]||260):110, C=2*.62*Math.sqrt(K), h=Math.min(dt,.05);
     for(const n of ["spine","chest","neck","head","armL","armR","elbL","elbR","handL","handR"]){ const j=J[n], st=S[n]||(S[n]={rx:[j.rx,0],ry:[j.ry,0],rz:[j.rz,0]});
       for(const ax of ["rx","ry","rz"]){ const q=st[ax], tg=j[ax]; for(let it=0;it<2;it++){ const hh=h/2, acc=K*(tg-q[0])-C*q[1]; q[1]+=acc*hh; q[0]+=q[1]*hh; } j[ax]=q[0]; } } }
   J.root.off=[ch.x+rootX, rootY+(ch.lift||0), ch.z]; J.root.ry=rootRY;
@@ -7773,7 +7874,10 @@ function renderStage(){
 
   updateLive();
 }
-const EMOTES=[["wave","Wave"],["dance","Dance"],["jump","Jump"],["clap","Clap"],["spin","Spin"],["cheer","Cheer"],["dab","Dab"],["bow","Bow"]], EMO_IDS=EMOTES.map(e=>e[0]);
+/* emote bar (Nov 2026 refresh): looser, more modern moves. The older ids stay valid (podium celebrations and older clients still send them) */
+const EMOTES=[["wave","Hi","👋"],["vibe","Vibe","🎶"],["hype","Hype","🔥"],["robot","Robot","🤖"],["lol","LOL","😂"],["shrug","Shrug","🤷"],["flex","Flex","💪"],["floss","Floss","🕺"]],
+  EMO_IDS=["wave","dance","jump","clap","spin","cheer","dab","bow","vibe","hype","heart","robot","lol","shrug","flex","floss"],
+  EMO_2D={vibe:"dance",hype:"jump",heart:"wave",robot:"bow",lol:"dance",shrug:"bow",flex:"cheer",floss:"dance"};
 const EMO_ICON={
   wave:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12m0-1V4.5a1.5 1.5 0 0 1 3 0V12m0-6.5a1.5 1.5 0 0 1 3 0V13a7 7 0 0 1-7 7h-.5A6.5 6.5 0 0 1 4 15.5L3.3 13a1.5 1.5 0 0 1 2.6-1.4L8 14"/></svg>',
   dance:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
@@ -7784,7 +7888,7 @@ const EMO_ICON={
   bow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="8" r="2.5"/><path d="M4 7l8 5 2 0M12 12l-1 9M12 12l4 9M8 10l2 5"/></svg>',
   cheer:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="6" r="2.5"/><path d="M5 3l4 7h6l4-7M9 10l-1 11M15 10l1 11"/></svg>'
 };
-function emoteBarHTML(){ const big=Room.ok!==false && BIG.on; return `<div class="emotes" role="group" aria-label="Emotes">${EMOTES.map(e=>`<button type="button" class="emo" data-act="emote" data-e="${e[0]}">${EMO_ICON[e[0]]}<span>${e[1]}</span></button>`).join("")}</div>${Room.ok!==false?`<div class="bigrow"><button type="button" class="bigtog" data-act="bighead" aria-pressed="${big}"><span class="sw" aria-hidden="true"></span>Big heads</button></div>`:""}`; }
+function emoteBarHTML(){ const big=Room.ok!==false && BIG.on; return `<div class="emotes" role="group" aria-label="Emotes">${EMOTES.map(e=>`<button type="button" class="emo" data-act="emote" data-e="${e[0]}"><span class="ei" aria-hidden="true">${e[2]}</span><span>${e[1]}</span></button>`).join("")}</div>${Room.ok!==false?`<div class="bigrow"><button type="button" class="bigtog" data-act="bighead" aria-pressed="${big}"><span class="sw" aria-hidden="true"></span>Big heads</button></div>`:""}`; }
 function stageHTML(caption){ if(Room.init()) return `<div class="room3d" id="room3d"></div><div class="lstage-cap" id="lcap">${caption}</div>${emoteBarHTML()}`; return `<div class="lstage-wrap"><div class="lstage" id="lstage"></div><div class="lstage-floor"></div></div><div class="lstage-cap" id="lcap">${caption}</div>${emoteBarHTML()}`; }
 const figEls={}, figEmo={};
 function renderLobbyStage(){
@@ -7813,7 +7917,7 @@ function renderLobbyStage(){
   });
   for(const pid in figEls) if(!keep.has(pid)){ figEls[pid].remove(); delete figEls[pid]; }
 }
-function playEmote(f, e){ if(!EMO_IDS.includes(e) || RM) return; EMO_IDS.forEach(x=>f.classList.remove("e-"+x)); void f.offsetWidth; f.classList.add("e-"+e); clearTimeout(f._et); f._et=setTimeout(()=>f.classList.remove("e-"+e), 2800); }
+function playEmote(f, e){ if(!EMO_IDS.includes(e) || RM) return; e=EMO_2D[e]||e; EMO_IDS.forEach(x=>f.classList.remove("e-"+x)); void f.offsetWidth; f.classList.add("e-"+e); clearTimeout(f._et); f._et=setTimeout(()=>f.classList.remove("e-"+e), 2800); }
 let lastEmote=0;
 function sendEmote(e){ if(!EMO_IDS.includes(e) || Date.now()-lastEmote<500) return; lastEmote=Date.now(); setMyPresence({emo:{e, t:Date.now()}}); renderLobbyStage(); }
 /* ---------- ready-up: the game and every round start once everyone has tapped Ready (bots are always ready) ---------- */
