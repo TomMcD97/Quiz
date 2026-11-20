@@ -996,7 +996,7 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .rep-row{display:flex;justify-content:center;margin-top:10px}.rep-btn{background:transparent;border:0;color:var(--muted);font:inherit;font-size:12px;padding:8px 10px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .rep-sheet{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:grid;place-items:end center;padding:16px max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .rep-card{width:min(460px,100%);background:var(--panel,#111);border:1px solid var(--line);border-radius:18px;padding:18px;display:grid;gap:10px}.rep-card p{margin:0;font-size:13px}.rep-opts{display:grid;gap:8px}
-.lg{border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:4px;margin-bottom:10px}
+.lgcard{border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:4px;margin-bottom:10px}
 .lg-h{display:flex;justify-content:space-between;gap:8px;align-items:baseline;margin-bottom:4px}.lg-h .muted{font-size:12px}
 .lg-cols,.lg-r{display:grid;grid-template-columns:1fr 64px 64px;gap:6px;align-items:center;font-size:14px}.lg-cols{font-size:11px;text-transform:uppercase;letter-spacing:.08em}.lg-cols span,.lg-r>b,.lg-r>span:last-child{text-align:right}
 .lg-r{padding:5px 0;border-top:1px solid var(--line)}.lg-r.me{color:var(--acc)}.lg-r .rk{display:inline-block;width:20px;color:var(--muted)}
@@ -3366,6 +3366,7 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -7063,9 +7064,9 @@ async function loadLeagues(){ const el=$("#homeleague"); if(!el||lgBusy) return;
     el.innerHTML=`<p class="muted" style="font-size:13px;margin:0">Loading your leagues…</p>`;
     const days=weekDays(), today=days[days.length-1], all=app.db?await Promise.all(days.map(dayScores)):days.map(()=>[]);
     for(const code of codes){ const L=app.db?await leagueDoc(code):null; const mine=L&&L.members&&L.members[leagueId()], nm=String(me.nick||(app.acct&&app.acct.name)||"").slice(0,18);
-      if(L && mine && nm && mine!==nm){ L.members[leagueId()]=nm; try{ await app.db.doc("leagues/"+code).set(L); }catch(e){} } if(!L){ h+=`<div class="lg"><div class="lg-h"><b>${esc(code)}</b><span class="muted">couldn't load</span></div></div>`; continue; }
+      if(L && mine && nm && mine!==nm){ L.members[leagueId()]=nm; try{ await app.db.doc("leagues/"+code).set(L); }catch(e){} } if(!L){ h+=`<div class="lgcard"><div class="lg-h"><b>${esc(code)}</b><span class="muted">couldn't load</span></div></div>`; continue; }
       const ids=Object.keys(L.members||{}), rows=ids.map(id=>{ let wk=0, td=null; all.forEach((D,i)=>{ const r=D.find(x=>x.id===id); if(r){ wk+=Number(r.score)||0; if(days[i]===today) td=Number(r.score)||0; } }); return {id, nick:L.members[id], wk, td}; }).sort((a,b)=>(b.td??-1)-(a.td??-1)||b.wk-a.wk);
-      h+=`<div class="lg"><div class="lg-h"><b>${esc(L.name)}</b><span class="muted num">${esc(code)} · ${ids.length} player${ids.length===1?"":"s"}</span></div>
+      h+=`<div class="lgcard"><div class="lg-h"><b>${esc(L.name)}</b><span class="muted num">${esc(code)} · ${ids.length} player${ids.length===1?"":"s"}</span></div>
         <div class="lg-cols muted"><span></span><span>Today</span><span>Week</span></div>
         ${rows.map((r,i)=>`<div class="lg-r ${r.id===myScoreId()?"me":""}"><span><span class="rk">${i+1}</span>${esc(String(r.nick).slice(0,18))}</span><b class="num">${r.td==null?`<span class="muted">–</span>`:r.td.toLocaleString("en-GB")}</b><span class="num">${r.wk.toLocaleString("en-GB")}</span></div>`).join("")}
         <div class="row" style="margin-top:8px"><button class="btn small" data-act="lgshare" data-code="${esc(code)}" data-name="${esc(L.name)}">Invite</button><button class="btn ghost small" data-act="lgleave" data-code="${esc(code)}">Leave</button></div></div>`; }
