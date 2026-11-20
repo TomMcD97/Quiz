@@ -915,6 +915,7 @@ h1,h2,.ri,.daily-card .date,.scoreline{text-transform:none;letter-spacing:-.035e
 .mega .o{color:#5E5E66;-webkit-text-stroke:0}
 .daily-card{background:#0F0F11}
 .daily-card::after{border-color:rgba(255,255,255,.06)}
+.daily-card::after{pointer-events:none;z-index:0}.daily-card>*{position:relative;z-index:1}
 .btn{font-family:var(--f-body);font-size:14px;font-weight:600;letter-spacing:0;text-transform:none;border-radius:999px;padding:12px 22px}
 .btn.ghost{padding-inline:8px}
 .chip{border-radius:999px;font-family:var(--f-body);letter-spacing:0;text-transform:none;font-weight:600;font-size:12px}
@@ -948,6 +949,38 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .lobby-code .code{text-shadow:none}
 .room3d{border-radius:var(--r);border:1px solid var(--line)}
 .home3d{height:clamp(240px,62vw,340px)!important;margin:18px 0 0!important}
+.av-drop{border:1px solid var(--line);border-radius:16px;background:var(--panel-2,transparent)}
+.av-drop>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:10px 14px 10px 10px}
+.av-drop>summary::-webkit-details-marker{display:none}
+.avcur{width:46px;height:46px;border-radius:50%;overflow:hidden;flex:0 0 46px;display:grid;place-items:center;border:2px solid var(--acc)}
+.avcur svg,.avcur img,.avcur .avimg{width:100%;height:100%}
+.avd-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.avd-t b{font-size:15px}.avd-t small{font-size:12px;color:var(--muted)}
+.avd-chev{font-size:14px;color:var(--muted);transition:transform .2s}.av-drop[open] .avd-chev{transform:rotate(180deg)}
+.avd-in{padding:4px 12px 14px}
+/* daily first on phones and tablets, so it's the first thing you see */
+@media (max-width:860px){.hero>.daily-card{order:-1;margin-bottom:16px}}
+.daily-card{border:1px solid var(--acc)!important;box-shadow:0 0 0 1px color-mix(in srgb,var(--acc) 25%,transparent),0 18px 60px -30px var(--acc)}
+/* compact daily box: two small tiles side by side, leaderboards live on the results screens */
+.daily-card.dc-compact{padding:16px!important;gap:12px;align-self:start}
+.dc-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.dc-date{font-weight:700;font-size:14px}
+.dc-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dc-tile{border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.dc-tile>b{font-size:16px}.dc-tile>small{font-size:12px;color:var(--muted);line-height:1.3}
+.dc-tile>div[id]{margin-top:auto}.dc-tile .row{flex-direction:column;align-items:stretch;gap:6px;margin-top:6px}
+.dc-tile .btn{width:100%;justify-content:center;padding:9px 12px;font-size:14px}
+.dc-tile .scoreline{font-size:26px!important;line-height:1}.dc-tile .scoreline .muted{font-size:12px!important}
+.dc-tile .muted{font-size:12px}.dc-streak{text-align:center}
+.htabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;margin:0 0 16px;border:1px solid var(--line);border-radius:999px;background:var(--bg,#000)}
+.htabs button{border:0;background:transparent;color:var(--muted);font:inherit;font-weight:700;font-size:15px;min-height:44px;border-radius:999px;cursor:pointer;touch-action:manipulation}
+.htabs button[aria-selected="true"]{background:var(--acc);color:#000}
+.hero.htab-one{grid-template-columns:1fr!important}.hero.htab-one>.daily-card{order:0!important;margin-bottom:0!important}
+.htab-stats .stats-sec{display:grid;gap:14px}
+.hjoin{margin-top:16px;padding:16px!important;display:grid;gap:10px}
+.hjoin-row{display:flex;gap:8px;flex-wrap:wrap}.hjoin-row #nick{flex:1 1 100%}.hjoin-row #joincode{flex:1 1 0;min-width:0;text-transform:uppercase;letter-spacing:.25em}.hjoin-row .btn{flex:0 0 auto}
+.dc-lb{display:grid;gap:10px}.dc-lbin{display:grid;gap:10px}.dc-lbin[hidden]{display:none}.dc-lbtog{justify-self:start}
+.dc-tabs{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:999px;padding:3px;gap:3px}
+.dc-tabs button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:14px;font-weight:600;min-height:42px;padding:8px 10px;border-radius:999px;cursor:pointer;touch-action:manipulation}
+.dc-tabs button[aria-selected="true"]{background:var(--acc);color:#000}
 .home-stats{margin-top:18px;display:grid;gap:14px}
 .hs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
 .hs-c{border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -3289,6 +3322,15 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -6420,6 +6462,7 @@ function avPush(){ const id=LS.get("sq-av-sync"); if(!id || !app.acct || !window
 function avEverywhere(){
   if(app.view==="home") try{ renderHomeStage(); }catch(e){}
   if(app.party){ setMyPresence({av:me.av}); try{ sharePhoto(); }catch(e){} renderBoard(); try{ renderLobbyStage(); }catch(e){} if(S && ["intro","roundEnd","final"].includes(S.phase)){ stageKey=""; renderStage(); } }
+  document.querySelectorAll(".avcur").forEach(el=>{ el.innerHTML=avSVG(me.av||AVATARS[0]); });
   document.querySelectorAll("#avpick").forEach(pk=>{ const tmp=document.createElement("div"); tmp.innerHTML=avPickerHTML(); pk.replaceWith(...tmp.childNodes); });
   try{ AVR.png.clear(); }catch(e){}
 }
@@ -6850,18 +6893,20 @@ function render(){
 /* home page: your avatar standing on the studio stage, so the first screen shows the look you'll play with */
 function renderHomeStage(){ if(app.view!=="home") return; const r3=$("#room3d"); if(!r3 || !Room.attach(r3)) return;
   const av=me.av||AVATARS[0]; Room.sync([{pid:me.pid, av, label:(me.nick||"You"), me:true, color:pcol(me.pid), ph:photoOf(me.pid,av)}]); Room.setPodium(null); Room.setBoard("", "Pick your look below, then host or join", "Ready when you are"); }
-function homeHTML(){
-  const rp = ROUND_ORDER.map(t=>`<div class="rp">${ICON[t]}<b>${RT[t].name}</b><span>${esc(RT[t].short)}</span></div>`).join("");
-  return `
-  <div class="hero">
+/* HOME_TABS (trial, separate test version): Daily / Party / Stats tabs instead of one long page */
+var HOME_TABS=true;
+function homeNarrow(){ try{ return matchMedia("(max-width:860px)").matches; }catch(e){ return true; } }
+try{ matchMedia("(max-width:860px)").addEventListener("change", ()=>{ if(HOME_TABS && app.view==="home") render(); }); }catch(e){}
+const HTABS=[["daily","Daily"],["party","Party"],["stats","Stats"]];
+function homePartyHTML(){ return `
     <section class="panel hero-main">
-      <div class="eyebrow">01 — Party mode</div>
+      <div class="eyebrow">Party mode</div>
       <h1 class="mega"><span>Your friends.</span><span class="o">Your rounds.</span><span>One spotlight<i>.</i></span></h1>
       <p>Host a party, pick from eleven rounds and play live on your own phones.</p>
       ${Room.init()?`<div class="room3d home3d" id="room3d"></div>`:""}
       <div style="display:grid;gap:16px;margin-top:22px;position:relative">
         <div class="field"><label for="nick">Your name</label><input class="input" id="nick" maxlength="18" placeholder="e.g. Sam" value="${esc(me.nick)}" autocomplete="nickname"></div>
-        <div class="field"><label>Your avatar</label>${avPickerHTML()}</div>
+        <details class="av-drop"${app.homeLookOpen?" open":""}><summary><span class="avcur" aria-hidden="true">${avSVG(me.av||AVATARS[0])}</span><span class="avd-t"><b>Your avatar</b><small>Tap to change your look</small></span><span class="avd-chev" aria-hidden="true">▾</span></summary><div class="avd-in">${avPickerHTML()}</div></details>
         <div class="row">
           <button class="btn primary" data-act="host">Host a party</button>
           <button class="btn" data-act="solo" title="Play on your own against computer players">Play vs bots</button>
@@ -6869,19 +6914,32 @@ function homeHTML(){
         </div>
         <div id="parties" class="parties"></div>
       </div>
-    </section>
-    <section class="panel daily-card" id="dailycard">
-      <div class="eyebrow">02 — Daily</div>
-      <div class="date">${new Date().toLocaleDateString("en-GB",{weekday:"long", day:"numeric", month:"long"})}</div>
-      <p class="muted" style="margin:0">Fifteen questions, the same for everyone. Answer fast: points count down.</p>
-      <div id="dailyinfo"></div>
-      <div class="dgsep"></div>
-      <div class="eyebrow">Daily word grid</div>
-      <p class="muted" style="margin:0">One grid for everyone today. Find as many words as you can in 60 seconds.</p>
-      <div id="gridinfo"></div>
-    </section>
+    </section>`; }
+function homeDailyHTML(){ return `
+    <section class="panel daily-card dc-compact" id="dailycard">
+      <div class="dc-head"><span class="eyebrow">Today's daily</span><span class="dc-date">${new Date().toLocaleDateString("en-GB",{weekday:"short", day:"numeric", month:"short"})}</span></div>
+      <div class="dc-tiles">
+        <div class="dc-tile"><b>Daily quiz</b><small>15 questions, same for everyone</small><div id="dailyinfo"></div></div>
+        <div class="dc-tile"><b>Word grid</b><small>60 seconds, one grid</small><div id="gridinfo"></div></div>
+      </div>
+      <div class="dc-lb"><button type="button" class="bigtog dc-lbtog" data-act="dclbshow" aria-pressed="${!LS.get("sq-dclb-off")}"><span class="sw" aria-hidden="true"></span>Show leaderboard</button><div class="dc-lbin"${LS.get("sq-dclb-off")?" hidden":""}><div class="dc-tabs" role="tablist"><button type="button" role="tab" data-act="dclb" data-v="q" aria-selected="${app.dcTab!=="g"}">Quiz leaderboard</button><button type="button" role="tab" data-act="dclb" data-v="g" aria-selected="${app.dcTab==="g"}">Grid leaderboard</button></div><div id="homelb"${app.dcTab==="g"?" hidden":""}></div><div id="homegridlb"${app.dcTab==="g"?"":" hidden"}></div></div></div>
+    </section>`; }
+function homeRoundsHTML(){ return `<div class="rounds-preview">${ROUND_ORDER.map(t=>`<div class="rp">${ICON[t]}<b>${RT[t].name}</b><span>${esc(RT[t].short)}</span></div>`).join("")}</div>`; }
+function homeHTML(){
+  if(HOME_TABS && homeNarrow()){ const tab=HTABS.some(t=>t[0]===app.homeTab)?app.homeTab:(LS.get("sq-htab")||"party"); /* first visit opens on Party; after that, the tab you used last */
+    const bar=`<nav class="htabs" role="tablist" aria-label="Home">${HTABS.map(([k,l])=>`<button type="button" role="tab" data-act="htab" data-v="${k}" aria-selected="${k===tab}">${l}</button>`).join("")}</nav>`;
+    let inner="";
+    if(tab==="daily") inner=`<div class="hero htab-one">${homeDailyHTML()}</div>
+      <section class="panel hjoin"><div class="eyebrow">Got a party code?</div><div class="hjoin-row">${me.nick?"":`<input class="input" id="nick" maxlength="18" placeholder="Your name" aria-label="Your name" autocomplete="nickname">`}<input class="input" id="joincode" maxlength="4" placeholder="CODE" aria-label="Party code"><button class="btn primary" data-act="join">Join</button></div></section>`;
+    else if(tab==="party") inner=`<div class="hero htab-one">${homePartyHTML()}</div>${homeRoundsHTML()}`;
+    else inner=`<div class="htab-stats">${statsHTML()}</div>`;
+    return bar+inner+`${window.SQ_STANDALONE?"":`<p class="foot">To play together, invite friends to this page by email from Share. People who open it through a public link can't join live parties. Invite them as Editors if you want their daily scores on the leaderboard.</p>`}`; }
+  return `
+  <div class="hero">
+${homePartyHTML()}
+${homeDailyHTML()}
   </div>
-  <div class="rounds-preview">${rp}</div>
+  ${homeRoundsHTML()}
   ${window.SQ_STANDALONE?"":`<p class="foot">To play together, invite friends to this page by email from Share. People who open it through a public link can't join live parties. Invite them as Editors if you want their daily scores on the leaderboard.</p>`}`;
 }
 
@@ -6899,12 +6957,11 @@ async function loadHomeDaily(){
   const streak=calcStreak();
   let h = "";
   if(mine){ h += `<div class="row"><div class="scoreline num">${mine.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts</span></div><div class="muted">You've played today.${streak>1?` ${streak}-day streak.`:""}</div></div><div class="row"><button class="btn" data-act="dailyresult">See results</button></div>`; }
-  else h += `<div class="row"><button class="btn spot" data-act="daily">Play today's quiz</button>${streak?`<span class="muted">${streak}-day streak</span>`:""}</div>`;
-  h += `<div id="homelb"></div>`;
+  else h += `<div class="row"><button class="btn spot" data-act="daily">Play</button>${streak?`<span class="muted dc-streak">${streak}-day streak</span>`:""}</div>`;
   el.innerHTML = h;
   if(app.db) subscribeDailyLB(key, "#homelb", 10);
   const gi=$("#gridinfo"); if(gi){ const g=LS.get(DG_LS+key);
-    gi.innerHTML = (g ? `<div class="row"><div class="scoreline num">${Number(g.score||0).toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts · ${g.n} word${g.n===1?"":"s"}</span></div></div><div class="row"><button class="btn" data-act="dgrid">See results</button></div>` : `<div class="row"><button class="btn spot" data-act="dgrid">Play today's grid</button></div>`) + `<div id="homegridlb"></div>`;
+    gi.innerHTML = (g ? `<div class="row"><div class="scoreline num">${Number(g.score||0).toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts · ${g.n} word${g.n===1?"":"s"}</span></div></div><div class="row"><button class="btn" data-act="dgrid">See results</button></div>` : `<div class="row"><button class="btn spot" data-act="dgrid">Play</button></div>`);
     if(app.db) subscribeLB(`${DG_DB}/${key}/scores`, "#homegridlb", 10, "Today's grid leaderboard"); }
 }
 const DQ_SALT=131; const DAY0=Math.floor(Date.UTC(2026,10,19)/864e5)+DQ_SALT; /* 19 Nov 2026: fresh daily pack starts today */ /* -1: the 16 Nov afternoon reset moves every pool on one step */ /* 16 Nov 2026: start of the current daily pack order */ /* moves every pool's daily position on, so a reset gives a completely fresh set */
@@ -9428,6 +9485,9 @@ document.addEventListener("click", async e=>{
   if(a==="leave"){ leaveParty(); return; }
   if(a==="ready" && S && (S.phase==="lobby"||S.phase==="intro")){ const k=rdyKey(); setMyPresence({rdy: myPres.rdy===k?null:k}); if(S.phase==="lobby") lbLive(); else rdyLive(); if(app.isHost) hostTick(); return; }
   if(a==="emote"){ sendEmote(b.dataset.e); return; }
+  if(a==="dclbshow"){ const off=!LS.get("sq-dclb-off"); LS.set("sq-dclb-off", off?1:null); b.setAttribute("aria-pressed", String(!off)); const w=$(".dc-lbin"); if(w) w.hidden=off; return; }
+  if(a==="htab"){ app.homeTab=b.dataset.v; LS.set("sq-htab", app.homeTab); render(); window.scrollTo(0,0); return; }
+  if(a==="dclb"){ app.dcTab=b.dataset.v; const g=app.dcTab==="g"; const q=$("#homelb"), gr=$("#homegridlb"); if(q) q.hidden=g; if(gr) gr.hidden=!g; document.querySelectorAll('[data-act="dclb"]').forEach(x=>x.setAttribute("aria-selected", String(x.dataset.v===app.dcTab))); return; }
   if(a==="bighead"){ BIG.set(!BIG.on); document.querySelectorAll('[data-act="bighead"]').forEach(x=>x.setAttribute("aria-pressed",String(BIG.on))); document.querySelectorAll("img[data-pav]").forEach(im=>{ const u=Portrait.get(im.dataset.pav); im.src=u||(im.dataset.flat?im.src:avURI(im.dataset.pav)); im.classList.toggle("r3",!!u); }); return; }
   if(a==="maker"){ if(document.getElementById("mkmodal")) closeMaker(); else { app.mkOpen=true; app.mk=null; mkState(); openMaker(); } return; }
   if(a==="mktab"){ app.mkTab=b.dataset.tab; renderMaker(); const bd=document.getElementById("mkbody"); if(bd) bd.scrollTop=0; return; }
@@ -9503,7 +9563,7 @@ document.addEventListener("keydown", e=>{
   if(!e.target.closest("input") && S && S.phase==="q" && S.q.t==="hl" && !myAns && app.view==="party"){ if(e.key==="ArrowUp"||e.key.toLowerCase()==="h"){ e.preventDefault(); submitAnswer(0); } if(e.key==="ArrowDown"||e.key.toLowerCase()==="l"){ e.preventDefault(); submitAnswer(1); } }
 });
 document.addEventListener("change", e=>{ const t=e.target; if(t && t.id==="mkface" && t.files && t.files[0]){ faceEditorOpen(t.files[0]); t.value=""; } else if(t && t.id==="mkphoto" && t.files && t.files[0]){ avatarFromPhoto(t.files[0]); t.value=""; } else if(t && t.dataset && t.dataset.mk){ app.mk[t.dataset.mk]= t.type==="checkbox"?t.checked:t.value; renderMaker(); } });
-document.addEventListener("toggle", e=>{ const t=e.target; if(t && t.classList && t.classList.contains("lb-look")) app.lookOpen=t.open; }, true);
+document.addEventListener("toggle", e=>{ const t=e.target; if(t && t.classList && t.classList.contains("lb-look")) app.lookOpen=t.open; if(t && t.classList && t.classList.contains("av-drop")) app.homeLookOpen=t.open; }, true);
 document.addEventListener("keydown", e=>{ if(e.key==="Escape" && document.getElementById("mkmodal")) closeMaker(); if(e.key==="Escape" && document.getElementById("acctmodal")) closeAcct(); });
 document.addEventListener("input", e=>{
   const id=e.target.id;
