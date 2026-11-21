@@ -3611,6 +3611,7 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -7168,7 +7169,8 @@ function dailyPopHTML(q,g){ const key=todayKey(), tile=(name,sub,done,act,sc)=>`
   ${tile("Word grid","60 seconds, one grid",!!g,"dgrid",g&&g.score)}
   ${streak?`<p class="muted">${q?`${streak}-day streak`:`Play today to keep your ${streak}-day streak`}</p>`:""}
   <button class="btn" data-act="dpop" data-v="later">Maybe later</button></div></div>`; }
-function maybeDailyPop(){ try{ if(app.view!=="home" || $("#howto") || $("#dpop") || document.querySelector(".rep-sheet")) return;
+const DAILY_POP=false; /* 21 Nov 2026: pop-up switched off */
+function maybeDailyPop(){ try{ if(!DAILY_POP || app.view!=="home" || $("#howto") || $("#dpop") || document.querySelector(".rep-sheet")) return;
     if(/[?&](join|tv|league)=|#(join|tv|league)-/i.test(location.search+location.hash)) return;
     const key=todayKey(); if(LS.get("sq-dpop-"+key)) return;
     const q=LS.get(DQ_LS+key), g=LS.get(DG_LS+key); if(q && g) return;
