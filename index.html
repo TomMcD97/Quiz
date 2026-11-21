@@ -1008,7 +1008,7 @@ body.tvmode .emotes,body.tvmode .bigrow,body.tvmode .lb-go,body.tvmode .hostcfg,
 body.tvmode .opts,body.tvmode .hl-btns,body.tvmode .rk,body.tvmode .mf-grid,body.tvmode .map,body.tvmode input{pointer-events:none}
 body.tvmode .lb-invite{max-width:520px}body.tvmode .inv-qr{width:220px;height:220px;flex-basis:220px}
 .inv-tv{font-size:12px;margin:4px 0 0}
-.howto{place-items:center}.ht-s{display:grid;grid-template-columns:32px 1fr;gap:10px;align-items:start}.ht-s>span{width:32px;height:32px;border-radius:50%;background:var(--acc);color:#000;display:grid;place-items:center;font-weight:800}.ht-s p{margin:2px 0 0;font-size:14px}
+.howto{place-items:center}.dpop{place-items:center}.dp-head{display:flex;justify-content:space-between;align-items:baseline}.dp-tile{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:14px}.dp-tile>div{display:grid;gap:2px;min-width:0}.dp-tile small{font-size:13px}.dp-tile.done{opacity:.7}.dp-done{font-weight:700;color:var(--acc);white-space:nowrap}.ht-s{display:grid;grid-template-columns:32px 1fr;gap:10px;align-items:start}.ht-s>span{width:32px;height:32px;border-radius:50%;background:var(--acc);color:#000;display:grid;place-items:center;font-weight:800}.ht-s p{margin:2px 0 0;font-size:14px}
 .home2d{margin-top:18px;border:1px solid var(--line);border-radius:var(--r,16px);height:200px;display:grid;place-items:center;background:radial-gradient(circle at 50% 70%,rgba(255,255,255,.08),transparent 60%),#050507}.h2-av{width:120px;height:120px;border-radius:50%;overflow:hidden;border:3px solid var(--acc)}.h2-av svg,.h2-av img,.h2-av .avimg{width:100%;height:100%}
 .htabs{display:flex!important}.htabs>button{flex:1 0 auto}.htabs button{font-size:clamp(12px,3.4vw,14px)!important;letter-spacing:-.01em;padding:0 8px!important;white-space:nowrap}.htabs{gap:2px!important;padding:3px!important}
 .rep-btn[hidden],[hidden].rep-btn{display:none!important}
@@ -3376,6 +3376,9 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -6947,7 +6950,16 @@ const MUSIC=(()=>{
     urgent=u; setTrack(on&&!sfxOnly?want:null);
   }
   ["pointerdown","keydown","touchstart"].forEach(ev=>document.addEventListener(ev, unlock, {passive:true}));
-  return {sync, setOn, cycle, isOn:()=>on, syncBtn, state:()=>({track, urgent, ctx:ctx?ctx.state:null, t:ctx?+ctx.currentTime.toFixed(1):0})};
+  /* stop all sound when you leave: iPhones otherwise keep showing the page as playing audio.
+     sleep() pauses the silent keeper and suspends the audio engine; the next tap (or coming back mid-game) wakes it */
+  let idleT=null;
+  function sleep(){ clearTimeout(idleT); idleT=null; if(timer){ clearInterval(timer); timer=null; } if(keeper){ try{ keeper.pause(); }catch(e){} } if(ctx && ctx.state==="running") ctx.suspend().catch(()=>{}); try{ if(navigator.mediaSession) navigator.mediaSession.playbackState="none"; }catch(e){} }
+  function wake(){ if(!on || document.hidden) return; unlock(); }
+  document.addEventListener("visibilitychange",()=>{ if(document.hidden) sleep(); else if(track) wake(); });
+  window.addEventListener("pagehide", sleep); window.addEventListener("freeze", sleep);
+  /* away from a game with no music playing (home page, results), let the audio go quiet after a few seconds; taps wake it for sound effects */
+  setInterval(()=>{ const inGame=app.view==="party"||app.view==="daily"||app.view==="dgrid"; if(track || inGame){ clearTimeout(idleT); idleT=null; return; } if(!idleT && ((keeper && !keeper.paused) || (ctx && ctx.state==="running"))) idleT=setTimeout(()=>{ idleT=null; if(!track) sleep(); },4000); }, 1000);
+  return {sync, sleep, setOn, cycle, isOn:()=>on, syncBtn, state:()=>({track, urgent, ctx:ctx?ctx.state:null, t:ctx?+ctx.currentTime.toFixed(1):0})};
 })();
 setInterval(()=>{ try{ MUSIC.sync(); }catch(e){} }, 200);
 function renderStatus(){
@@ -7147,6 +7159,20 @@ function howtoHTML(){ return `<div class="rep-sheet howto" id="howto" role="dial
   <button class="btn primary" data-act="howtoclose">Let's play</button></div></div>`; }
 let installEv=null; window.addEventListener("beforeinstallprompt", e=>{ e.preventDefault(); installEv=e; const b=$("#installbtn"); if(b) b.hidden=false; });
 function maybeHowto(){ if(!FEAT.howto || LS.get("sq-howto") || app.view!=="home" || $("#howto")) return; const d=document.createElement("div"); d.innerHTML=howtoHTML(); document.body.appendChild(d.firstChild); }
+/* once a day, a pop-up offers whichever of today's daily quiz and word grid you haven't played yet */
+function dailyPopHTML(q,g){ const key=todayKey(), tile=(name,sub,done,act,sc)=>`<div class="dp-tile${done?" done":""}"><div><b>${name}</b><small class="muted">${sub}</small></div>${done?`<span class="dp-done">✓ ${Number(sc||0).toLocaleString("en-GB")} pts</span>`:`<button class="btn spot" data-act="dpop" data-v="${act}">Play</button>`}</div>`;
+  const streak=calcStreak();
+  return `<div class="rep-sheet dpop" id="dpop" role="dialog" aria-label="Today's daily"><div class="rep-card"><div class="dp-head"><span class="eyebrow">Today's daily</span><span class="muted">${new Date().toLocaleDateString("en-GB",{weekday:"short", day:"numeric", month:"short"})}</span></div>
+  <b style="font-size:20px">${q||g?"One more to go today":"Fancy a quick one first?"}</b>
+  ${tile("Daily quiz","15 questions, same for everyone",!!q,"daily",q&&q.score)}
+  ${tile("Word grid","60 seconds, one grid",!!g,"dgrid",g&&g.score)}
+  ${streak?`<p class="muted">${q?`${streak}-day streak`:`Play today to keep your ${streak}-day streak`}</p>`:""}
+  <button class="btn" data-act="dpop" data-v="later">Maybe later</button></div></div>`; }
+function maybeDailyPop(){ try{ if(app.view!=="home" || $("#howto") || $("#dpop") || document.querySelector(".rep-sheet")) return;
+    if(/[?&](join|tv|league)=|#(join|tv|league)-/i.test(location.search+location.hash)) return;
+    const key=todayKey(); if(LS.get("sq-dpop-"+key)) return;
+    const q=LS.get(DQ_LS+key), g=LS.get(DG_LS+key); if(q && g) return;
+    LS.set("sq-dpop-"+key,1); const d=document.createElement("div"); d.innerHTML=dailyPopHTML(q,g); const el=d.firstChild; el.addEventListener("click",ev=>{ if(ev.target===el) el.remove(); }); document.body.appendChild(el); }catch(e){} }
 function lowEnd(){ if(!FEAT.lowend) return false; try{ const m=navigator.deviceMemory, c=navigator.hardwareConcurrency; return (m && m<=2) || (c && c<=2) || LS.get("sq-lowend")===1; }catch(e){ return false; } }
 function canNativeShare(){ return FEAT.share && window.SQ_STANDALONE && navigator.share; }
 async function shareOrCopy(txt){ if(canNativeShare()){ try{ await navigator.share({text:txt}); return; }catch(e){ if(e && e.name==="AbortError") return; } } try{ await navigator.clipboard.writeText(txt); toast("Copied. Paste it into your group chat"); }catch(err){ toast("Select the text above to copy it"); const s=$("#sharetxt"); if(s){ const r=document.createRange(); r.selectNodeContents(s); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); } } }
@@ -7181,7 +7207,7 @@ function homeDailyHTML(tabs){ return `
     </section>`; }
 function homeRoundsHTML(){ return `<div class="rounds-preview">${ROUND_ORDER.map(t=>`<div class="rp">${ICON[t]}<b>${RT[t].name}</b><span>${esc(RT[t].short)}</span></div>`).join("")}</div>`; }
 function homeHTML(){
-  if(HOME_TABS && homeNarrow()){ const tab=HTABS.some(t=>t[0]===app.homeTab)?app.homeTab:"daily"; /* every visit opens on Daily (it has its own join box); the tab you pick sticks until you leave */
+  if(HOME_TABS && homeNarrow()){ const tab=HTABS.some(t=>t[0]===app.homeTab)?app.homeTab:"party"; /* every visit opens on Party; a pop-up offers today's daily quiz and word grid */
     const bar=`<nav class="htabs" role="tablist" aria-label="Home">${HTABS.map(([k,l])=>`<button type="button" role="tab" data-act="htab" data-v="${k}" aria-selected="${k===tab}">${l}</button>`).join("")}</nav>`;
     let inner="";
     if(tab==="daily") inner=`<div class="hero htab-one">${homeDailyHTML(true)}</div>
@@ -9785,7 +9811,8 @@ document.addEventListener("click", async e=>{
   if(a==="logout"){ window.SQ_AUTH.logout(); app.acct=null; closeAcct(); renderStatus(); toast("Logged out"); if(app.view==="home") render(); else if(app.view==="daily") renderDaily(); else if(app.view==="dgrid") renderDGrid(); return; }
   if(a==="dgstart"){ if($("#nick") && !readNick()) return; dgBegin(); return; }
   if(a==="install"){ if(installEv){ installEv.prompt(); installEv=null; b.hidden=true; } return; }
-  if(a==="howtoclose"){ LS.set("sq-howto",1); const h=$("#howto"); if(h) h.remove(); return; }
+  if(a==="howtoclose"){ LS.set("sq-howto",1); const h=$("#howto"); if(h) h.remove(); setTimeout(maybeDailyPop,400); return; }
+  if(a==="dpop"){ const h=$("#dpop"); if(h) h.remove(); if(b.dataset.v==="daily") startDaily(); else if(b.dataset.v==="dgrid") startDGrid(); return; }
   if(a==="howto"){ LS.set("sq-howto",null); maybeHowto(); return; }
   if(a==="reportq"){ let q; if(b.dataset.src==="daily") q=D.qs&&D.qs[D.i]; else if(S&&S.q){ q=Object.assign({}, S.q, S.rev||{}, {text:S.q.text||(S.rev&&S.rev.text)||"", t:S.q.t}); } if(q) openReport(q, b.dataset.src); return; }
   if(a==="repsend"){ sendReport(b.dataset.r); return; }
@@ -9865,7 +9892,7 @@ document.addEventListener("input", e=>{
   window.addEventListener("error", e=>{ if(e && e.message) send(e.message, e.filename, e.lineno); });
   window.addEventListener("unhandledrejection", e=>{ const r=e&&e.reason; send("Unhandled: "+(r&&r.message||r), r&&r.stack&&String(r.stack).split("\n")[1], 0); }); })();
 boot();
-setTimeout(()=>{ try{ handleJoinLink(); }catch(e){} try{ handleLeagueLink(); }catch(e){} setTimeout(()=>{ try{ maybeHowto(); }catch(e){} }, 600); }, 400);
+setTimeout(()=>{ try{ handleJoinLink(); }catch(e){} try{ handleLeagueLink(); }catch(e){} setTimeout(()=>{ try{ maybeHowto(); }catch(e){} }, 600); setTimeout(maybeDailyPop, 1800); }, 400);
 </script>
 
 
