@@ -3612,6 +3612,10 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -6465,11 +6469,11 @@ function mmBank(topic){
 /* ---------------- guesstimate scale ---------------- */
 function estRange(ans, unit, rnd=Math.random){
   /* a wide scale with round tick marks; whole-number answers get a whole-number scale */
-  if(unit==="year"){ const w=[160,200,240,320,400,480][Math.floor(rnd()*6)]; const pos=0.15+rnd()*0.7; let min=Math.round((ans-pos*w)/10)*10; let max=min+w; const yr=new Date().getFullYear(); if(max>yr){ max=Math.ceil(yr/10)*10; min=max-w; } return {min, max, int:true}; }
+  if(unit==="year"){ const w=[80,100,120,150,160][Math.floor(rnd()*5)]; const pos=0.2+rnd()*0.6; /* 21 Nov 2026: shorter year scales (were 160-480 years) */ let min=Math.round((ans-pos*w)/10)*10; let max=min+w; const yr=new Date().getFullYear(); if(max>yr){ max=Math.ceil(yr/10)*10; min=max-w; } return {min, max, int:true}; }
   const int=Number.isInteger(ans), a=Math.abs(ans)||1;
-  const pos=0.15+rnd()*0.6; /* the answer sits 15%-75% along: the top end is about 1.3x to 6.5x the answer */
+  const pos=0.28+rnd()*0.44; /* the answer sits 28%-72% along: the top end is about 1.4x to 3.6x the answer (was up to 6.5x) */
   const want=a/pos/4; const e=Math.floor(Math.log10(want)), m=want/Math.pow(10,e);
-  const steps=(int && e<=0) ? [1,2,5,10] : [1,2,2.5,5,10];
+  const steps=(int && e<=0) ? [1,2,5,10] : [1,1.25,1.5,2,2.5,3,4,5,6,7.5,8,10]; /* finer steps so the scale ends close to where we want it, not up to twice as far */
   let tick=steps.find(x=>x>=m-1e-9)*Math.pow(10,e); if(int) tick=Math.max(1, Math.round(tick));
   let max=+(tick*4).toPrecision(6); if(a/max<0.12) max=+(Math.ceil(a/0.5/ (tick))*tick).toPrecision(6);
   if(/%|percent/i.test(unit||"") && ans<=100 && max>100) max=100;
@@ -9434,11 +9438,17 @@ function dailyAcc(q, v){
   if(v==null) return 0;
   if(q.t==="gk"||q.t==="hl") return Number(v)===q.ans ? 1 : 0;
   if(q.t==="rank"){ const a=String(v).split(",").map(Number); if(a.length!==q.correct.length) return 0; const n=a.filter((x,i)=>x===q.correct[i]).length; return n===a.length?1:n*.15; }
-  if(q.t==="est"){ const n=typeof v==="number"?v:parseNum(v); if(n==null) return 0; const r=Math.abs(n-q.ans)/Math.max(1e-9,(q.max-q.min)); return r<=0.01?1:Math.max(0, 1-(r-0.01)/0.19); }
+  if(q.t==="est") return estAcc(q, v);
   if(q.t==="pin"){ if(!v||!isFinite(v.lat)) return 0; const d=km(v,q); return d<=15?1:Math.exp(-(d-15)/1200); }
   if(q.t==="ctry"){ if(!v||!isFinite(v.lat)) return 0; const f=ctryFeature(q.place); const inside=f?inRings(f,v):km(v,q)<200; if(inside) return 1; const d=f?kmToFeature(f,v):Math.max(0,km(v,q)-200); return d<=150?.7:d<=400?.5:d<=800?.3:d<=1500?.1:0; }
   return 0;
 }
+/* guesstimate accuracy (21 Nov 2026): judged by how far off you are from the answer itself, not by how wide the slider is.
+   years: full marks within 1 year, nothing once you're 30 years out. other numbers: full marks within 2%, nothing at 50% off.
+   the curve drops fastest early on, so "close" really has to be close */
+function estAcc(q, v){ const n=typeof v==="number"?v:parseNum(v); if(n==null) return 0; const d=Math.abs(n-q.ans);
+  let f; if(q.unit==="year") f=d<=1?0:(d-1)/29; else { const r=d/Math.max(1e-9,Math.abs(q.ans)); f=r<=0.02?0:(r-0.02)/0.48; }
+  return f>=1?0:Math.pow(1-f,1.6); }
 function dailyScore(q, v, ms){ const a=dailyAcc(q,v); return (q.t==="gk"||q.t==="hl") ? Math.round(a*dailyAvail(q, ms==null?DDUR[q.t]*1000:ms)) : Math.round(a*100); }
 const DDUR={gk:20, hl:15, est:30, pin:30, ctry:30, rank:30};
 const DMAX={gk:100, hl:100, est:100, pin:100, ctry:100, rank:100};
