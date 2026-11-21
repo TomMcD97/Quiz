@@ -3616,6 +3616,7 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -6926,13 +6927,13 @@ const MUSIC=(()=>{
   function unlock(){
     if(!on) return;
     try{ if(navigator.audioSession) navigator.audioSession.type="playback"; }catch(e){}
-    if(!keeper){ try{ keeper=document.createElement("audio"); keeper.src=silentWav(); keeper.loop=true; keeper.setAttribute("playsinline",""); keeper.setAttribute("x-webkit-airplay","deny"); keeper.preload="auto"; }catch(e){ keeper=null; } }
+    if(!keeper && !navigator.audioSession){ try{ keeper=document.createElement("audio"); keeper.src=silentWav(); keeper.loop=true; keeper.setAttribute("playsinline",""); keeper.setAttribute("x-webkit-airplay","deny"); keeper.preload="auto"; }catch(e){ keeper=null; } }
     if(keeper && keeper.paused){ const pr=keeper.play(); if(pr && pr.catch) pr.catch(()=>{}); }
     if(!init()) return;
     if(ctx.state!=="running") ctx.resume().catch(()=>{});
     if(!unlocked){ try{ const b=ctx.createBuffer(1,1,22050), src=ctx.createBufferSource(); src.buffer=b; src.connect(ctx.destination); src.start(0); }catch(e){} unlocked=true; }
     if(track && !timer) timer=setInterval(loop,30); }
-  function setOn(v){ on=!!v; LS.set("sq-music", on?(sfxOnly?1:2):0); if(on){ unlock(); setTimeout(()=>sting("right"),60); } else if(keeper){ try{ keeper.pause(); }catch(e){} } if(master) master.gain.setTargetAtTime(on?VOL:0, ctx.currentTime, .05); syncBtn(); }
+  function setOn(v){ on=!!v; LS.set("sq-music", on?(sfxOnly?1:2):0); if(on){ unlock(); setTimeout(()=>sting("right"),60); } else sleep(); if(master) master.gain.setTargetAtTime(on?VOL:0, ctx.currentTime, .05); syncBtn(); }
   /* the note button cycles: music and sounds → sounds only → off */
   function cycle(){ if(on && !sfxOnly){ sfxOnly=true; LS.set("sq-music",1); setTrack(null); toast("Sound effects only"); sting("right"); } else if(on){ setOn(false); toast("Sound off"); } else { sfxOnly=false; setOn(true); toast("Music on"); } syncBtn(); }
   function syncBtn(){ const b=document.getElementById("musicbtn"); if(b){ b.classList.toggle("off",!on); b.classList.toggle("sfx",on&&sfxOnly); b.setAttribute("aria-pressed",on?"true":"false"); b.title=!on?"Sound off (tap for music)":sfxOnly?"Sound effects only (tap to turn off)":"Music on (tap for sound effects only)"; } }
@@ -6958,7 +6959,7 @@ const MUSIC=(()=>{
   /* stop all sound when you leave: iPhones otherwise keep showing the page as playing audio.
      sleep() pauses the silent keeper and suspends the audio engine; the next tap (or coming back mid-game) wakes it */
   let idleT=null;
-  function sleep(){ clearTimeout(idleT); idleT=null; if(timer){ clearInterval(timer); timer=null; } if(keeper){ try{ keeper.pause(); }catch(e){} } if(ctx && ctx.state==="running") ctx.suspend().catch(()=>{}); try{ if(navigator.mediaSession) navigator.mediaSession.playbackState="none"; }catch(e){} }
+  function sleep(){ clearTimeout(idleT); idleT=null; if(timer){ clearInterval(timer); timer=null; } if(keeper){ try{ keeper.pause(); keeper.removeAttribute("src"); keeper.load(); }catch(e){} keeper=null; } try{ if(navigator.audioSession) navigator.audioSession.type="auto"; }catch(e){} if(ctx && ctx.state==="running") ctx.suspend().catch(()=>{}); try{ if(navigator.mediaSession) navigator.mediaSession.playbackState="none"; }catch(e){} }
   function wake(){ if(!on || document.hidden) return; unlock(); }
   document.addEventListener("visibilitychange",()=>{ if(document.hidden) sleep(); else if(track) wake(); });
   window.addEventListener("pagehide", sleep); window.addEventListener("freeze", sleep);
