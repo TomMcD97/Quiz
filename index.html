@@ -3617,6 +3617,8 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -6375,7 +6377,7 @@ function kmToFeature(f, p){ let best=1e9; for(const r of f.rings) for(let i=0;i<
   for(const r of f.rings) for(let i=0,j=r.length-1;i<r.length;j=i++){ const a={lat:r[j][1],lng:r[j][0]}, b={lat:r[i][1],lng:r[i][0]}; for(const t of [.25,.5,.75]){ const d=km(p,{lat:a.lat+(b.lat-a.lat)*t, lng:a.lng+(b.lng-a.lng)*t}); if(d<best) best=d; } }
   return best; }
 function ctryPick(n){
-  const hard=G && G.diff==="hard", pool0=CTRY.filter(c=>(hard ? c[3]>=2 : c[3]<=2) && !dailyOnly(c[0])), pool1=pool0.filter(c=>!qClash(qFacts("Where is "+c[0], c[0]))), pool=dayFilter(pool1.length>=n?pool1:pool0, n, c=>c[0]);
+  const dv=diffOf(G), pool0=CTRY.filter(c=>(dv==="hard" ? c[3]>=2 : dv==="easy" ? c[3]===1 : c[3]<=2) && !dailyOnly(c[0])), pool1=pool0.filter(c=>!qClash(qFacts("Where is "+c[0], c[0]))), pool=dayFilter(pool1.length>=n?pool1:pool0, n, c=>c[0]);
   const k=c=>"ctry:"+c[0], fresh=shuffle(pool.filter(c=>!seenAt[k(c)])), old=pool.filter(c=>seenAt[k(c)]).sort((a,b)=>seenAt[k(a)]-seenAt[k(b)]);
   const pick=fresh.concat(old).slice(0,n); pick.forEach(c=>{ seenAt[k(c)]=Date.now(); qClaim(qFacts("Where is "+c[0], c[0])); }); saveSeen();
   return pick.map(c=>({text:"Where is "+c[0]+"?", place:c[0], lat:c[1], lng:c[2]}));
@@ -6431,9 +6433,9 @@ function pinName(n){ const b=String(n).split(",")[0].trim(); return PIN_SAME_NAM
 /* Pin Drop: no two places in one game within this distance of each other */
 const PIN_GAP_KM=700;
 function pinRound(n){
-  const got=[], far=(lat,lng)=>got.every(q=>km(q,{lat,lng})>=PIN_GAP_KM), hard=G && G.diff==="hard" && BANK.pin_hard && BANK.pin_hard.length;
+  const got=[], far=(lat,lng)=>got.every(q=>km(q,{lat,lng})>=PIN_GAP_KM), dv=diffOf(G), hard=dv==="hard" && BANK.pin_hard && BANK.pin_hard.length, someHard=dv==="medium" && BANK.pin_hard && BANK.pin_hard.length;
   for(let i=0;i<n;i++){
-    const order=hard?["pin_hard","pin","pin_pop"]:(i%2?["pin","pin_pop"]:["pin_pop","pin"]); let q=null;
+    const order=hard?["pin_hard","pin","pin_pop"]:dv==="easy"?["pin_pop","pin"]:(someHard && i%3===2)?["pin_hard","pin","pin_pop"]:(i%2?["pin","pin_pop"]:["pin_pop","pin"]); let q=null;
     for(const t of order){ const a=bankPick(t,1,Math.random,true,x=>far(x[1],x[2])); if(a.length && far(a[0].lat,a[0].lng)){ q=a[0]; break; } }
     if(!q){ const a=bankPick(order[0],1); q=a[0]||null; }
     if(q) got.push(q);
@@ -7297,9 +7299,12 @@ async function openParty(code, host, solo){
   }
   render();
 }
+/* difficulty (22 Nov 2026): easy / medium / hard, medium by default */
+const DIFF_LAB={easy:"Easy",medium:"Medium",hard:"Hard"};
+const diffOf=x=>(x&&DIFF_LAB[x.diff])?x.diff:"medium";
 function newGame(code){
   return { v:1, gid:rid(5), code, phase:"lobby", ri:-1, qi:-1, seq:0, q:null, rev:null, scores:{}, rs:{}, names:{}, avs:{}, msg:"", adv:0,
-    diff:"easy", rounds: ROUND_ORDER.map(t=>({t, n:Math.max(RT[t].min,Math.min(RT[t].max,(LEN.medium[t]||RT[t].def))), on: t!=="uniq"})), active:[], sp:{} };
+    diff:"medium", rounds: ROUND_ORDER.map(t=>({t, n:Math.max(RT[t].min,Math.min(RT[t].max,(LEN.medium[t]||RT[t].def))), on: t!=="uniq"})), active:[], sp:{} };
 }
 let myPres = {};
 function setMyPresence(patch){ Object.assign(myPres, patch); for(const k in patch) if(patch[k]===null) delete myPres[k]; if(app.party) app.party.presence(patch).catch(e=>console.warn("presence", e)); }
@@ -7462,9 +7467,13 @@ async function buildRound(r, ps){
   /* Great Minds: there must be plenty more valid answers than players, so a clash isn't forced */
   const uMin=Math.max(6, (ps&&ps.length||players().length)*2), keep=r.t==="uniq"?(x=>Array.isArray(x[1]) && x[1].length>=uMin):null;
   if(aiOn()){ try{ qs=cleanQs(r.t, await ask(promptFor(r.t, r.n+3, null, uMin))).filter(q=>r.t!=="uniq" || (q.valid||[]).length>=uMin).filter(q=>{ const k=r.t+":ai:"+(hashStr(norm(q.text))%1e9).toString(36); if(seenAt[k]) return false; const f=qFactsOf(q); if(qClash(f)) return false; seenAt[k]=Date.now(); noteText(r.t,q.text); qClaim(f); return true; }).slice(0, r.n); saveSeen(); }catch(e){ qs=[]; } }
-  if(qs.length<r.n && G && G.diff==="hard" && BANK[r.t+"_hard"]) qs=qs.concat(bankPick(r.t+"_hard", r.n-qs.length));
+  const dv=diffOf(G); let medHard=null;
+  if(qs.length<r.n && dv==="hard" && BANK[r.t+"_hard"]) qs=qs.concat(bankPick(r.t+"_hard", r.n-qs.length));
+  /* medium: about a third of the questions come from the harder bank */
+  if(qs.length<r.n && dv==="medium" && BANK[r.t+"_hard"] && r.t!=="uniq"){ const nh=Math.round((r.n-qs.length)/3); if(nh) medHard=bankPick(r.t+"_hard", nh); }
   if(qs.length<r.n && keep){ qs=qs.concat(bankPick(r.t, r.n-qs.length, Math.random, true, keep)); }
-  if(qs.length<r.n){ const need=r.n-qs.length; if(BANK[r.t+"_pop"]){ const np=Math.round(need*(r.t==="pin"?0.5:0.65)); qs=qs.concat(shuffle(bankPick(r.t+"_pop",np).concat(bankPick(r.t,need-np)))); } else qs=qs.concat(bankPick(r.t,need)); }
+  const extra=medHard?medHard.length:0; if(qs.length+extra<r.n){ const need=r.n-qs.length-extra; if(BANK[r.t+"_pop"]){ const np=Math.round(need*(dv==="easy"?(r.t==="pin"?0.7:0.85):(r.t==="pin"?0.5:0.6))); qs=qs.concat(shuffle(bankPick(r.t+"_pop",np).concat(bankPick(r.t,need-np)))); } else qs=qs.concat(bankPick(r.t,need)); }
+  if(medHard) qs=qs.concat(medHard); /* the tougher ones come last */
   return {t:r.t, qs};
 }
 const SP_POP=["Film","Television","Pop music","Sport","Football","Video games","Cartoons","Superheroes","Disney","Harry Potter","Musicals","The Olympics","Bands","1990s","1980s","Star Wars","Marvel","Sitcoms","Reality TV","Tennis","Formula 1","Cricket","Rugby","Boxing","Golf","Celebrities","Soap operas","Eurovision","Rap and hip hop","Pixar","Netflix shows","Game shows","Premier League","World Cup","Kids TV","Social media","Memes and internet","Movie quotes","Theme tunes","Christmas films","Animated films","Pokémon","Nintendo","Boy bands and girl groups","Rock music"];
@@ -7790,7 +7799,7 @@ async function buildSpeed(NT=4){
   let sets=[];
   if(aiOn()){ try{
     const popT=Math.max(1,NT-1), topics=spPickTopics(SP_TOPICS.filter(t=>SP_POP.includes(t)),popT).concat(spPickTopics(SP_TOPICS.filter(t=>!SP_POP.includes(t)),NT-popT)), hard=G&&G.diff==="hard", avoid=recentTexts("sp",40);
-    const arr=await ask(`Write a quick-fire speed round for a party quiz: exactly 3 multiple-choice questions on each of these ${NT} topics: ${JSON.stringify(topics)}. Players race the clock, so keep every question short (under 90 characters) and every option 1 to 4 words. Each question has exactly 4 options with exactly one correct. ${hard?"Make them medium to hard.":"Make them easy to medium: well-known facts."} In every topic include at least one niche, surprising question from an unusual angle, not the obvious headline fact. ${AI_RULES}${avoid.length?`\nDo NOT repeat any of these: ${JSON.stringify(avoid)}`:""}\nVariety code: ${rid(6)}\nReply with only JSON like [{"topic":"Space","questions":[{"q":"Which planet is closest to the Sun?","options":["Mercury","Venus","Mars","Earth"],"answer":0}]}].`, "default", 60000);
+    const arr=await ask(`Write a quick-fire speed round for a party quiz: exactly 3 multiple-choice questions on each of these ${NT} topics: ${JSON.stringify(topics)}. Players race the clock, so keep every question short (under 90 characters) and every option 1 to 4 words. Each question has exactly 4 options with exactly one correct. ${hard?"Make them medium to hard.":diffOf(G)==="medium"?"Make them medium: mostly well-known, some trickier.":"Make them easy: well-known facts."} In every topic include at least one niche, surprising question from an unusual angle, not the obvious headline fact. ${AI_RULES}${avoid.length?`\nDo NOT repeat any of these: ${JSON.stringify(avoid)}`:""}\nVariety code: ${rid(6)}\nReply with only JSON like [{"topic":"Space","questions":[{"q":"Which planet is closest to the Sun?","options":["Mercury","Venus","Mars","Earth"],"answer":0}]}].`, "default", 60000);
     if(Array.isArray(arr)) for(const t of arr){ const qs=cleanQs("gk", t&&t.questions).filter(q=>!qClash(qFactsOf(q))).slice(0,3); if(qs.length===3 && t.topic){ qs.forEach(q=>qClaim(qFactsOf(q))); sets.push({topic:String(t.topic).slice(0,40), qs}); } }
     sets.forEach(s=>s.qs.forEach(q=>noteText("sp", q.text)));
   }catch(e){ sets=[]; } }
@@ -7801,7 +7810,7 @@ async function buildSpeed(NT=4){
 }
 const AI_RULES = "Facts must be accurate, well established and not time-sensitive: nothing that changes from year to year and no current holders of titles or records. Keep questions under 140 characters. British English.";
 function promptFor(t, n, topic, uMin){
-  const seed=rid(6), hard=G&&G.diff==="hard", lvl=hard?" DIFFICULTY: HARD. Write for a strong pub-quiz team, not casual players. Avoid famous headline facts anyone would know (capital cities of big countries, who won a recent World Cup, the lead actor of a blockbuster). Ask about specific details instead: years, runners-up, original line-ups, debut works, record holders from past eras, lesser-known people and places. Wrong options must be close and tempting: same category, same era, similar-sounding. A casual player should get fewer than a third right.":" Make them EASY to medium: well-known facts most adults could get, nothing obscure.", avoid=recentTexts(t,40), av=avoid.length?`\nDo NOT repeat or closely resemble any of these questions already used: ${JSON.stringify(avoid)}`:"";
+  const seed=rid(6), hard=G&&G.diff==="hard", lvl=hard?" DIFFICULTY: HARD. Write for a strong pub-quiz team, not casual players. Avoid famous headline facts anyone would know (capital cities of big countries, who won a recent World Cup, the lead actor of a blockbuster). Ask about specific details instead: years, runners-up, original line-ups, debut works, record holders from past eras, lesser-known people and places. Wrong options must be close and tempting: same category, same era, similar-sounding. A casual player should get fewer than a third right.":diffOf(G)==="medium"?" DIFFICULTY: MEDIUM. Pub-quiz standard: mostly things a regular quizzer would know, with a few that make people think. Wrong options should be plausible.":" Make them EASY: well-known facts most adults could get, nothing obscure.", avoid=recentTexts(t,40), av=avoid.length?`\nDo NOT repeat or closely resemble any of these questions already used: ${JSON.stringify(avoid)}`:"";
   if(t==="gk") return `Write ${n} general knowledge quiz questions for friends playing a pub-style quiz. Make about two thirds of them about sport and pop culture (football and other sports, film, TV, music, celebrities, video games, internet culture) and the rest a mix of other subjects. ${hard?"Every question must be hard.":"Mix difficulty from easy to medium."} Cover a different subject in every question, and make at least a third of them niche, surprising facts from unusual angles rather than the usual pub-quiz staples. Each question has exactly 4 short options with exactly one correct. ${AI_RULES}\nVariety code: ${seed}\nReply with only a JSON array, for example [{"q":"Which planet is known as the Red Planet?","options":["Mars","Venus","Jupiter","Mercury"],"answer":0}], where answer is the index of the correct option.${lvl}${av}`;
   if(t==="mm") return `Write ${n} quiz questions on the specialist subject: ${JSON.stringify(topic)}. ${hard?"Start at medium difficulty and get steadily harder, ending with questions only an expert would know.":"Start easy and get steadily harder."} Each answer must be short (1 to 4 words) and unambiguous. In "alt" list other accepted forms of the answer (alternative spellings, surnames alone, abbreviations). If the subject is vague, unclear or unsuitable for a friendly quiz, use the nearest sensible family-friendly interpretation. ${AI_RULES}\nVariety code: ${seed}\nReply with only a JSON array, for example [{"q":"Which band released the album Abbey Road?","a":"The Beatles","alt":["Beatles"]}].${lvl}${av}`;
   if(t==="rank") return `Write ${n} "rank it" questions for a party quiz. Each gives exactly 5 well-known items that players must put in order by one clear, measurable property: size, weight, height, length, age, date, speed, distance, population and so on. The items must be far enough apart on that property that the order is not debatable. Vary the subjects and properties. Lean towards sport and pop culture (sport, film, TV, music, celebrities, video games): about two thirds of the questions. ${AI_RULES}\nVariety code: ${seed}\nReply with only a JSON array, listing "items" in the correct order from first to last, for example [{"q":"Put these animals in order of weight","items":["Mouse","Cat","Lion","Horse","Elephant"],"values":["about 20 g","about 4 kg","about 190 kg","about 500 kg","about 6 tonnes"],"first":"Lightest","last":"Heaviest"}].${lvl}${av}`;
@@ -8219,15 +8228,15 @@ function renderStage(){
   else if(S.phase==="intro"){
     const I=S.intro||{}; const t=I.t||R;
     h = `<div class="intro"><div class="eyebrow">Round ${S.ri+1} of ${S.active.length}</div><div class="row" style="gap:14px"><span style="width:44px;height:44px;color:var(--accent);display:block">${ICON[t]}</span><div class="ri">${RT[t].name}</div></div><p>${esc(t==="lead"?leadDesc(I.mode):RT[t].desc)}</p>`;
-    if(t==="mm") h += `<p class="muted" style="font-size:15px">First everyone types a subject. Then you all answer your own questions at the same time, ${Math.round(RT.mm.dur*(S.diff==="hard"?1:1.5))} seconds each.</p>`;
+    if(t==="mm") h += `<p class="muted" style="font-size:15px">First everyone types a subject. Then you all answer your own questions at the same time, ${Math.round(RT.mm.dur*({easy:1.5,medium:1.25,hard:1}[diffOf(S)]))} seconds each.</p>`;
     else if(t==="grid") h += `<p class="muted" style="font-size:15px">${I.n} grid${I.n>1?"s":""} · ${RT.grid.dur} seconds each</p><p class="num" style="font-size:15px;margin:0">3 letters <b>10</b> · 4 <b>20</b> · 5 <b>40</b> · 6 <b>100</b> · 7 <b>150</b> · 8+ <b>200+</b></p>`;
-    else if(t==="ctry") h += `<p class="muted" style="font-size:15px">${S.diff==="hard"?"Hard mode: smaller and trickier countries":"Easy mode: bigger, better-known countries"} · no names on the map · ${durFor("ctry")} seconds each</p>`;
+    else if(t==="ctry") h += `<p class="muted" style="font-size:15px">${{easy:"Easy mode: the biggest, best-known countries",medium:"Medium mode: a mix of well-known countries",hard:"Hard mode: smaller and trickier countries"}[diffOf(S)]} · no names on the map · ${durFor("ctry")} seconds each</p>`;
     else if(t==="lead" && (I.mode||"heist")==="heist"){ const Ld=I.lead||{}; h += `<div class="bh-poster big hs"><div class="bh-w">Leader</div>${avatar(Ld.p,"lg")}<div class="bh-info"><div class="eyebrow">Top of the scores${Ld.tie?" (picked from the tie)":""}</div><b>${esc(Ld.p===me.pid?"You":nameOf(Ld.p))}</b><span class="bh-amt">Whoever's top before each question is the leader</span></div></div><div class="lv-rules"><div><b class="num">${HS.right}</b><span>Play safe and get it right</span></div><div><b class="num">+${HS.steal}</b><span>Steal: you're right and the leader is wrong</span></div><div><b class="num">−${HS.fail}</b><span>Steal and get it wrong</span></div><div><b class="num">${HS.caught}</b><span>Steal, but the leader is right too</span></div><div><b class="num">+${HS.wrong}</b><span>Leader, for each thief who gets it wrong</span></div></div>`; }
     else if(t==="lead"){ const Ld=I.lead||{}; h += `<div class="bh-poster big"><div class="bh-w">Wanted</div>${avatar(Ld.p,"lg")}<div class="bh-info"><div class="eyebrow">Top of the scores${Ld.tie?" (picked from the tie)":""}</div><b>${esc(Ld.p===me.pid?"You":nameOf(Ld.p))}</b><span class="bh-amt"><span class="num">${BH.start}</span> point bounty</span></div></div><div class="lv-rules"><div><b class="num">${BH.right}</b><span>Every right answer, target included</span></div><div><b class="num">+${BH.grow}</b><span>Bounty grows each time the target is right</span></div><div><b class="num">Split</b><span>Target wrong: everyone right shares the bounty on top</span></div><div><b class="num">+${BH.survive}</b><span>Still the target at the end</span></div></div>`; }
 
     else if(t==="sp") h += `<p class="muted" style="font-size:15px">4 topics · 3 questions each · 12 seconds a question · right answers start at 150 and count down · wrong answers lose 50 · scores hidden</p>`;
     else if(t==="mf") h += `<p class="muted" style="font-size:15px">${I.n} board${I.n>1?"s":""} · players take turns · ${durFor("mf")} seconds a pick</p>`;
-    else h += `<p class="muted" style="font-size:15px">${I.n} questions · ${durFor(t)} seconds each · ${S.diff==="hard"?"Hard":"Easy"} mode</p>`;
+    else h += `<p class="muted" style="font-size:15px">${I.n} questions · ${durFor(t)} seconds each · ${DIFF_LAB[diffOf(S)]} mode</p>`;
     h += `<div class="rdy-wrap"><div data-rdylist>${rdyListHTML()}</div><div class="rdy-act"><span data-rdybtn>${rdyBtnHTML("Ready for this round")}</span>${host?`<button class="btn small" data-act="next" title="Start without waiting for everyone">Start now</button>`:""}</div></div></div>`;
   }
   else if(S.phase==="q") h = questionHTML(S.q);
@@ -8318,7 +8327,7 @@ function lbCount(r){ const n=r.t==="sp"?12:r.n, u=LB_UNIT[r.t]; return u==="each
 function lbRoundMins(r){ return estMinutes([Object.assign({},r,{on:true})]); }
 function lbStatsHTML(){ const ps=players(), on=S.rounds.filter(r=>r.on && !(r.t==="uniq" && ps.length<3)), mins=estMinutes(S.rounds);
   const cell=(v,l)=>`<div class="lb-stat"><b class="num">${v}</b><span>${l}</span></div>`;
-  return cell(ps.length, ps.length===1?"Player":"Players")+cell(on.length, on.length===1?"Round":"Rounds")+cell("~"+mins, "Minutes")+cell(S.diff==="hard"?"Hard":"Easy","Difficulty"); }
+  return cell(ps.length, ps.length===1?"Player":"Players")+cell(on.length, on.length===1?"Round":"Rounds")+cell("~"+mins, "Minutes")+cell(DIFF_LAB[diffOf(S)],"Difficulty"); }
 function lbCastHTML(){
   const ps=players(), host=app.isHost, local=app.party&&app.party.local;
   const rk=rdyKey(), tag=p=> (p.host?`<span class="lb-tag host">Host</span>` : p.bot?`<span class="lb-tag">${esc(p.lv||"")} bot</span>` : `<span class="lb-tag">Player</span>`)+(isRdy(p,rk)?`<span class="lb-tag rdy">Ready</span>`:`<span class="lb-tag wait">Not ready</span>`);
@@ -8352,7 +8361,7 @@ function lobbyHTML(){
   <div class="lb-stats" id="lbstats">${lbStatsHTML()}</div>${!local?inviteHTML(S.code, host||app.tvMode):""}`;
   h+=`<div class="lb-stage">${stageHTML(host ? (local?((G.bots||[]).length?"Solo game against bots. Add or remove bots below, then start.":"Solo game. Add some bots below to play against."):"Friends join from the home screen with this code.") : `You're in. Waiting for ${esc(hp?hp.nick:"the host")} to start the game.`)}</div>`;
   h+=`<div class="lb-grid"><section class="lb-sec"><div class="lb-sh"><span class="eyebrow">The cast</span><details class="lb-look"${app.lookOpen?" open":""}><summary>Change your look</summary><div class="lb-lookin">${avPickerHTML()}</div></details></div><div class="lb-cast" id="lbcast">${lbCastHTML()}</div></section>
-    <section class="lb-sec"><div class="lb-sh"><span class="eyebrow">Running order</span><span class="muted lb-diff">${S.diff==="hard"?"Hard":"Easy"} mode</span></div><div id="lbprog">${lbProgHTML()}</div></section></div>`;
+    <section class="lb-sec"><div class="lb-sh"><span class="eyebrow">Running order</span><span class="muted lb-diff">${DIFF_LAB[diffOf(S)]} mode</span></div><div id="lbprog">${lbProgHTML()}</div></section></div>`;
   if(host){
     if(!local) h+=`<div class="pset"><form class="answer-row" data-form="pname" style="margin:0"><input class="input" id="pnamein" maxlength="30" autocomplete="off" placeholder="Name your party (optional)" value="${esc(S.pname||"")}"><button class="btn">Save name</button></form>
       <div class="lenpick" role="radiogroup" aria-label="Who can join"><span class="lp-l">Who can join</span><div class="seg"><button type="button" role="radio" aria-checked="${!S.pub}" class="${!S.pub?"on":""}" data-act="pub" data-pub="0">Private</button><button type="button" role="radio" aria-checked="${!!S.pub}" class="${S.pub?"on":""}" data-act="pub" data-pub="1">Public</button></div><span class="muted">${S.pub?"Listed under Open parties: anyone on Spotlight can join.":"Hidden: only people you give the code to can join."}</span></div></div>`;
@@ -8367,7 +8376,7 @@ function estMinutes(rounds, np){ let sec=0; for(const r of rounds){ if(!r.on) co
 function leadPickHTML(){ if(!LEAD_PICK) return ""; const on=(S.rounds||[]).some(r=>r.t==="lead"&&r.on); if(!on) return ""; const cur=leadMode(), lab={heist:"Heist",bounty:"Bounty Hunt"}, note=cur==="heist"?"Steal points from the leader, but a wrong steal costs you":"Split the bounty when the leader slips up";
   if(!app.isHost) return `<div class="lenpick ro"><span class="lp-l">Beat the Leader</span><b>${lab[cur]}</b><span class="muted">${note}</span></div>`;
   return `<div class="lenpick" role="radiogroup" aria-label="Beat the Leader style"><span class="lp-l">Beat the Leader</span><div class="seg">${Object.keys(lab).map(k=>`<button type="button" role="radio" aria-checked="${cur===k}" class="${cur===k?"on":""}" data-act="lmode" data-m="${k}">${lab[k]}</button>`).join("")}</div><span class="muted">${note}</span></div>`; }
-function diffPickHTML(){ const cur=S.diff==="hard"?"hard":"easy", lab={easy:"Easy",hard:"Hard"}, note=cur==="hard"?"No country names on the map, tougher questions, same timers":"Country names on the map, friendlier questions";
+function diffPickHTML(){ const cur=diffOf(S), lab=DIFF_LAB, note={easy:"Friendlier questions and the best-known countries",medium:"A mix of easy and tougher questions",hard:"Tougher questions, smaller countries, no place names on the map"}[cur];
   if(!app.isHost) return `<div class="lenpick ro"><span class="lp-l">Difficulty</span><b>${lab[cur]}</b><span class="muted">${note}</span></div>`;
   return `<div class="lenpick" role="radiogroup" aria-label="Difficulty"><span class="lp-l">Difficulty</span><div class="seg">${Object.keys(lab).map(k=>`<button type="button" role="radio" aria-checked="${cur===k}" class="${cur===k?"on":""}" data-act="diff" data-diff="${k}">${lab[k]}</button>`).join("")}</div><span class="muted">${note}</span></div>`; }
 function lenPickHTML(){ const cur=lenOf(S.rounds), mins=estMinutes(S.rounds); const lab={short:"Short",medium:"Medium",long:"Long"};
@@ -8862,16 +8871,16 @@ function afterStage(){
   const hc=document.querySelector(".hostcfg"); if(hc){ if(app.cfgOpen!==false) hc.open=true; hc.addEventListener("toggle", ()=>{ app.cfgOpen=hc.open; }); }
   renderLobbyStage();
   if(S.phase==="q" && (S.q.t==="pin"||S.q.t==="ctry") && !myAns){
-    mapView = new MapView($("#map"), {labels:S.q.t==="ctry"?false:S.diff!=="hard", pick:(ll)=>{ draft=ll; mapView.setPins([{...ll, color:pcol(me.pid), label:"You", av:me.av}]); const b=$("#lockpin"); if(b) b.disabled=false; }});
+    mapView = new MapView($("#map"), {labels:S.q.t==="ctry"?false:diffOf(S)!=="hard", pick:(ll)=>{ draft=ll; mapView.setPins([{...ll, color:pcol(me.pid), label:"You", av:me.av}]); const b=$("#lockpin"); if(b) b.disabled=false; }});
   }
-  if(S.phase==="q" && (S.q.t==="pin"||S.q.t==="ctry") && myAns){ const m=$("#map"); if(m){ mapView=new MapView(m,{labels:S.q.t==="ctry"?false:S.diff!=="hard"}); mapView.setPins([{...myAns.v, color:pcol(me.pid), label:"You", av:me.av}]); } }
+  if(S.phase==="q" && (S.q.t==="pin"||S.q.t==="ctry") && myAns){ const m=$("#map"); if(m){ mapView=new MapView(m,{labels:S.q.t==="ctry"?false:diffOf(S)!=="hard"}); mapView.setPins([{...myAns.v, color:pcol(me.pid), label:"You", av:me.av}]); } }
   if(S.phase==="reveal" && S.rev && S.rev.t==="ctry"){
     const r=S.rev; mapView=new MapView($("#map"),{labels:false, hl:r.place});
     const pins=r.rows.filter(x=>x.lat!=null).map(x=>({lat:x.lat,lng:x.lng,color:pcol(x.p),label:nameOf(x.p)+(x.in?" · inside":" · "+x.km.toLocaleString("en-GB")+" km"), av:avOf(x.p), pid:x.p}));
     mapView.reveal(pins, {lat:r.lat,lng:r.lng,label:r.place});
   }
   if(S.phase==="reveal" && S.rev && S.rev.t==="pin"){
-    const r=S.rev; mapView=new MapView($("#map"),{labels:S.diff!=="hard"});
+    const r=S.rev; mapView=new MapView($("#map"),{labels:diffOf(S)!=="hard"});
     const pins=r.rows.filter(x=>x.lat!=null).map(x=>({lat:x.lat,lng:x.lng,color:pcol(x.p),label:nameOf(x.p)+" · "+x.km.toLocaleString("en-GB")+" km", av:avOf(x.p), pid:x.p}));
     mapView.reveal(pins, {lat:r.lat,lng:r.lng,label:r.place});
   }
@@ -9839,7 +9848,7 @@ document.addEventListener("click", async e=>{
   // host lobby config
   if(app.isHost && G && G.phase==="lobby"){
     const r = b.dataset.t ? G.rounds.find(x=>x.t===b.dataset.t) : null;
-    if(a==="diff" && (b.dataset.diff==="easy"||b.dataset.diff==="hard")) G.diff=b.dataset.diff;
+    if(a==="diff" && DIFF_LAB[b.dataset.diff]) G.diff=b.dataset.diff;
     if(a==="lmode" && (b.dataset.m==="heist"||b.dataset.m==="bounty")) G.lmode=b.dataset.m;
     if(a==="pub"){ G.pub=b.dataset.pub==="1"; LS.set("sq-pub",G.pub); pushState(); render(); return; }
     if(a==="len" && LEN[b.dataset.len]){ const P=LEN[b.dataset.len]; for(const x of G.rounds) x.n=Math.max(RT[x.t].min,Math.min(RT[x.t].max,P[x.t]||x.n)); }
