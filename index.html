@@ -1443,9 +1443,9 @@ function decodeAv(v){ try{ const [sk,hair,hc,ey,gl,fl,top,hat]=v.slice(2).split(
 
 /* ---------------- Toon avatars (realistic painted style) ---------------- */
 const TOON={
-  hair:{crop:"Short crop",fade:"Fade",fringe:"Short fringe",messy:"Messy",spiky:"Spiky",quiff:"Quiff",sidepart:"Side part",slick:"Slicked back",curlytop:"Curly top",buzz:"Buzz cut",bald:"Bald",curtains:"Curtains",manbun:"Man bun",pixie:"Pixie",bob:"Bob",medium:"Shoulder length",midwavy:"Shoulder wavy",long:"Long straight",longside:"Long side part",longfringe:"Long with fringe",wavy:"Long wavy",curlylong:"Long curly",ponytail:"Ponytail",bun:"Top bun",afro:"Afro",puffs:"Puffs",braids:"Braids",locs:"Locs",mohawk:"Mohawk",hijab:"Hijab"},
+  hair:{crop:"Short crop",fade:"Fade",fringe:"Short fringe",messy:"Messy",spiky:"Spiky",quiff:"Quiff",sidepart:"Side part",slick:"Slicked back",curlytop:"Curly top",curlycrop:"Curly crop",twists:"Twists",waves:"Waves",skinfade:"Skin fade",buzz:"Buzz cut",bald:"Bald",curtains:"Curtains",manbun:"Man bun",pixie:"Pixie",bob:"Bob",medium:"Shoulder length",midwavy:"Shoulder wavy",long:"Long straight",longside:"Long side part",longfringe:"Long with fringe",wavy:"Long wavy",curlylong:"Long curly",ponytail:"Ponytail",bun:"Top bun",afro:"Afro",puffs:"Puffs",braids:"Braids",locs:"Locs",mohawk:"Mohawk",hijab:"Hijab"},
   face:{oval:"Oval",round:"Round",square:"Square",heart:"Heart",long:"Long"},
-  eyes:{almond:"Almond",round:"Round",narrow:"Narrow",photo:"Photo"},
+  eyes:{almond:"Almond",round:"Round",narrow:"Narrow",photo:"Photo",photohead:"Photo head"},
   brows:{thin:"Thin",medium:"Medium",thick:"Thick"},
   nose:{small:"Small",medium:"Medium",wide:"Wide",long:"Long"},
   lips:{thin:"Thin",medium:"Medium",full:"Full"},
@@ -1453,7 +1453,7 @@ const TOON={
   glasses:{none:"None",round:"Round",square:"Square",aviator:"Aviator",shades:"Sunglasses"},
   top:{tee:"T-shirt",hoodie:"Hoodie",shirt:"Shirt",jumper:"Jumper"},
   hat:{none:"None",beanie:"Beanie",cap:"Cap"},
-  to3d:{fade:"short",fringe:"short",messy:"short",spiky:"spiky",slick:"side",curtains:"side",manbun:"bun",medium:"bob",midwavy:"bob",longside:"long",longfringe:"long",crop:"short",quiff:"side",sidepart:"side",curlytop:"curly",buzz:"buzz",bald:"bald",pixie:"short",bob:"bob",long:"long",wavy:"wavy",curlylong:"wavy",ponytail:"ponytail",bun:"bun",afro:"afro",puffs:"puffs",braids:"braids",locs:"braids",mohawk:"mohawk",hijab:"hijab"},
+  to3d:{curlycrop:"curly",twists:"curly",waves:"buzz",skinfade:"short",fade:"short",fringe:"short",messy:"short",spiky:"spiky",slick:"side",curtains:"side",manbun:"bun",medium:"bob",midwavy:"bob",longside:"long",longfringe:"long",crop:"short",quiff:"side",sidepart:"side",curlytop:"curly",buzz:"buzz",bald:"bald",pixie:"short",bob:"bob",long:"long",wavy:"wavy",curlylong:"wavy",ponytail:"ponytail",bun:"bun",afro:"afro",puffs:"puffs",braids:"braids",locs:"braids",mohawk:"mohawk",hijab:"hijab"},
   gender:{m:"Male",f:"Female"},
   def(){ return {gender:"m",skin:"#D49C78",face:"oval",hair:"crop",hairColour:"#4A2F23",eyes:"almond",eyeColour:"#5A3A1E",brows:"medium",nose:"medium",lips:"medium",facial:"none",glasses:"none",freckles:false,earrings:false,top:"tee",topColour:"#4D8BF5",hat:"none",hijabColour:"#7B61FF"}; }
 };
@@ -1470,8 +1470,8 @@ function decodeToon(v){ try{ let a=ub64u(v.slice(2)).split("|"); if(a.length===T
     return o; }catch(e){ return null; } }
 function toonTo3D(t){ const n=parseInt(t.skin.slice(1),16), lum=(((n>>16)&255)*.3+((n>>8)&255)*.59+(n&255)*.11)/255;
   const d={n:"You", custom:true, female:t.gender==="f", skin:lum>.78?0:lum>.7?1:lum>.62?2:lum>.52?3:lum>.42?4:lum>.32?5:6, skHex:t.skin, hair:TOON.to3d[t.hair]||"short", hcHex:t.hairColour, iris:t.eyeColour, shirt:t.topColour};
-  if(t.glasses!=="none") d.glasses=t.glasses==="aviator"?"square":t.glasses; if(t.hat!=="none"){ d.hat=t.hat; d.hatc=t.topColour; } if(t.gender==="f") t=Object.assign({},t,{facial:"none"}); if(["short","full","goatee"].includes(t.facial)) d.beard=1; if(t.facial==="stubble") d.stubble=1; if(t.facial==="moustache") d.tache=1;
-  d.face=t.face; if(t.eyes==="photo") d.photo=1; if(t.freckles) d.freckles=1; if(t.earrings) d.earrings=1; if(t.hair==="hijab") d.hijabc=t.hijabColour; return d; }
+  if(t.glasses!=="none") d.glasses=t.glasses==="aviator"?"square":t.glasses; if(t.hat!=="none" && t.hair!=="hijab"){ d.hat=t.hat; d.hatc=t.topColour; } if(t.gender==="f") t=Object.assign({},t,{facial:"none"}); if(["short","full","goatee"].includes(t.facial)) d.beard=1; if(t.facial==="stubble") d.stubble=1; if(t.facial==="moustache") d.tache=1;
+  d.face=t.face; if(t.eyes==="photo"||t.eyes==="photohead") d.photo=1; if(t.eyes==="photohead") d.photoHead=1; if(t.freckles) d.freckles=1; if(t.earrings) d.earrings=1; if(t.hair==="hijab") d.hijabc=t.hijabColour; return d; }
 function crPath(pts, closed){ const n=pts.length; if(n<2) return ""; const P=i=>pts[closed?((i%n)+n)%n:Math.max(0,Math.min(n-1,i))]; let d=`M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
   const seg=closed?n:n-1; for(let i=0;i<seg;i++){ const p0=P(i-1),p1=P(i),p2=P(i+1),p3=P(i+2); const c1=[p1[0]+(p2[0]-p0[0])/6,p1[1]+(p2[1]-p0[1])/6], c2=[p2[0]-(p3[0]-p1[0])/6,p2[1]-(p3[1]-p1[1])/6]; d+=` C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`; } return d+(closed?" Z":""); }
 function mirror(right){ const L=right.slice(1,-1).reverse().map(([x,y])=>[200-x,y]); return right.concat(L); }
@@ -1482,7 +1482,7 @@ function mergeFilters(s){ return s.replace(/(?:<(?:path|ellipse|circle|rect)\b[^
   for(const e of els){ if(/\s(clip-path|mask)=/.test(e)){ flush(); o+=e; continue; } const f=(e.match(/\sfilter="url\(#([^)]+)\)"/)||[])[1]; if(f!==cur){ flush(); cur=f; } buf.push(e); }
   flush(); return o; }); }
 function mixx(a,b,f){ const A=parseInt(a.slice(1),16), B=parseInt(b.slice(1),16); return "#"+[16,8,0].map(k=>Math.round(((A>>k)&255)*(1-f)+((B>>k)&255)*f).toString(16).padStart(2,"0")).join(""); }
-function toonSVG(t, opts){ opts=opts||{};
+function toonSVG(t, opts){ opts=opts||{}; let NECK="", SHLD="";
   /* effects and masks only cover what is visible: zoomed-in drawings (the 3D face) would otherwise need huge memory */
   const VB=(opts.vb||"6 -6 188 204").trim().split(/[\s,]+/).map(Number), RG=`x="${VB[0]-8}" y="${VB[1]-8}" width="${VB[2]+16}" height="${VB[3]+16}"`; if(t && t.gender==="f" && t.facial && t.facial!=="none") t=Object.assign({},t,{facial:"none"}); const FO=!!opts.features; if(FO) opts.headOnly=true; /* features: only eyes, brows, nose, mouth and cheek shading, for painting onto a 3D head */
   const id="t"+Math.random().toString(36).slice(2,7), U=x=>`url(#${id}${x})`;
@@ -1492,7 +1492,7 @@ function toonSVG(t, opts){ opts=opts||{};
   const faceR=[[100,36],[127,39],[146,53],[100+ck-2,78],[100+ck,102],[100+ck-1,117],[100+(ck+jx)/2+2,131],[100+jx,jy],[100+cw2+5,chinY-5],[100+cw2*.5,chinY-.8],[100,chinY]];
   const facePts=mirror(faceR), face=crPath(facePts,true);
   const facePtsS=facePts.map(([x,y])=>[100+(x-100)*.9,104+(y-104)*.93]), faceS=crPath(facePtsS,true);
-  let MUTE=false; const PH=(!FO && opts.photo)||null; const out=[], push=s=>{ if(!MUTE) out.push(s); }, OLc=shade(sk,.55), hair=t.hair;
+  let MUTE=false; const PH=(!FO && opts.photo)||null, HD=!!(PH && t.eyes==="photohead"); /* HD: the real head, hair and all, on the drawn body */ const out=[], push=s=>{ if(!MUTE) out.push(s); }, OLc=shade(sk,.55), hair=t.hair;
   let fs=17; const fr=()=>((fs=(fs*1664525+1013904223)>>>0)/4294967296);
   /* fill a region with short hairs: dir(x,y) gives growth direction, edges fade into the skin */
   const fur=(key,region,bb,n,L0,L1,dir,base)=>{ let d=""; const cols=[[hD,.5],[shade(hc,.72),.3],[hM,.13],[hL,.07]];
@@ -1501,8 +1501,11 @@ function toonSVG(t, opts){ opts=opts||{};
       d+=`<path d="M${x.toFixed(1)} ${y.toFixed(1)} q${(ux*L*.5-uy*bend).toFixed(1)} ${(uy*L*.5+ux*bend).toFixed(1)} ${(ux*L).toFixed(1)} ${(uy*L).toFixed(1)}" stroke="${c}" stroke-width="${(.22+fr()*.36).toFixed(2)}" opacity="${(.5+fr()*.4).toFixed(2)}"/>`; }
     return `<mask id="${id}${key}" maskUnits="userSpaceOnUse" ${RG}><path d="${region}" fill="#fff" filter="url(#${id}fe)"/></mask><g mask="url(#${id}${key})"><path d="${region}" fill="${shade(hc,.62)}" opacity="${base}" filter="url(#${id}p)"/><rect ${RG} filter="url(#${id}tx)" opacity=".6"/><g fill="none" stroke-linecap="round">${d}</g></g>`; };
   const mix0=(a,b,f)=>{ const A=parseInt(a.slice(1),16), B=parseInt(b.slice(1),16); return "#"+[16,8,0].map(k=>Math.round(((A>>k)&255)*(1-f)+((B>>k)&255)*f).toString(16).padStart(2,"0")).join(""); };
+  /* skin light and shade that behave like skin: shadows go warmer and redder (light passing through), highlights go softer and paler; darker skin gets a gentle cool sheen */
+  const skL=(()=>{ const n=parseInt(sk.slice(1),16); return (((n>>16)&255)*.3+((n>>8)&255)*.59+(n&255)*.11)/255; })();
+  const skSh=mix0(shade(sk,.66),"#6E2618",skL>.6?.2:skL>.4?.26:.3), skLt=skL>.55?mix0(sk,"#FFF1E4",.36):skL>.35?mix0(sk,"#F4C9A6",.2):mix0(sk,"#C9907A",.16);
   push(`<defs><clipPath id="${id}f"><path d="${face}"/></clipPath>
-  <radialGradient id="${id}g" cx=".42" cy=".4" r=".72"><stop offset="0" stop-color="${shade(sk,1.07)}"/><stop offset=".6" stop-color="${sk}"/><stop offset="1" stop-color="${shade(sk,.74)}"/></radialGradient>
+  <radialGradient id="${id}g" cx=".42" cy=".4" r=".72"><stop offset="0" stop-color="${mix0(sk,skLt,.45)}"/><stop offset=".58" stop-color="${sk}"/><stop offset="1" stop-color="${mix0(sk,skSh,.7)}"/></radialGradient>
   <filter id="${id}n" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="2.3" numOctaves="1" seed="5" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 .3  0 0 0 0 .2  0 0 0 0 .17  0 0 0 -1 .58"/></filter>
   <filter id="${id}p" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation=".45"/></filter>
   ${(()=>{ const rgb=c=>{ const n=parseInt(c.slice(1),16); return [(n>>16&255)/255,(n>>8&255)/255,(n&255)/255].map(v=>v.toFixed(3)); };
@@ -1521,7 +1524,9 @@ function toonSVG(t, opts){ opts=opts||{};
   <filter id="${id}b" filterUnits="userSpaceOnUse" ${RG}><feGaussianBlur stdDeviation="5"/></filter><filter id="${id}s" filterUnits="userSpaceOnUse" ${RG}><feGaussianBlur stdDeviation="2"/></filter>
   <filter id="${id}d" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#000" flood-opacity=".3"/></filter></defs><g ${FO?"":`filter="url(#${id}d)"`}>`);
   const hpB=[], hpF=[], sbuf=[]; let front=false;
-  const H=(d,extra)=>{ (front?hpF:hpB).push(d); push(`<path d="${d}" fill="${U("h")}" filter="url(#${id}rg)" ${extra||""}/>`); };
+  /* with a real-face photo, hair in front of the head stops at the brows so it never covers the eyes (window in head units) */
+  const phl="M64 112 C64 90 76 74 100 72 C124 74 136 90 136 112 L135 196 L65 196 Z";
+  const H=(d,extra)=>{ (front?hpF:hpB).push(d); push(`<path d="${d}" fill="${U("h")}" filter="url(#${id}rg)" ${extra||""}${front&&PH?` mask="url(#${id}pc)"`:""}/>`); };
   const strands=(paths,w,op)=>sbuf.push(`<g fill="none" stroke-linecap="round">${paths.map(d=>`<path d="${d}" stroke="${hD}" stroke-width="${w||1.6}" opacity="${op||.4}"/>`).join("")}${paths.slice(0,Math.ceil(paths.length/2)).map(d=>`<path d="${d}" stroke="${hL}" stroke-width="${(w||1.6)*.8}" opacity=".22" transform="translate(2.5 0)"/>`).join("")}</g>`);
   // skull-hugging cap: outer arc of the skull + hairline (points from right temple to left temple)
   let lastHL=null; const curly0=["afro","curlytop","curlylong","puffs","locs"].includes(hair);
@@ -1549,6 +1554,7 @@ function toonSVG(t, opts){ opts=opts||{};
     sbuf.unshift(`<g fill="none" stroke-linecap="round" filter="url(#${id}s)">${vol.map(([p,l])=>`<path d="${p}" stroke="${l?hL:hD}" stroke-width="${(3+rnd()*5).toFixed(1)}" opacity="${l?.24:.42}"/>`).join("")}</g>`);
     sbuf.push(`<g fill="none" stroke-linecap="round">${lay.d.map(([p,w])=>`<path d="${p}" stroke="${shade(hc,.66)}" stroke-width="${w.toFixed(2)}" opacity="${(.16+rnd()*.2).toFixed(2)}"/>`).join("")}${lay.m.map(([p,w])=>`<path d="${p}" stroke="${hM}" stroke-width="${w.toFixed(2)}" opacity="${(.12+rnd()*.18).toFixed(2)}"/>`).join("")}${lay.l.map(([p,w])=>`<path d="${p}" stroke="${hL}" stroke-width="${(w*.9).toFixed(2)}" opacity="${(.14+rnd()*.2).toFixed(2)}"/>`).join("")}</g>`); };
   const curls=(n,cx0,cy0,rx,ry,r)=>{ n=Math.round(n*6); r=r*.36; let d=""; for(let i=0;i<n;i++){ const a=rnd()*Math.PI*2, k=Math.sqrt(rnd()); const x=cx0+Math.cos(a)*k*rx, y=cy0+Math.sin(a)*k*ry, rr=r*(.7+rnd()*.6), st=rnd()*6.28; d+=`<path d="M${(x+Math.cos(st)*rr).toFixed(1)} ${(y+Math.sin(st)*rr).toFixed(1)} A${rr.toFixed(1)} ${rr.toFixed(1)} 0 1 1 ${(x+Math.cos(st+2.6)*rr).toFixed(1)} ${(y+Math.sin(st+2.6)*rr).toFixed(1)}" stroke="${i%4?(i%2?hD:shade(hc,.7)):hL}" stroke-width="${(.3+rnd()*.35).toFixed(2)}" opacity="${i%4?.6:.45}"/>`; } sbuf.push(`<g fill="none" stroke-linecap="round">${d}</g>`); };
+  if(HD) MUTE=true;
   if(!FO){ // ---------- hair behind the head ----------
   const longBack=(len,wav,vol)=>{ const L=[]; const R=[]; for(let i=0;i<=10;i++){ const y=60+i*(len-60)/10; const w=60+vol+(i<5?i*1.5:7.5-(i-5)*.6)+(wav?Math.sin(i*1.4)*wav:0); R.push([100+w,y]); }
     const top=[[100,22-vol*.6]]; const tips=[]; for(let k=0;k<=8;k++){ const x=100+56-k*14; tips.push([x,len+(k%2?-6:6)]); } const pts=top.concat(R,tips,R.slice().reverse().map(([x,y])=>[200-x,y])); return crPath(pts,true); };
@@ -1561,18 +1567,20 @@ function toonSVG(t, opts){ opts=opts||{};
   if(hair==="locs"){ const ps=[]; for(let i=0;i<12;i++){ const x=48+i*9.5; ps.push(`M${x} 70 C${x-4} 120 ${x+4} 170 ${x+(x<100?-6:6)} 220`); } strands(ps,5,.35); }
   if(hair==="hijab"){ push(`<path d="${crPath(mirror([[100,14],[146,22],[170,60],[172,108],[164,150],[176,190],[196,224],[100,226]]),true)}" fill="${U("j")}" stroke="${shade(t.hijabColour,.5)}" stroke-width="1.2" stroke-opacity=".6"/>`); }
   }
+  if(HD) MUTE=false;
   if(!opts.headOnly){
   // ---------- neck & shoulders ----------
   const neck=`M${100-21} ${jy+4} C${100-20} 178 ${100-22} 188 ${100-26} 196 L${100+26} 196 C${100+22} 188 ${100+20} 178 ${100+21} ${jy+4} Z`;
-  push(`<path d="${neck}" fill="${shade(sk,.97)}"/>`);
+  NECK=neck; push(`<path d="${neck}" fill="${shade(sk,.97)}"/>`);
 
   const shoulders=fem?`M4 232 C6 206 32 192 ${100-24} 186 Q100 ${t.top==="shirt"?200:196} ${100+24} 186 C168 192 194 206 196 232 Z`:`M-8 232 C-6 204 24 190 ${100-26} 186 Q100 ${t.top==="shirt"?200:196} ${100+26} 186 C176 190 206 204 208 232 Z`;
-  push(`<path d="${shoulders}" fill="${U("t")}" stroke="${shade(tc,.5)}" stroke-width="1.2" stroke-opacity=".5"/>`);
+  SHLD=shoulders; push(`<path d="${shoulders}" fill="${U("t")}" stroke="${shade(tc,.5)}" stroke-width="1.2" stroke-opacity=".5"/>`);
   if(t.top==="hoodie"){ push(`<path d="M${100-40} 188 Q100 222 ${100+40} 188 Q${100+30} 182 ${100+22} 186 Q100 204 ${100-22} 186 Q${100-30} 182 ${100-40} 188 Z" fill="${shade(tc,.78)}"/><path d="M${100-9} 202 L${100-11} 226 M${100+9} 202 L${100+11} 226" stroke="${shade(tc,1.3)}" stroke-width="2.6" stroke-linecap="round"/>`); }
   else if(t.top==="shirt"){ push(`<path d="M${100-26} 185 L100 210 L${100-10} 188 Z M${100+26} 185 L100 210 L${100+10} 188 Z" fill="#FAFAF7" stroke="#C9C9C4" stroke-width="1"/><path d="M100 210 L100 232" stroke="${shade(tc,.6)}" stroke-width="1.6"/><circle cx="100" cy="220" r="1.8" fill="${shade(tc,.5)}"/>`); }
   else if(t.top==="jumper"){ push(`<path d="M${100-28} 186 Q100 204 ${100+28} 186" stroke="${shade(tc,.75)}" stroke-width="7" fill="none"/><path d="M${100-28} 186 Q100 204 ${100+28} 186" stroke="${shade(tc,1.2)}" stroke-width="1.5" fill="none" opacity=".6"/>`); }
   else push(`<path d="M${100-26} 186 Q100 200 ${100+26} 186" stroke="${shade(tc,.7)}" stroke-width="3.5" fill="none"/>`);
   }
+  if(HD) MUTE=true;
   // ---------- ears ----------
   if(!FO) for(const s of [-1,1]){ const ex=100+s*(ck+1); const ear=`M${ex-s*1} 97 C${ex+s*9} 92 ${ex+s*11.5} 108 ${ex+s*8} 120 C${ex+s*5.5} 127 ${ex} 126 ${ex-s*2.5} 122 Z`;
     push(`<path d="${ear}" fill="${shade(sk,.94)}" stroke="${shade(sk,.62)}" stroke-width=".7" stroke-opacity=".35"/><clipPath id="${id}ea${s}"><path d="${ear}"/></clipPath><g clip-path="url(#${id}ea${s})"><path d="M${ex+s*4} 100 C${ex+s*10} 100 ${ex+s*10} 115 ${ex+s*5} 120" stroke="${shade(sk,.6)}" stroke-width="3.2" fill="none" opacity=".5" filter="url(#${id}q)"/><ellipse cx="${ex+s*4}" cy="111" rx="3" ry="5" fill="${shade(sk,.55)}" opacity=".45" filter="url(#${id}q)"/><path d="M${ex+s*9} 96 C${ex+s*14} 102 ${ex+s*13} 114 ${ex+s*9} 122" stroke="${shade(sk,1.15)}" stroke-width="1.6" fill="none" opacity=".45" filter="url(#${id}p)"/><ellipse cx="${ex+s*7}" cy="112" rx="8" ry="14" fill="#D9574F" opacity=".14" filter="url(#${id}q)"/><path d="M${ex-s*1} 96 L${ex-s*1} 126" stroke="${shade(sk,.5)}" stroke-width="5" opacity=".35" filter="url(#${id}q)"/></g>`);
@@ -1580,7 +1588,7 @@ function toonSVG(t, opts){ opts=opts||{};
   // ---------- face ----------
   if(!FO) push(`<path d="${face}" fill="${U("g")}" stroke="${OLc}" stroke-width=".8" stroke-opacity=".28"/>`);
   push(`<g clip-path="url(#${id}f)">`);
-  if(!FO){ const dk=shade(sk,.62), lt=shade(sk,1.18), warm=mix0(sk,"#D9574F",.55);
+  if(!FO){ const dk=skSh, lt=skLt, warm=mix0(sk,"#D9574F",.55);
     push(`<path d="M${100+ck-4} 46 C${100+ck+8} 90 ${100+ck+2} 130 ${100+jx} ${jy+8}" stroke="${dk}" stroke-width="30" fill="none" opacity=".5" filter="url(#${id}b)"/>`); /* far side in shadow */
     push(`<path d="M${100-ck+4} 50 C${100-ck-6} 90 ${100-ck} 130 ${100-jx} ${jy+8}" stroke="${dk}" stroke-width="10" fill="none" opacity=".2" filter="url(#${id}b)"/>`);
     for(const s of [-1,1]) push(`<ellipse cx="${100+s*(ck-6)}" cy="74" rx="9" ry="16" fill="${dk}" opacity="${s>0?.3:.16}" filter="url(#${id}b)"/>`); /* temples */
@@ -1592,6 +1600,7 @@ function toonSVG(t, opts){ opts=opts||{};
     push(`<path d="M${100-jx+2} ${jy+2} Q100 ${chinY+10} ${100+jx-2} ${jy+2}" stroke="${dk}" stroke-width="8" fill="none" opacity=".22" filter="url(#${id}b)"/>`); /* under the jaw */
     for(const s of [-1,1]) push(`<path d="M${100+s*8} 92 Q${100+s*11} 106 ${100+s*13} 122" stroke="${dk}" stroke-width="7" fill="none" opacity="${s>0?.3:.18}" filter="url(#${id}b)"/>`); /* sides of the nose bridge */
     push(`<ellipse cx="100" cy="88" rx="10" ry="6" fill="${lt}" opacity=".28" filter="url(#${id}b)"/>`); /* glabella */
+    if(skL<.5){ const sh=skL<.3?.22:.14; push(`<ellipse cx="92" cy="58" rx="20" ry="7" fill="#FFF6EE" opacity="${sh}" filter="url(#${id}b)"/><ellipse cx="100" cy="112" rx="3.5" ry="9" fill="#FFF6EE" opacity="${sh*1.2}" filter="url(#${id}s)"/><ellipse cx="70" cy="110" rx="9" ry="5" fill="#FFF6EE" opacity="${sh*.9}" filter="url(#${id}b)"/>`); } /* natural sheen */
     for(const s of [-1,1]) push(`<path d="M${100+s*14} ${fem?84:86} Q${100+s*26} ${fem?80:83} ${100+s*40} ${fem?86:88}" stroke="${lt}" stroke-width="5" fill="none" opacity=".2" filter="url(#${id}b)"/>`); /* brow ridge */
   }
   if(!FO && !["bald","hijab","buzz"].includes(hair)) push(`<path d="M50 52 Q100 30 150 52" stroke="${shade(sk,.5)}" stroke-width="16" fill="none" opacity=".32" filter="url(#${id}b)"/>`);
@@ -1693,17 +1702,43 @@ function toonSVG(t, opts){ opts=opts||{};
   if(!FO && ["moustache","goatee","short","full"].includes(t.facial)){ const m=`M${100-18} ${MY} C${100-14} ${MY-9.5} ${100-4} ${MY-9} 100 ${MY-7} C${100+4} ${MY-9} ${100+14} ${MY-9.5} ${100+18} ${MY} C${100+11} ${MY-2.6} ${100+4} ${MY-1.6} 100 ${MY-2.4} C${100-4} ${MY-1.6} ${100-11} ${MY-2.6} ${100-18} ${MY} Z`;
     push(fur("mu", m, [80,MY-11,120,MY+1], 520, 2.2, 5, (x,y)=>{ const sx=x-100; const ux=Math.sign(sx||1)*(.35+Math.abs(sx)*.03), uy=1; const l=Math.hypot(ux,uy); return [ux/l, uy/l]; }, .75)); }
   if(PH){ /* the player's own photo as the face, feathered into the drawn head, under the hair */
+    /* front hair stops at a natural hairline above the brows, so it never covers the eyes */
+    push(`<filter id="${id}pf" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.2"/></filter><mask id="${id}pc" maskUnits="userSpaceOnUse" x="-200" y="-200" width="600" height="600"><rect x="-200" y="-200" width="600" height="600" fill="#fff"/><path d="${phl}" fill="#000" filter="url(#${id}pf)"/></mask>`);
     push(`<mask id="${id}pm" maskUnits="userSpaceOnUse" ${RG}><path d="${face}" fill="#fff" filter="url(#${id}q)"/></mask><image href="${PH}" x="-18.55" y="-19.02" width="237.1" height="237.1" preserveAspectRatio="none" mask="url(#${id}pm)"/>`); }
   if(!FO){ // ---------- hair over the head ----------
   front=true;
   const hl=(y)=>[[100+ck-14,58],[132,y-2],[116,y],[100,y+1],[84,y],[68,y-2],[100-ck+14,58]];
   const S=(ps,w,op)=>strands(ps,w,op);
+  /* ---- shaped short hair: a real silhouette per style, then combed grooves, soft shading and a gloss band clipped inside it ---- */
+  let gs=(hair.length*7919+97)>>>0; const gr=()=>((gs=(gs*1664525+1013904223)>>>0)/4294967296);
+  const styled=(pts,dir,o)=>{ o=o||{}; const d=crPath(pts,true); const cid=id+"sc"+hair.length, mk=front&&PH?` mask="url(#${id}pc)"`:"";
+    /* the hair's soft shadow on the forehead, so it sits on the head instead of floating */
+    if(!PH) push(`<g clip-path="url(#${id}f)"><path d="${d}" transform="translate(0 5)" fill="${skSh}" opacity=".7" filter="url(#${id}b)"/></g>`);
+    H(d);
+    const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]), x0=Math.min(...xs), x1=Math.max(...xs), y0=Math.min(...ys), y1=Math.max(...ys);
+    const dk=[], lt=[]; const N=o.n||150;
+    for(let i=0;i<N;i++){ let x=x0+gr()*(x1-x0), y=y0+gr()*(y1-y0); const seg=[[x,y]], steps=o.steps||9, st=o.step||3.2;
+      for(let k=0;k<steps;k++){ const a=dir(x,y)*Math.PI/180+(gr()-.5)*.12; x+=Math.cos(a)*st; y+=Math.sin(a)*st; seg.push([x,y]); }
+      const pd="M"+seg.map(p=>p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" L"); (gr()<.62?dk:lt).push([pd,.6+gr()*1.3]); }
+    /* clumps: wide tapered locks following the same comb, each lit on top with a darker crease underneath */
+    const cl=[]; for(let i=0;i<(o.clumps||26);i++){ let x=x0+gr()*(x1-x0), y=y0+gr()*(y1-y0); const seg=[[x,y]], steps=(o.steps||9)+2, st=(o.step||3.2)*1.05;
+      for(let k=0;k<steps;k++){ const a=dir(x,y)*Math.PI/180+(gr()-.5)*.08; x+=Math.cos(a)*st; y+=Math.sin(a)*st; seg.push([x,y]); }
+      const w=(o.cw||7)*(.7+gr()*.6), Lp=[], Rp=[]; seg.forEach((p,k)=>{ const q=seg[Math.min(seg.length-1,k+1)], r=seg[Math.max(0,k-1)], tx=q[0]-r[0], ty=q[1]-r[1], l=Math.hypot(tx,ty)||1, nx=-ty/l, ny=tx/l, t=k/(seg.length-1), ww=w*(1-Math.pow(t,1.6))*Math.min(1,.45+t*2.2)/2; Lp.push([p[0]+nx*ww,p[1]+ny*ww]); Rp.push([p[0]-nx*ww,p[1]-ny*ww]); });
+      const f=v=>v.toFixed(1), body="M"+Lp.map(p=>f(p[0])+" "+f(p[1])).join(" L")+" L"+Rp.reverse().map(p=>f(p[0])+" "+f(p[1])).join(" L")+"Z", crease="M"+Rp.slice().reverse().map(p=>f(p[0])+" "+f(p[1])).join(" L"), ridge="M"+seg.map(p=>f(p[0]-.6)+" "+f(p[1]-.6)).join(" L");
+      cl.push(`<path d="${body}" fill="${mix0(hc,hL,.35)}" opacity="${(.3+gr()*.3).toFixed(2)}"/><path d="${crease}" fill="none" stroke="${hD}" stroke-width="1.5" opacity=".62"/><path d="${ridge}" fill="none" stroke="${hL}" stroke-width="1.1" opacity="${(.28+gr()*.25).toFixed(2)}"/>`); }
+    push(`<clipPath id="${cid}"><path d="${d}"/></clipPath><g clip-path="url(#${cid})"${mk}>
+      <path d="${d}" fill="none" stroke="${hD}" stroke-width="6" opacity=".45" filter="url(#${id}b)"/>
+      <g stroke-linecap="round" stroke-linejoin="round">${cl.join("")}</g>
+      <g fill="none" stroke-linecap="round" stroke-linejoin="round">${dk.map(([p,w])=>`<path d="${p}" stroke="${hD}" stroke-width="${w.toFixed(2)}" opacity="${(.28+gr()*.25).toFixed(2)}"/>`).join("")}${lt.map(([p,w])=>`<path d="${p}" stroke="${hL}" stroke-width="${(w*.8).toFixed(2)}" opacity="${(.16+gr()*.2).toFixed(2)}"/>`).join("")}</g>
+      ${(()=>{ /* soft wisps along the front hairline, so the edge isn't a hard cut */ const edge=pts.filter(p=>p[1]>44 && p[0]>48 && p[0]<152); let w=""; for(let k=0;k<edge.length-1;k++){ const [ax,ay]=edge[k],[bx,by]=edge[k+1]; for(let m=0;m<6;m++){ const f=gr(), x=ax+(bx-ax)*f, y=ay+(by-ay)*f-2, L=2.5+gr()*4, an=Math.PI/2+(x-100)/80+(gr()-.5)*.6; w+=`<path d="M${x.toFixed(1)} ${y.toFixed(1)} q${(Math.cos(an)*L*.5).toFixed(1)} ${(Math.sin(an)*L*.5).toFixed(1)} ${(Math.cos(an)*L).toFixed(1)} ${(Math.sin(an)*L).toFixed(1)}" stroke="${gr()<.5?hc:hD}" stroke-width="${(.5+gr()*.7).toFixed(2)}" opacity=".55"/>`; } } return w?`</g><g fill="none" stroke-linecap="round"${mk}>${w}</g><g clip-path="url(#${cid})"${mk}>`:""; })()}
+      ${o.gloss!==0?`<path d="${o.glossPath||"M62 46 Q100 20 140 42"}" stroke="${hL}" stroke-width="${o.gloss||8}" fill="none" stroke-linecap="round" opacity="${o.glossOp||.3}" filter="url(#${id}b)"/>`:""}</g>`); };
+  const away=(cx,cy,k)=>(x,y)=>Math.atan2(y-cy,x-cx)*180/Math.PI+(k?Math.sin(x*.21+y*.17)*k:0);
   switch(hair){
-    case "crop": H(cap(5,96,[[100+ck-6,74],[140,54],[120,44],[100,43],[80,44],[60,54],[100-ck+6,74]])); flow([100,26],[[54,92],[52,66],[66,46],[100,40],[134,46],[148,66],[146,92]],38,6); flow([100,24],[[46,80],[60,34],[100,22],[140,34],[154,80]],20,10); break;
-    case "quiff": H(cap(5,96,[[100+ck-6,72],[142,52],[124,44],[110,42],[92,46],[74,50],[60,58],[100-ck+6,74]])); H(crPath([[70,40],[78,18],[100,6],[126,8],[148,24],[150,44],[132,40],[110,38],[88,44]],true)); flow([70,48],[[84,16],[104,8],[130,12],[148,30],[150,46]],26,-8); flow([100,30],[[54,92],[52,66],[66,50],[134,50],[148,66],[146,92]],24,6); break;
-    case "sidepart": H(cap(6,98,[[100+ck-6,74],[146,60],[132,52],[114,46],[96,44],[78,46],[66,50],[60,58],[100-ck+6,76]])); H(crPath([[80,30],[60,40],[52,58],[60,66],[74,58],[96,50],[120,46],[142,52],[156,62],[154,42],[130,26],[104,22]],true)); flow([80,28],[[60,64],[100,48],[132,52],[156,62],[150,92]],34,8); flow([78,28],[[52,90],[50,60],[62,40]],10,4); push(`<path d="M80 28 Q78 34 76 42" stroke="${shade(hc,.45)}" stroke-width="1.6" opacity=".7"/>`); break;
-    case "pixie": H(cap(4,92,[[100+ck-6,70],[140,56],[124,52],[106,56],[88,66],[72,72],[62,70],[100-ck+6,76]])); flow([130,26],[[150,80],[146,58],[126,54],[100,58],[80,68],[60,72],[54,88]],34,6); break;
-    case "curlytop": { curls(40,100,44,46,26,5); H(cap(3,94,[[100+ck-6,72],[140,54],[120,46],[100,45],[80,46],[60,54],[100-ck+6,72]])); let d=""; const cc=[[64,42],[74,30],[88,22],[102,19],[116,22],[130,30],[140,42],[80,40],[96,34],[112,36],[124,44],[70,52],[134,54]]; for(const [x,y] of cc) d+=`<circle cx="${x}" cy="${y}" r="11" fill="${U("h")}" stroke="${hD}" stroke-width="1" stroke-opacity=".6"/><path d="M${x-5} ${y-2} q5 -6 9 0" stroke="${hL}" stroke-width="1.6" fill="none" opacity=".35"/>`; push(d); break; }
+    case "crop": { styled([[46,92],[44,70],[48,50],[60,34],[80,24],[100,21],[120,24],[140,34],[152,50],[156,70],[154,92],[148,74],[140,62],[128,58],[118,61],[108,57],[96,60],[86,57],[74,61],[62,62],[52,74]], away(100,24,8), {steps:6}); } break;
+    case "quiff": { styled([[46,92],[44,70],[48,52],[56,42],[64,28],[72,14],[86,5],[104,3],[122,7],[136,17],[146,31],[152,46],[156,68],[154,92],[148,72],[140,60],[128,52],[116,48],[104,46],[92,48],[80,50],[68,56],[56,64],[52,74]], (x,y)=>(y<56 && Math.abs(x-100)<40)?-90+(x-100)*.9-(56-y)*.9:Math.atan2(y-24,x-100)*180/Math.PI, {steps:9,glossPath:"M74 30 Q100 6 132 20",gloss:9,glossOp:.34}); } break;
+    case "sidepart": { styled([[46,92],[44,70],[48,50],[58,36],[74,26],[92,21],[112,22],[132,28],[146,40],[154,56],[156,70],[154,92],[150,74],[146,66],[138,62],[126,57],[112,53],[98,50],[86,49],[78,50],[70,54],[60,58],[52,72]], (x,y)=>x>80?18+(y-26)*.9:162-(y-26)*.9, {steps:11,glossPath:"M86 32 Q120 28 146 50",glossOp:.36}); push(`<path d="M80 23 Q79 34 77 47" stroke="${shade(hc,.4)}" stroke-width="1.4" fill="none" opacity=".75"${front&&PH?` mask="url(#${id}pc)"`:""}/>`); } break;
+    case "pixie": { styled([[46,90],[44,68],[48,48],[60,32],[80,22],[104,20],[126,24],[144,36],[154,54],[156,74],[152,90],[146,72],[138,64],[124,62],[110,66],[96,72],[82,76],[70,74],[60,70],[52,78]], (x,y)=>y<42?Math.atan2(y-16,x-120)*180/Math.PI:160-(y-42)*.4, {steps:11,glossPath:"M70 40 Q104 22 140 38"}); } break;
+    case "curlytop": { curls(40,100,44,46,26,5); H(cap(3,94,[[100+ck-6,72],[140,54],[120,46],[100,45],[80,46],[60,54],[100-ck+6,72]])); let d=""; const cc=[[64,42],[74,30],[88,22],[102,19],[116,22],[130,30],[140,42],[80,40],[96,34],[112,36],[124,44]]; for(const [x,y] of cc) d+=`<circle cx="${x}" cy="${y}" r="11" fill="${U("h")}" stroke="${hD}" stroke-width="1" stroke-opacity=".6"/><path d="M${x-5} ${y-2} q5 -6 9 0" stroke="${hL}" stroke-width="1.6" fill="none" opacity=".35"/>`; push(d); break; }
     case "buzz": { const bp=cap(1,92,[[100+ck-6,72],[140,54],[120,46],[100,45],[80,46],[60,54],[100-ck+6,72]]); push(`<path d="${bp}" fill="${hc}" opacity=".55"/><clipPath id="${id}bz"><path d="${bp}"/></clipPath>`); let d=""; for(let i=0;i<320;i++){ const a=(i*137.5)%360*Math.PI/180, r=Math.sqrt(i/320); const x=100+Math.cos(a)*r*60, y=60+Math.sin(a)*r*44; d+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r=".9" fill="${hD}" opacity=".5"/>`; } push(`<g clip-path="url(#${id}bz)">${d}</g>`); } break;
     case "bald": push(`<ellipse cx="114" cy="44" rx="18" ry="8" fill="#fff" opacity=".28" transform="rotate(-18 114 44)" filter="url(#${id}s)"/>`); break;
     case "bob": H(cap(9,142,[[100+ck-5,140],[100+ck-9,100],[100+ck-10,74],[138,64],[120,64],[100,65],[80,64],[62,64],[100-ck+10,74],[100-ck+9,100],[100-ck+5,140]])); flow([100,22],[[42,150],[40,100],[52,64],[80,64],[100,66],[120,64],[148,64],[160,100],[158,150]],52,10); break;
@@ -1719,13 +1754,11 @@ function toonSVG(t, opts){ opts=opts||{};
       flow([100,22],[[64,72],[82,74],[100,75],[118,74],[136,72]],26,6); flow([100,26],[[48,224],[38,170],[40,110],[46,76]],20,8); flow([100,26],[[154,76],[160,110],[162,170],[152,224]],20,8); break;
     case "fade": { const bp=cap(1,94,[[100+ck-6,76],[140,58],[120,50],[100,49],[80,50],[60,58],[100-ck+6,76]]); push(`<path d="${bp}" fill="${hc}" opacity=".5"/><clipPath id="${id}fd"><path d="${bp}"/></clipPath>`); let d=""; for(let i=0;i<260;i++){ const a=(i*137.5)%360*Math.PI/180, r=Math.sqrt(i/260); const x=100+Math.cos(a)*r*62, y=64+Math.sin(a)*r*40; d+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r=".9" fill="${hD}" opacity=".45"/>`; } push(`<g clip-path="url(#${id}fd)">${d}</g>`);
       H(crPath([[62,58],[60,42],[72,28],[100,22],[128,26],[142,40],[140,58],[120,52],[100,51],[80,52]],true)); flow([100,56],[[62,42],[76,28],[100,22],[124,25],[140,38]],26,-4); break; }
-    case "fringe": H(cap(5,94,[[100+ck-6,74],[140,62],[120,60],[100,61],[80,60],[60,62],[100-ck+6,74]])); flow([100,20],[[58,66],[78,62],[100,63],[122,62],[142,66]],34,4); flow([100,22],[[52,90],[54,70]],6,4); flow([100,22],[[146,70],[148,90]],6,4); break;
-    case "messy": H(cap(11,96,[[100+ck-6,74],[144,60],[130,56],[116,64],[100,56],[84,64],[70,56],[58,62],[100-ck+6,74]]));
-      flow([100,18],[[54,66],[70,58],[86,64],[100,58],[116,64],[132,58],[148,64]],34,10); { let d=""; for(const [x,y,a] of [[70,30,-30],[86,20,-12],[102,16,8],[118,20,24],[132,30,40]]) d+=`<path d="M${x} ${y+10} q${a/6} -9 ${a/3} -14" stroke="${hD}" stroke-width="5" stroke-linecap="round" opacity=".5"/>`; sbuf.push(`<g fill="none">${d}</g>`); } break;
-    case "spiky": H(cap(4,94,[[100+ck-6,72],[140,56],[120,50],[100,49],[80,50],[60,56],[100-ck+6,72]])); { const sp=[]; for(let k=-3;k<=3;k++){ const x=100+k*15, top=12+Math.abs(k)*7; sp.push([x-9,46],[x+k*2,top]); } sp.push([109+45,46]); H(crPath([[58,58]].concat(sp,[[146,58],[100,52]]),true)); flow([100,54],sp.filter((_,i)=>i%2).map(p=>[p[0],p[1]+4]),14,0); } break;
-    case "slick": H(cap(7,94,[[100+ck-6,70],[140,52],[120,44],[100,42],[80,44],[60,52],[100-ck+6,70]])); flow([100,46],[[52,84],[54,52],[70,26],[100,14],[130,26],[146,52],[148,84]],40,-10); break;
-    case "curtains": H(cap(7,114,[[100+ck-4,112],[100+ck-8,86],[148,66],[128,54],[110,46],[100,42],[90,46],[72,54],[52,66],[100-ck+8,86],[100-ck+4,112]]));
-      flow([100,28],[[48,112],[50,84],[62,62],[80,50],[96,44]],26,8); flow([100,28],[[104,44],[120,50],[138,62],[150,84],[152,112]],26,8); push(`<path d="M100 28 L100 42" stroke="${shade(hc,.45)}" stroke-width="1.6" opacity=".7"/>`); break;
+    case "fringe": { styled([[46,92],[44,70],[48,50],[60,34],[80,24],[100,21],[120,24],[140,34],[152,50],[156,70],[154,92],[148,76],[140,68],[130,71],[120,66],[110,72],[100,67],[90,72],[80,66],[70,71],[60,68],[52,76]], (x,y)=>y<40?Math.atan2(y-18,x-100)*180/Math.PI:90+(x-100)*.35, {steps:10}); } break;
+    case "messy": { styled([[46,92],[42,70],[44,52],[50,40],[56,30],[64,32],[70,20],[80,24],[88,12],[98,20],[108,10],[116,20],[126,14],[132,26],[142,24],[146,36],[154,46],[158,64],[156,92],[148,74],[140,62],[132,66],[124,58],[114,65],[104,58],[94,65],[84,58],[74,64],[64,60],[54,72]], away(100,44,55), {steps:6,n:170}); } break;
+    case "spiky": { styled([[46,90],[44,70],[44,54],[38,40],[54,42],[52,26],[68,32],[68,14],[84,24],[90,6],[102,22],[112,6],[118,24],[132,14],[134,32],[148,26],[148,42],[162,42],[156,56],[156,90],[148,72],[138,62],[120,58],[100,57],[80,58],[62,62],[52,72]], away(100,86,6), {steps:8,glossOp:.38}); } break;
+    case "slick": { styled([[46,90],[44,70],[48,50],[58,36],[74,26],[100,22],[126,26],[142,36],[152,50],[156,70],[154,90],[148,70],[138,56],[124,50],[100,48],[76,50],[62,56],[52,70]], (x,y)=>-90+(x-100)*1.05, {steps:10,n:170,gloss:10,glossOp:.42,glossPath:"M64 44 Q100 24 138 42"}); } break;
+    case "curtains": { styled([[44,112],[42,84],[44,60],[52,42],[66,30],[84,24],[100,22],[116,24],[134,30],[148,42],[156,60],[158,84],[156,112],[148,96],[144,80],[136,68],[124,58],[112,51],[102,47],[98,47],[88,51],[76,58],[64,68],[56,80],[52,96]], (x,y)=>x>100?40+(y-24)*1.1:140-(y-24)*1.1, {steps:12}); push(`<path d="M100 22 L100 44" stroke="${shade(hc,.45)}" stroke-width="1.4" opacity=".7"/>`); } break;
     case "manbun": H(cap(2,92,[[100+ck-6,70],[140,52],[120,44],[100,43],[80,44],[60,52],[100-ck+6,70]])); flow([100,16],[[52,86],[54,62],[66,48],[84,44],[100,43],[116,44],[134,48],[146,62],[148,86]],34,-4);
       push(`<ellipse cx="100" cy="16" rx="17" ry="14" fill="${U("h")}" stroke="${hD}" stroke-width="1.2" stroke-opacity=".7"/><path d="M88 12 Q100 4 112 12" stroke="${hL}" stroke-width="1.6" fill="none" opacity=".35"/><path d="M90 28 Q100 24 110 28" stroke="${shade(hc,.4)}" stroke-width="4" stroke-linecap="round"/>`); break;
     case "ponytail": case "bun": case "puffs": H(cap(2,94,[[100+ck-6,70],[140,52],[120,44],[100,43],[80,44],[60,52],[100-ck+6,70]])); { const o=hair==="bun"?[100,14]:hair==="ponytail"?[140,46]:[100,30]; flow(o,[[52,86],[54,62],[66,48],[84,44],[100,43],[116,44],[134,48],[146,62],[148,86]],34,-4); }
@@ -1735,18 +1768,40 @@ function toonSVG(t, opts){ opts=opts||{};
     case "braids": H(cap(1.5,92,[[100+ck-6,70],[140,52],[120,44],[100,43],[80,44],[60,52],[100-ck+6,70]])); { let d=""; for(let k=-4;k<=4;k++){ const x=100+k*11; d+=`<path d="M${x} 44 C${x+k*1.5} 30 ${x+k*3} 20 ${x+k*4} 8" stroke="${hD}" stroke-width="2.2" opacity=".55" stroke-dasharray="3 2"/>`; } sbuf.push(`<g fill="none" stroke-linecap="round">${d}</g>`); } break;
     case "afro": curls(120,100,72,80,64,5.5); H(cap(10,98,[[100+ck-6,72],[140,54],[120,46],[100,45],[80,46],[60,54],[100-ck+6,72]])); { let d=""; for(let i=0;i<40;i++){ const a=(i*137.5)%360*Math.PI/180, r=Math.sqrt(i/40)*78; const x=100+Math.cos(a)*r, y=80+Math.sin(a)*r*.8; if(y>58&&Math.abs(x-100)<ck) continue; d+=`<path d="M${(x-4).toFixed(1)} ${(y).toFixed(1)} q4 -5 8 0" stroke="${hL}" stroke-width="1.6" fill="none" opacity=".25"/>`; } push(d); } break;
     case "mohawk": push(`<path d="${cap(1,92,[[100+ck-6,72],[140,54],[120,46],[100,45],[80,46],[60,54],[100-ck+6,72]])}" fill="${hc}" opacity=".3"/>`); H(crPath([[90,46],[86,20],[92,-4],[100,-12],[108,-4],[114,20],[110,46]],true)); flow([100,48],[[92,-2],[100,-10],[108,-2]],12,0); break;
+    case "curlycrop": { /* short tight curls: a bumpy outline and a coat of little ringlets */
+      const ol=[]; for(let i=0;i<=22;i++){ const a=Math.PI*(1.06+.88*i/22), R=55+((i%2)?4:-1); ol.push([100+Math.cos(a)*R*1.02, 70+Math.sin(a)*R*.9]); } ol.push([152,74],[140,62],[100,58],[60,62],[48,74]);
+      styled(ol, away(100,30,40), {steps:3,n:60,clumps:0,gloss:5,glossOp:.18});
+      { const mk=front&&PH?` mask="url(#${id}pc)"`:""; let d=""; for(let i=0;i<150;i++){ const a=Math.PI*(1.05+gr()*.9), r=Math.sqrt(gr()); const x=100+Math.cos(a)*r*54, y=72+Math.sin(a)*r*50; if(y>64) continue; const rr=2.2+gr()*1.6, st=gr()*6.28;
+        d+=`<path d="M${(x+Math.cos(st)*rr).toFixed(1)} ${(y+Math.sin(st)*rr).toFixed(1)} A${rr.toFixed(1)} ${rr.toFixed(1)} 0 1 1 ${(x+Math.cos(st+2.4)*rr).toFixed(1)} ${(y+Math.sin(st+2.4)*rr).toFixed(1)}" stroke="${gr()<.55?hD:hL}" stroke-width="${(.7+gr()*.7).toFixed(2)}" opacity="${(.35+gr()*.3).toFixed(2)}"/>`; }
+        push(`<g fill="none" stroke-linecap="round"${mk}>${d}</g>`); } } break;
+    case "twists": { /* short twists: little rope coils standing up all over */
+      const ol=[]; for(let i=0;i<=20;i++){ const a=Math.PI*(1.06+.88*i/20), R=58+((i%2)?5:0); ol.push([100+Math.cos(a)*R, 72+Math.sin(a)*R*.92]); } ol.push([152,76],[140,62],[100,58],[60,62],[48,76]);
+      styled(ol, away(100,30,0), {steps:3,n:30,clumps:0,gloss:0});
+      { const mk=front&&PH?` mask="url(#${id}pc)"`:""; let d=""; const tw=[]; for(let i=0;i<70;i++){ const a=Math.PI*(1.08+gr()*.84), r=.25+Math.sqrt(gr())*.75; tw.push([100+Math.cos(a)*r*52, 70+Math.sin(a)*r*48, a]); } tw.sort((p,q)=>p[1]-q[1]);
+        for(const [x,y,a] of tw){ if(y>62) continue; const dx=Math.cos(a)*2.2, dy=Math.sin(a)*2.2; for(let k=0;k<4;k++){ const cx=x+dx*k, cy=y+dy*k; d+=`<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="2.9" ry="1.9" transform="rotate(${(a*180/Math.PI+35).toFixed(0)} ${cx.toFixed(1)} ${cy.toFixed(1)})" fill="${k%2?hc:hM}" stroke="${hD}" stroke-width=".55"/>`; } }
+        push(`<g${mk}>${d}</g>`); } } break;
+    case "waves": { /* 360 waves: close-cut with ripples circling the crown */
+      const bp=cap(2,94,[[100+ck-6,74],[142,60],[122,56],[100,56],[78,56],[58,60],[100-ck+6,74]]); H(bp); const mk=front&&PH?` mask="url(#${id}pc)"`:"";
+      let d=""; for(let k=0;k<9;k++){ const yb=27+k*4.3; let p=""; for(let x=38;x<=162;x+=2){ const y=yb+Math.pow((x-100)/60,2)*(14+k*2.2)+Math.sin(x*.32+k*1.7)*1.1; p+=(x>38?" L":"M")+x+" "+y.toFixed(1); } d+=`<path d="${p}" stroke="${hL}" stroke-width="1.8" opacity=".45"/><path d="${p}" transform="translate(0 2.1)" stroke="${hD}" stroke-width="1.6" opacity=".6"/>`; }
+      push(`<clipPath id="${id}wv"><path d="${bp}"/></clipPath><g clip-path="url(#${id}wv)" fill="none" stroke-linecap="round"${mk}>${d}</g>`); } break;
+    case "skinfade": { /* short textured top, sides faded down to skin */
+      const sides=cap(1,92,[[100+ck-6,76],[140,58],[120,52],[100,51],[80,52],[60,58],[100-ck+6,76]]);
+      push(`<linearGradient id="${id}sf" gradientUnits="userSpaceOnUse" x1="0" y1="54" x2="0" y2="94"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient><mask id="${id}sfm" maskUnits="userSpaceOnUse" x="-50" y="-50" width="300" height="300"><rect x="-50" y="-50" width="300" height="300" fill="url(#${id}sf)"/></mask><clipPath id="${id}sfc"><path d="${sides}"/></clipPath>`);
+      { let dd=""; for(let i=0;i<420;i++){ const a=(i*137.5)%360*Math.PI/180, r=Math.sqrt(i/420); const x=100+Math.cos(a)*r*62, y=64+Math.sin(a)*r*40; dd+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r=".8" fill="${hD}"/>`; } push(`<g mask="url(#${id}sfm)" clip-path="url(#${id}sfc)"><path d="${sides}" fill="${hc}" opacity=".85"/><g opacity=".6">${dd}</g></g>`); }
+      styled([[54,62],[52,46],[60,32],[78,22],[100,19],[122,22],[140,32],[148,46],[146,62],[134,58],[118,61],[104,57],[90,61],[74,57],[62,61]], away(100,18,14), {steps:6,clumps:18,cw:6}); } break;
     case "hijab": push(`<path d="${crPath(mirror([[100,16],[146,24],[166,62],[166,110],[158,150],[150,176],[100,182]]),true)} ${faceS.replace("M","M ")}" fill="${U("j")}" fill-rule="evenodd" stroke="${shade(t.hijabColour,.5)}" stroke-width="1.2" stroke-opacity=".6"/><path d="M60 36 Q100 18 140 36" stroke="${shade(t.hijabColour,1.4)}" stroke-width="5" fill="none" opacity=".35" stroke-linecap="round" filter="url(#${id}s)"/><path d="${faceS}" fill="none" stroke="${shade(t.hijabColour,.55)}" stroke-width="2" opacity=".5"/>`); break;
   }
-  if(lastHL && !["bald","buzz","fade","hijab","afro","curlytop","braids","locs","mohawk"].includes(hair)){ let d="", hs=31; const hr=()=>((hs=(hs*1664525+1013904223)>>>0)/4294967296);
+  if(lastHL && !["bald","buzz","fade","hijab","afro","curlytop","braids","locs","mohawk","crop","fringe","messy","spiky","quiff","sidepart","slick","curtains","pixie"].includes(hair)){ let d="", hs=31; const hr=()=>((hs=(hs*1664525+1013904223)>>>0)/4294967296);
     for(let k=0;k<lastHL.length-1;k++){ const [x0,y0]=lastHL[k], [x1,y1]=lastHL[k+1]; for(let m=0;m<14;m++){ const f=hr(), x=x0+(x1-x0)*f, y=y0+(y1-y0)*f-1.5, L=2+hr()*4.5, a=Math.PI/2+(x-100)/90+(hr()-.5)*.7; d+=`<path d="M${x.toFixed(1)} ${y.toFixed(1)} q${(Math.cos(a)*L*.5+(hr()-.5)*2).toFixed(1)} ${(Math.sin(a)*L*.5).toFixed(1)} ${(Math.cos(a)*L).toFixed(1)} ${(Math.sin(a)*L).toFixed(1)}" stroke="${hr()<.5?hc:hD}" stroke-width="${(.18+hr()*.25).toFixed(2)}" opacity="${(.3+hr()*.35).toFixed(2)}"/>`; } }
     var wisps=`<g fill="none" stroke-linecap="round">${d}</g>`; }
-  if(sbuf.length){ push(`<mask id="${id}hm" maskUnits="userSpaceOnUse" ${RG}>${hpB.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}<path d="${face}" fill="#000"/>${hpF.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}</mask><mask id="${id}hx" maskUnits="userSpaceOnUse" ${RG}>${hpB.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}<path d="${face}" fill="#000"/>${hpF.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}</mask><linearGradient id="${id}tgg" gradientUnits="userSpaceOnUse" x1="0" y1="${["afro","curlytop","curlylong","puffs","locs"].includes(hair)?-40:40}" x2="0" y2="${["afro","curlytop","curlylong","puffs","locs"].includes(hair)?0:96}"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#fff" stop-opacity="1"/></linearGradient><mask id="${id}tg" maskUnits="userSpaceOnUse" ${RG}><rect ${RG} fill="url(#${id}tgg)"/></mask><g mask="url(#${id}hx)"><g mask="url(#${id}tg)"><rect ${RG} filter="url(#${id}tx)" opacity="${curly0?.7:.42}"/><rect ${RG} filter="url(#${id}tl)" opacity="${curly0?.45:.24}"/></g></g><g mask="url(#${id}hm)">${sbuf.join("")}</g>`); }
+  if(sbuf.length){ push(`<mask id="${id}hm" maskUnits="userSpaceOnUse" ${RG}>${hpB.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}<path d="${face}" fill="#000"/>${NECK?`<path d="${NECK}" fill="#000"/>`:""}${SHLD?`<path d="${SHLD}" fill="#000"/>`:""}${hpF.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}${PH?`<path d="${phl}" fill="#000"/>`:""}</mask><mask id="${id}hx" maskUnits="userSpaceOnUse" ${RG}>${hpB.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}<path d="${face}" fill="#000"/>${NECK?`<path d="${NECK}" fill="#000"/>`:""}${SHLD?`<path d="${SHLD}" fill="#000"/>`:""}${hpF.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}${PH?`<path d="${phl}" fill="#000"/>`:""}</mask><linearGradient id="${id}tgg" gradientUnits="userSpaceOnUse" x1="0" y1="${["afro","curlytop","curlylong","puffs","locs"].includes(hair)?-40:40}" x2="0" y2="${["afro","curlytop","curlylong","puffs","locs"].includes(hair)?0:96}"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#fff" stop-opacity="1"/></linearGradient><mask id="${id}tg" maskUnits="userSpaceOnUse" ${RG}><rect ${RG} fill="url(#${id}tgg)"/></mask><g mask="url(#${id}hx)"><g mask="url(#${id}tg)"><rect ${RG} filter="url(#${id}tx)" opacity="${curly0?.7:.42}"/><rect ${RG} filter="url(#${id}tl)" opacity="${curly0?.45:.24}"/></g></g><g mask="url(#${id}hm)">${sbuf.join("")}</g>`); }
   if(typeof wisps==="string" && wisps) push(wisps);
   if(fly.length) push(`<g fill="none" stroke="${hM}" stroke-width=".2" opacity=".3" stroke-linecap="round">${fly.map(d=>`<path d="${d}"/>`).join("")}</g>`);
-  if(["crop","quiff","sidepart","curlytop","pixie","bob","long","wavy","curlylong","locs","ponytail","bun","puffs","braids","fringe","messy","spiky","slick","curtains","manbun","medium","midwavy","longside","longfringe"].includes(hair)) push(`<path d="M62 46 Q100 18 140 42" stroke="${hL}" stroke-width="9" fill="none" stroke-linecap="round" opacity=".26" filter="url(#${id}b)"/><path d="M72 38 Q100 24 128 36" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".14" filter="url(#${id}s)"/>`);
+  if(["curlytop","bob","long","wavy","curlylong","locs","ponytail","bun","puffs","braids","manbun","medium","midwavy","longside","longfringe"].includes(hair)) push(`<path d="M62 46 Q100 18 140 42" stroke="${hL}" stroke-width="9" fill="none" stroke-linecap="round" opacity=".26" filter="url(#${id}b)"/><path d="M72 38 Q100 24 128 36" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".14" filter="url(#${id}s)"/>`);
   // ---------- hats ----------
   }
   if(!FO){
+  if(t.hair==="hijab" && t.hat!=="none") t=Object.assign({},t,{hat:"none"}); /* no hat over a hijab */
   if(t.hat==="beanie"){ const bc=tc; push(`<path d="${crPath([[38,76],[40,40],[66,10],[100,2],[134,10],[160,40],[162,76]],false)} Z" fill="${U("t")}" stroke="${shade(bc,.5)}" stroke-width="1.2"/><rect x="34" y="62" width="132" height="22" rx="11" fill="${shade(bc,.82)}" stroke="${shade(bc,.5)}" stroke-width="1.2"/><circle cx="100" cy="0" r="11" fill="${shade(bc,1.1)}" stroke="${shade(bc,.5)}" stroke-width="1.2"/>`); for(let x=44;x<160;x+=8) push(`<path d="M${x} 64 L${x} 82" stroke="${shade(bc,.65)}" stroke-width="1.4" opacity=".6"/>`); }
   if(t.hat==="cap"){ const bc=tc; push(`<path d="${crPath([[40,64],[44,32],[70,8],[100,2],[130,8],[156,32],[160,64]],false)} Q100 54 40 64 Z" fill="${U("t")}" stroke="${shade(bc,.5)}" stroke-width="1.2"/><path d="M44 60 Q100 46 178 64 Q120 80 44 68 Z" fill="${shade(bc,.75)}" stroke="${shade(bc,.45)}" stroke-width="1.2"/><circle cx="100" cy="4" r="4" fill="${shade(bc,.65)}"/><path d="M100 4 L100 54" stroke="${shade(bc,.65)}" stroke-width="1.2" opacity=".6"/>`); }
   // ---------- glasses ----------
@@ -1758,6 +1813,8 @@ function toonSVG(t, opts){ opts=opts||{};
       push(`<path d="M${ex-10} ${gy-6} l7 -4" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".5"/>`); }
     push(`<path d="M${100-7} ${EY-2} Q100 ${EY-6} ${100+7} ${EY-2}" stroke="${gc}" stroke-width="3" fill="none"/><path d="M${100-42} ${EY-4} L${100-ck} ${EY-6} M${100+42} ${EY-4} L${100+ck} ${EY-6}" stroke="${gc}" stroke-width="3"/>`); }
   }
+  if(HD){ MUTE=false; /* the photo is two halves side by side: colour on the left, the cut-out mask on the right */
+    push(`<mask id="${id}hd" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200"><image href="${PH}" x="-200" y="0" width="400" height="200" preserveAspectRatio="none"/></mask><image href="${PH}" x="0" y="0" width="400" height="200" preserveAspectRatio="none" mask="url(#${id}hd)"/>`); }
   push(`</g>`);
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${opts.vb||"6 -6 188 204"}">${mergeFilters(out.join(""))}</svg>`;
 }
@@ -2245,7 +2302,7 @@ const HAIR_STYLE={ // len: card length, n: card count, flow: "crown"|"fwd"|"back
   medium:{len:.1,n:950,flow:"crown",mess:.35}, midwavy:{len:.1,n:950,flow:"crown",curl:.5,mess:.3}, bob:{len:.1,n:950,flow:"crown",mess:.2},
   long:{len:.13,n:1100,flow:"crown",mess:.25}, longside:{len:.13,n:1100,flow:"part",part:.035,mess:.25}, longfringe:{len:.13,n:1100,flow:"fwd",mess:.25},
   wavy:{len:.12,n:1100,flow:"crown",curl:.7,mess:.3}, curlylong:{len:.1,n:1200,flow:"crown",curl:1.3,mess:.4},
-  curlytop:{len:.04,n:1000,flow:"out",curl:1.6,mess:.6}, curly:{len:.04,n:1000,flow:"out",curl:1.6,mess:.6},
+  curlytop:{len:.04,n:1000,flow:"out",curl:1.6,mess:.6}, curlycrop:{len:.034,n:1100,flow:"out",curl:2,mess:.6}, twists:{len:.05,n:900,flow:"up",curl:2.4,mess:.35}, waves:{len:.014,n:950,flow:"crown",curl:.9,mess:.1,tight:1}, skinfade:{len:.04,n:650,flow:"fwd",mess:.35}, curly:{len:.04,n:1000,flow:"out",curl:1.6,mess:.6},
   afro:{len:.035,n:1500,flow:"out",curl:2,mess:.8}, puffs:{len:.035,n:1200,flow:"out",curl:2,mess:.8},
   braids:{len:.07,n:1000,flow:"crown",curl:.25,mess:.1}, locs:{len:.08,n:1000,flow:"crown",curl:.3,mess:.2},
   ponytail:{len:.08,n:1000,flow:"back",mess:.15}, bun:{len:.07,n:900,flow:"back",mess:.15}, mohawk:{len:.05,n:600,flow:"up",mess:.3}, buzz:{len:.016,n:900,flow:"crown",mess:.2}
@@ -2254,7 +2311,7 @@ function hairCardsGeo(P, tname, hairF, skinF, allF){
   const st0=HAIR_STYLE[tname]||HAIR_STYLE[P.d.hair], st=st0&&Object.assign({},st0,{n:Math.round(st0.n*((typeof navigator!=="undefined"&&/iPhone|iPad|iPod|Android/i.test(navigator.userAgent||""))?1.1:1.4))}); if(!st || (!st.beard && (P.d.hair==="bald" || P.d.hair==="hijab"))) return null;
   let rs=(chHash(String(tname)+P.hc)>>>0)||7; const R=()=>((rs=(rs*1664525+1013904223)>>>0)/4294967296);
   const e=.0012, grad=(f,x,y,z)=>{ const gx=f(x+e,y,z)-f(x-e,y,z), gy=f(x,y+e,z)-f(x,y-e,z), gz=f(x,y,z+e)-f(x,y,z-e), l=Math.hypot(gx,gy,gz)||1; return [gx/l,gy/l,gz/l]; };
-  const C=[0,.115,-.012], hatTop=["beanie","cap","wizard","crown"].includes(P.d.hat)?.118:9;
+  const C=[0,.115,-.012], hs=hatSpace(P.d.hat), inHat=q=>!!hs && (hs(...q)<.004 || hs.above(...q)), hatTop=["wizard","crown"].includes(P.d.hat)?.118:9;
   const crown=st.flow==="fwd"?[0,.2,-.08]:st.flow==="back"?[0,.16,.13]:[0,.215,-.035];
   const hc=lin(P.d.hcHex||P.hc).map(v=>v*1.22), Pp=[],Nn=[],U=[],Cc=[],Mm=[],I=[]; let made=0;
   const dirAt=(p,n)=>{ let d;
@@ -2269,7 +2326,7 @@ function hairCardsGeo(P, tname, hairF, skinF, allF){
     const u1=R()*2-1, a=R()*Math.PI*2, r=Math.sqrt(1-u1*u1), dir=[r*Math.cos(a),u1,r*Math.sin(a)];
     let p=[C[0]+dir[0]*.4,C[1]+dir[1]*.4,C[2]+dir[2]*.4], hit=false;
     for(let k=0;k<80;k++){ const d=allF(...p); if(d<.0004){ hit=true; break; } const s=Math.max(d,.0015); p=[p[0]-dir[0]*s,p[1]-dir[1]*s,p[2]-dir[2]*s]; if(Math.hypot(p[0]-C[0],p[1]-C[1],p[2]-C[2])<.02) break; }
-    if(!hit) continue; const inMouth=q=>st.beard && Math.abs(q[0])<.03 && q[1]>.012 && q[1]<.05 && q[2]>.07; if(inMouth(p)) continue; const hd=hairF(...p); if(hd>.0015 || hd>skinF(...p)+.0005 || p[1]>hatTop) continue;
+    if(!hit) continue; const inFace=q=>(P.d.photo?(q[2]>.035 && Math.abs(q[0])<.064 && q[1]<.136):(q[2]>.045 && Math.abs(q[0])<.058 && q[1]<.112)) && q[1]>-.03; /* a real-face photo: no strands across the face */ if(inFace(p)) continue; const inMouth=q=>st.beard && Math.abs(q[0])<.03 && q[1]>.012 && q[1]<.05 && q[2]>.07; if(inMouth(p)) continue; const hd=hairF(...p); if(hd>.0015 || hd>skinF(...p)+.0005 || p[1]>hatTop || inHat(p)) continue;
     const MS=Math.min(1.4,(st.mess||0)+.55), off=.0006+R()*.005, len=st.len*(.45+R()*1.0), segs=Math.max(3,Math.min(11,Math.round(len/.011))), step=len/segs, lift=R()<.32?(.002+R()*.009)*(1+MS):0;
     const w=(st.flow==="out"?.008:.011)*(.55+R()*.8), phase=R()*6.28, cfreq=(st.curl||0)>0?(55+R()*25):0, cv=.85+R()*.3;
     let n=grad(allF,...p); p=[p[0]+n[0]*off,p[1]+n[1]*off,p[2]+n[2]*off]; let t=dirAt(p,n); if(!t) continue;
@@ -2283,10 +2340,10 @@ function hairCardsGeo(P, tname, hairF, skinF, allF){
       let q=[p[0]+t[0]*step,p[1]+t[1]*step,p[2]+t[2]*step];
       const want=off+lift*s/segs; let gn=grad(allF,...q); const dq=allF(...q)-want; q=[q[0]-gn[0]*dq,q[1]-gn[1]*dq,q[2]-gn[2]*dq];
       if(st.flow==="out"||st.flow==="up"){ const o=s*step*.35; q=[q[0]+gn[0]*o*.4,q[1]+gn[1]*o*.4,q[2]+gn[2]*o*.4]; }
-      if(q[1]>hatTop || inMouth(q)) break;
+      if(q[1]>hatTop || inHat(q) || inMouth(q) || inFace(q)) break;
       if(hairF(...q)>.007){ // past the edge of the hairstyle: let the tips hang free (ragged, natural ends) without going into the skin
         let fr=[p[0]+t[0]*step,p[1]+t[1]*step-step*.35,p[2]+t[2]*step]; const sd=skinF(...fr); if(sd<.003){ const sg=grad(skinF,...fr); fr=[fr[0]+sg[0]*(.003-sd),fr[1]+sg[1]*(.003-sd),fr[2]+sg[2]*(.003-sd)]; }
-        free+=step; if(st.tight || free>Math.min(.045,len*.6)) break; p=fr; pts.push(p); nrm.push(n); continue; }
+        free+=step; if(st.tight || free>Math.min(.045,len*.6) || inFace(fr) || inHat(fr)) break; p=fr; pts.push(p); nrm.push(n); continue; }
       p=q; n=gn; pts.push(p); nrm.push(n); }
     if(pts.length<3) continue;
     const base=Pp.length/3, m=pts.length-1;
@@ -2305,6 +2362,12 @@ function hairStrandCanvas(){ if(hairStrandCanvas.c) return hairStrandCanvas.c; c
     const grd=x.createLinearGradient(0,0,0,end); grd.addColorStop(0,`rgba(${g},${g},${g},1)`); grd.addColorStop(.8,`rgba(${g},${g},${g},.95)`); grd.addColorStop(1,`rgba(${g},${g},${g},0)`);
     x.strokeStyle=grd; x.lineWidth=wdt; x.beginPath(); x.moveTo(cx,0); x.bezierCurveTo(cx+wv,end*.35,cx-wv,end*.7,cx+wv*.5,end); x.stroke(); }
   return (hairStrandCanvas.c=c); }
+/* the space a hat takes up on the head (head units): hair inside it is cut away so nothing pokes through the hat */
+function hatSpace(hat){ const H={beanie:{c:[0,.118,-.012],a:.28,r:[.091,.112,.112],lo:-.004}, cap:{c:[0,.122,-.012],a:.1,r:[.09,.1,.11],lo:-.002}}[hat]; if(!H) return null;
+  const ca=Math.cos(H.a), sa=Math.sin(H.a), m=Math.min(...H.r);
+  const f=(x,y,z)=>{ const px=x-H.c[0], py=y-H.c[1], pz=z-H.c[2], qy=py*ca-pz*sa, qz=py*sa+pz*ca; /* undo the hat's tilt */
+    const e=(Math.hypot(px/H.r[0],qy/H.r[1],qz/H.r[2])-3)*m; return Math.max(e, H.lo-qy); }; /* everything above the brim, out to well past the hat */
+  f.above=(x,y,z)=>{ const py=y-H.c[1], pz=z-H.c[2]; return py*ca-pz*sa>H.lo-.004; }; return f; }
 function headSculpt(P){
   const b=BI, d=P.d, L=[], A=(f,bb,k,m)=>({f,b:bb,k,m}); const jw={square:1.12,round:1.04,heart:.86,long:.95,oval:1}[d.face]||1, fy={long:-.008,round:.004,heart:.002}[d.face]||0;
   const sk=[
@@ -2340,7 +2403,7 @@ function headSculpt(P){
   switch(d.hair){
     case "short": H.push(A(cap([.0835,.1,.105]),hb,.02), A(masked(SD.ell([0,.158,.02],[.066,.045,.085]),natHL(.14)),hb,.03)); break;
     case "side": H.push(A(cap([.0835,.099,.105]),hb,.02), A(masked(SD.ell([0,.163,.01],[.07,.048,.085]),natHL(.15)),hb,.03), A(SD.rot(SD.ell([-.018,.152,.062],[.062,.026,.045]),[-.018,.152,.062],0,0,.35),hb,.025)); break;
-    case "buzz": H.push(A(cap([.0805,.093,.1015],.148,.08,.02),hb,.01)); post=grooves(.0002,90); break;
+    case "buzz": H.push(A(cap([.0835,.0995,.105],.148,.08,.02),hb,.01)); /* thick enough to show as a short coat of hair, not bare scalp */ post=grooves(.0002,90); break;
     case "bald": hairOn=false; break;
     case "long": case "wavy": {
       H.push(A(cap([.085,.1,.106]),hb,.02), A(masked(SD.ell([0,.163,.015],[.07,.048,.085]),natHL(.15)),hb,.03));
@@ -2360,7 +2423,7 @@ function headSculpt(P){
     case "mohawk": H.push(A(cap([.0785,.0915,.0995],.148,.09,.03),hb,.005), A(masked(SD.ell([0,.165,-.01],[.016,.07,.115]),(x,y,z)=>.1-y),hb,.01)); break;
     case "hijab": hairOn=false; L.push({mat:"cloth", prims:[A(SD.ell([0,.1,-.012],[.094,.118,.113]),hb,.02), A(SD.cap([0,-.04,-.03],[0,-.2,-.035],.088,.13),b.neck,.06)], subs:[{f:SD.ell([0,.062,.086],[.058,.079,.062]),k:.012}], post:grooves(.0006,20)}); break;
   }
-  if(hairOn && H.length){ const p0=post; post=(dd,x,y,z)=>p0(dd,x,y,z)+.0032*Math.sin(x*61+y*23)*Math.sin(y*47-z*39)+.0022*Math.sin(z*83+x*29+y*11); L.push({mat:"hair", prims:H, post, main:true}); }
+  if(hairOn && H.length){ const p0=post; post=(dd,x,y,z)=>p0(dd,x,y,z)+.0032*Math.sin(x*61+y*23)*Math.sin(y*47-z*39)+.0022*Math.sin(z*83+x*29+y*11); const hs=hatSpace(d.hat); L.push({mat:"hair", prims:H, post, main:true, subs:hs?[{f:hs,k:.003}]:[]}); }
   if(d.beard){ L.push({mat:"beard", beard:true, prims:[A((x,y,z)=>Math.max(SD.ell([0,.036,.03],[.065,.06,.08])(x,y,z), y-.064, -.035-z),b.jaw,.01)], subs:[{f:SD.ell([0,.027,.1],[.025,.0135,.03]),k:.006}], post:grooves(.0012,140)}); }
   if(d.beard||d.tache) L.push({mat:"beard", beard:true, prims:[A(SD.cap([-.021,.0395,.103],[.021,.0395,.103],.0058),b.head,.004)]});
   return {layers:L};
@@ -2520,6 +2583,7 @@ function makeChar(gx, id, geo){
     add(RB,bc,b.hips,M4.ch(T(-.2,.97,.03),M4.RY(-.5),M4.S(.2,.15,.065)),{spec:.25,gloss:30}); add(RB,shade(bc,.85),b.hips,M4.ch(T(-.195,1.005,.065),M4.RY(-.5),M4.S(.19,.08,.012)),{spec:.25}); add(CY,GOLD,b.hips,M4.ch(T(-.172,.985,.086),M4.RX(Math.PI/2),M4.S(.008,.004,.008)),met); }
   if(d.headphones){ add(HUM.torus(gx,.112,.009,Math.PI),"#1C1C22",b.head,M4.ch(HT(0,.108,-.01),M4.RX(Math.PI/2)),{spec:.6,gloss:40}); for(const s of [1,-1]) add(HUM.cyl(gx),"#F2F2F0",b.head,M4.ch(HT(.088*s,.08,-.01),M4.RZ(Math.PI/2*s),M4.T(0,-.012,0),M4.S(.036,.028,.036)),{spec:.5,gloss:40}); }
   if(d.bow) for(const s of [1,-1]) add(S,"#FF4F8B",b.head,M4.ch(HT(.055+.025*s,.195,.04),M4.RZ(.4*s),M4.S(.028,.017,.012)),{spec:.3});
+  if(d.hair==="hijab") d.hat=null;
   if(d.hat==="beanie"){ add(HUM.cap(gx,1.55),d.hatc,b.head,M4.ch(HT(0,.118,-.012),M4.RX(-.28),M4.S(.091,.112,.112)),{wrap:.3,spec:.05}); add(HUM.torus(gx,.093,.016),d.hatc,b.head,M4.ch(HT(0,.122,-.0),M4.RX(-.28),M4.S(1,1.1,1.16)),{wrap:.3,spec:.05}); add(S,d.hatc,b.head,M4.ch(HT(0,.235,-.05),M4.S(.026,.026,.026)),{wrap:.3,spec:.05}); }
   if(d.hat==="cap"){ add(HUM.cap(gx,1.57),d.hatc,b.head,M4.ch(HT(0,.122,-.012),M4.RX(-.1),M4.S(.09,.1,.11)),{spec:.12}); add(HUM.cyl(gx),d.hatc,b.head,M4.ch(HT(0,.135,.1),M4.RX(.12),M4.S(.078,.005,.07)),{spec:.12}); }
   if(d.hat==="party"){ add(HUM.cyl(gx,1,0),"#FF4F8B",b.head,M4.ch(HT(0,.19,0),M4.RZ(-.15),M4.S(.055,.16,.055)),{spec:.4}); add(S,"#FFE14D",b.head,M4.ch(HT(-.024,.35,0),M4.S(.018,.018,.018))); }
@@ -2750,9 +2814,9 @@ function decodeAv(v){ try{ const [sk,hair,hc,ey,gl,fl,top,hat]=v.slice(2).split(
 
 /* ---------------- Toon avatars (realistic painted style) ---------------- */
 const TOON={
-  hair:{crop:"Short crop",fade:"Fade",fringe:"Short fringe",messy:"Messy",spiky:"Spiky",quiff:"Quiff",sidepart:"Side part",slick:"Slicked back",curlytop:"Curly top",buzz:"Buzz cut",bald:"Bald",curtains:"Curtains",manbun:"Man bun",pixie:"Pixie",bob:"Bob",medium:"Shoulder length",midwavy:"Shoulder wavy",long:"Long straight",longside:"Long side part",longfringe:"Long with fringe",wavy:"Long wavy",curlylong:"Long curly",ponytail:"Ponytail",bun:"Top bun",afro:"Afro",puffs:"Puffs",braids:"Braids",locs:"Locs",mohawk:"Mohawk",hijab:"Hijab"},
+  hair:{crop:"Short crop",fade:"Fade",fringe:"Short fringe",messy:"Messy",spiky:"Spiky",quiff:"Quiff",sidepart:"Side part",slick:"Slicked back",curlytop:"Curly top",curlycrop:"Curly crop",twists:"Twists",waves:"Waves",skinfade:"Skin fade",buzz:"Buzz cut",bald:"Bald",curtains:"Curtains",manbun:"Man bun",pixie:"Pixie",bob:"Bob",medium:"Shoulder length",midwavy:"Shoulder wavy",long:"Long straight",longside:"Long side part",longfringe:"Long with fringe",wavy:"Long wavy",curlylong:"Long curly",ponytail:"Ponytail",bun:"Top bun",afro:"Afro",puffs:"Puffs",braids:"Braids",locs:"Locs",mohawk:"Mohawk",hijab:"Hijab"},
   face:{oval:"Oval",round:"Round",square:"Square",heart:"Heart",long:"Long"},
-  eyes:{almond:"Almond",round:"Round",narrow:"Narrow",photo:"Photo"},
+  eyes:{almond:"Almond",round:"Round",narrow:"Narrow",photo:"Photo",photohead:"Photo head"},
   brows:{thin:"Thin",medium:"Medium",thick:"Thick"},
   nose:{small:"Small",medium:"Medium",wide:"Wide",long:"Long"},
   lips:{thin:"Thin",medium:"Medium",full:"Full"},
@@ -2760,7 +2824,7 @@ const TOON={
   glasses:{none:"None",round:"Round",square:"Square",aviator:"Aviator",shades:"Sunglasses"},
   top:{tee:"T-shirt",hoodie:"Hoodie",shirt:"Shirt",jumper:"Jumper"},
   hat:{none:"None",beanie:"Beanie",cap:"Cap"},
-  to3d:{fade:"short",fringe:"short",messy:"short",spiky:"spiky",slick:"side",curtains:"side",manbun:"bun",medium:"bob",midwavy:"bob",longside:"long",longfringe:"long",crop:"short",quiff:"side",sidepart:"side",curlytop:"curly",buzz:"buzz",bald:"bald",pixie:"short",bob:"bob",long:"long",wavy:"wavy",curlylong:"wavy",ponytail:"ponytail",bun:"bun",afro:"afro",puffs:"puffs",braids:"braids",locs:"braids",mohawk:"mohawk",hijab:"hijab"},
+  to3d:{curlycrop:"curly",twists:"curly",waves:"buzz",skinfade:"short",fade:"short",fringe:"short",messy:"short",spiky:"spiky",slick:"side",curtains:"side",manbun:"bun",medium:"bob",midwavy:"bob",longside:"long",longfringe:"long",crop:"short",quiff:"side",sidepart:"side",curlytop:"curly",buzz:"buzz",bald:"bald",pixie:"short",bob:"bob",long:"long",wavy:"wavy",curlylong:"wavy",ponytail:"ponytail",bun:"bun",afro:"afro",puffs:"puffs",braids:"braids",locs:"braids",mohawk:"mohawk",hijab:"hijab"},
   gender:{m:"Male",f:"Female"},
   def(){ return {gender:"m",skin:"#D49C78",face:"oval",hair:"crop",hairColour:"#4A2F23",eyes:"almond",eyeColour:"#5A3A1E",brows:"medium",nose:"medium",lips:"medium",facial:"none",glasses:"none",freckles:false,earrings:false,top:"tee",topColour:"#4D8BF5",hat:"none",hijabColour:"#7B61FF"}; }
 };
@@ -2777,8 +2841,8 @@ function decodeToon(v){ try{ let a=ub64u(v.slice(2)).split("|"); if(a.length===T
     return o; }catch(e){ return null; } }
 function toonTo3D(t){ const n=parseInt(t.skin.slice(1),16), lum=(((n>>16)&255)*.3+((n>>8)&255)*.59+(n&255)*.11)/255;
   const d={n:"You", custom:true, female:t.gender==="f", skin:lum>.78?0:lum>.7?1:lum>.62?2:lum>.52?3:lum>.42?4:lum>.32?5:6, skHex:t.skin, hair:TOON.to3d[t.hair]||"short", hcHex:t.hairColour, iris:t.eyeColour, shirt:t.topColour};
-  if(t.glasses!=="none") d.glasses=t.glasses==="aviator"?"square":t.glasses; if(t.hat!=="none"){ d.hat=t.hat; d.hatc=t.topColour; } if(t.gender==="f") t=Object.assign({},t,{facial:"none"}); if(["short","full","goatee"].includes(t.facial)) d.beard=1; if(t.facial==="stubble") d.stubble=1; if(t.facial==="moustache") d.tache=1;
-  d.face=t.face; if(t.eyes==="photo") d.photo=1; if(t.freckles) d.freckles=1; if(t.earrings) d.earrings=1; if(t.hair==="hijab") d.hijabc=t.hijabColour; return d; }
+  if(t.glasses!=="none") d.glasses=t.glasses==="aviator"?"square":t.glasses; if(t.hat!=="none" && t.hair!=="hijab"){ d.hat=t.hat; d.hatc=t.topColour; } if(t.gender==="f") t=Object.assign({},t,{facial:"none"}); if(["short","full","goatee"].includes(t.facial)) d.beard=1; if(t.facial==="stubble") d.stubble=1; if(t.facial==="moustache") d.tache=1;
+  d.face=t.face; if(t.eyes==="photo"||t.eyes==="photohead") d.photo=1; if(t.eyes==="photohead") d.photoHead=1; if(t.freckles) d.freckles=1; if(t.earrings) d.earrings=1; if(t.hair==="hijab") d.hijabc=t.hijabColour; return d; }
 function crPath(pts, closed){ const n=pts.length; if(n<2) return ""; const P=i=>pts[closed?((i%n)+n)%n:Math.max(0,Math.min(n-1,i))]; let d=`M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
   const seg=closed?n:n-1; for(let i=0;i<seg;i++){ const p0=P(i-1),p1=P(i),p2=P(i+1),p3=P(i+2); const c1=[p1[0]+(p2[0]-p0[0])/6,p1[1]+(p2[1]-p0[1])/6], c2=[p2[0]-(p3[0]-p1[0])/6,p2[1]-(p3[1]-p1[1])/6]; d+=` C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`; } return d+(closed?" Z":""); }
 function mirror(right){ const L=right.slice(1,-1).reverse().map(([x,y])=>[200-x,y]); return right.concat(L); }
@@ -2789,7 +2853,7 @@ function mergeFilters(s){ return s.replace(/(?:<(?:path|ellipse|circle|rect)\b[^
   for(const e of els){ if(/\s(clip-path|mask)=/.test(e)){ flush(); o+=e; continue; } const f=(e.match(/\sfilter="url\(#([^)]+)\)"/)||[])[1]; if(f!==cur){ flush(); cur=f; } buf.push(e); }
   flush(); return o; }); }
 function mixx(a,b,f){ const A=parseInt(a.slice(1),16), B=parseInt(b.slice(1),16); return "#"+[16,8,0].map(k=>Math.round(((A>>k)&255)*(1-f)+((B>>k)&255)*f).toString(16).padStart(2,"0")).join(""); }
-function toonSVG(t, opts){ opts=opts||{};
+function toonSVG(t, opts){ opts=opts||{}; let NECK="", SHLD="";
   /* effects and masks only cover what is visible: zoomed-in drawings (the 3D face) would otherwise need huge memory */
   const VB=(opts.vb||"6 -6 188 204").trim().split(/[\s,]+/).map(Number), RG=`x="${VB[0]-8}" y="${VB[1]-8}" width="${VB[2]+16}" height="${VB[3]+16}"`; if(t && t.gender==="f" && t.facial && t.facial!=="none") t=Object.assign({},t,{facial:"none"}); const FO=!!opts.features; if(FO) opts.headOnly=true; /* features: only eyes, brows, nose, mouth and cheek shading, for painting onto a 3D head */
   const id="t"+Math.random().toString(36).slice(2,7), U=x=>`url(#${id}${x})`;
@@ -2799,7 +2863,7 @@ function toonSVG(t, opts){ opts=opts||{};
   const faceR=[[100,36],[127,39],[146,53],[100+ck-2,78],[100+ck,102],[100+ck-1,117],[100+(ck+jx)/2+2,131],[100+jx,jy],[100+cw2+5,chinY-5],[100+cw2*.5,chinY-.8],[100,chinY]];
   const facePts=mirror(faceR), face=crPath(facePts,true);
   const facePtsS=facePts.map(([x,y])=>[100+(x-100)*.9,104+(y-104)*.93]), faceS=crPath(facePtsS,true);
-  let MUTE=false; const PH=(!FO && opts.photo)||null; const out=[], push=s=>{ if(!MUTE) out.push(s); }, OLc=shade(sk,.55), hair=t.hair;
+  let MUTE=false; const PH=(!FO && opts.photo)||null, HD=!!(PH && t.eyes==="photohead"); /* HD: the real head, hair and all, on the drawn body */ const out=[], push=s=>{ if(!MUTE) out.push(s); }, OLc=shade(sk,.55), hair=t.hair;
   let fs=17; const fr=()=>((fs=(fs*1664525+1013904223)>>>0)/4294967296);
   /* fill a region with short hairs: dir(x,y) gives growth direction, edges fade into the skin */
   const fur=(key,region,bb,n,L0,L1,dir,base)=>{ let d=""; const cols=[[hD,.5],[shade(hc,.72),.3],[hM,.13],[hL,.07]];
@@ -2808,8 +2872,11 @@ function toonSVG(t, opts){ opts=opts||{};
       d+=`<path d="M${x.toFixed(1)} ${y.toFixed(1)} q${(ux*L*.5-uy*bend).toFixed(1)} ${(uy*L*.5+ux*bend).toFixed(1)} ${(ux*L).toFixed(1)} ${(uy*L).toFixed(1)}" stroke="${c}" stroke-width="${(.22+fr()*.36).toFixed(2)}" opacity="${(.5+fr()*.4).toFixed(2)}"/>`; }
     return `<mask id="${id}${key}" maskUnits="userSpaceOnUse" ${RG}><path d="${region}" fill="#fff" filter="url(#${id}fe)"/></mask><g mask="url(#${id}${key})"><path d="${region}" fill="${shade(hc,.62)}" opacity="${base}" filter="url(#${id}p)"/><rect ${RG} filter="url(#${id}tx)" opacity=".6"/><g fill="none" stroke-linecap="round">${d}</g></g>`; };
   const mix0=(a,b,f)=>{ const A=parseInt(a.slice(1),16), B=parseInt(b.slice(1),16); return "#"+[16,8,0].map(k=>Math.round(((A>>k)&255)*(1-f)+((B>>k)&255)*f).toString(16).padStart(2,"0")).join(""); };
+  /* skin light and shade that behave like skin: shadows go warmer and redder (light passing through), highlights go softer and paler; darker skin gets a gentle cool sheen */
+  const skL=(()=>{ const n=parseInt(sk.slice(1),16); return (((n>>16)&255)*.3+((n>>8)&255)*.59+(n&255)*.11)/255; })();
+  const skSh=mix0(shade(sk,.66),"#6E2618",skL>.6?.2:skL>.4?.26:.3), skLt=skL>.55?mix0(sk,"#FFF1E4",.36):skL>.35?mix0(sk,"#F4C9A6",.2):mix0(sk,"#C9907A",.16);
   push(`<defs><clipPath id="${id}f"><path d="${face}"/></clipPath>
-  <radialGradient id="${id}g" cx=".42" cy=".4" r=".72"><stop offset="0" stop-color="${shade(sk,1.07)}"/><stop offset=".6" stop-color="${sk}"/><stop offset="1" stop-color="${shade(sk,.74)}"/></radialGradient>
+  <radialGradient id="${id}g" cx=".42" cy=".4" r=".72"><stop offset="0" stop-color="${mix0(sk,skLt,.45)}"/><stop offset=".58" stop-color="${sk}"/><stop offset="1" stop-color="${mix0(sk,skSh,.7)}"/></radialGradient>
   <filter id="${id}n" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="2.3" numOctaves="1" seed="5" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 .3  0 0 0 0 .2  0 0 0 0 .17  0 0 0 -1 .58"/></filter>
   <filter id="${id}p" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation=".45"/></filter>
   ${(()=>{ const rgb=c=>{ const n=parseInt(c.slice(1),16); return [(n>>16&255)/255,(n>>8&255)/255,(n&255)/255].map(v=>v.toFixed(3)); };
@@ -2828,7 +2895,9 @@ function toonSVG(t, opts){ opts=opts||{};
   <filter id="${id}b" filterUnits="userSpaceOnUse" ${RG}><feGaussianBlur stdDeviation="5"/></filter><filter id="${id}s" filterUnits="userSpaceOnUse" ${RG}><feGaussianBlur stdDeviation="2"/></filter>
   <filter id="${id}d" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#000" flood-opacity=".3"/></filter></defs><g ${FO?"":`filter="url(#${id}d)"`}>`);
   const hpB=[], hpF=[], sbuf=[]; let front=false;
-  const H=(d,extra)=>{ (front?hpF:hpB).push(d); push(`<path d="${d}" fill="${U("h")}" filter="url(#${id}rg)" ${extra||""}/>`); };
+  /* with a real-face photo, hair in front of the head stops at the brows so it never covers the eyes (window in head units) */
+  const phl="M64 112 C64 90 76 74 100 72 C124 74 136 90 136 112 L135 196 L65 196 Z";
+  const H=(d,extra)=>{ (front?hpF:hpB).push(d); push(`<path d="${d}" fill="${U("h")}" filter="url(#${id}rg)" ${extra||""}${front&&PH?` mask="url(#${id}pc)"`:""}/>`); };
   const strands=(paths,w,op)=>sbuf.push(`<g fill="none" stroke-linecap="round">${paths.map(d=>`<path d="${d}" stroke="${hD}" stroke-width="${w||1.6}" opacity="${op||.4}"/>`).join("")}${paths.slice(0,Math.ceil(paths.length/2)).map(d=>`<path d="${d}" stroke="${hL}" stroke-width="${(w||1.6)*.8}" opacity=".22" transform="translate(2.5 0)"/>`).join("")}</g>`);
   // skull-hugging cap: outer arc of the skull + hairline (points from right temple to left temple)
   let lastHL=null; const curly0=["afro","curlytop","curlylong","puffs","locs"].includes(hair);
@@ -2856,6 +2925,7 @@ function toonSVG(t, opts){ opts=opts||{};
     sbuf.unshift(`<g fill="none" stroke-linecap="round" filter="url(#${id}s)">${vol.map(([p,l])=>`<path d="${p}" stroke="${l?hL:hD}" stroke-width="${(3+rnd()*5).toFixed(1)}" opacity="${l?.24:.42}"/>`).join("")}</g>`);
     sbuf.push(`<g fill="none" stroke-linecap="round">${lay.d.map(([p,w])=>`<path d="${p}" stroke="${shade(hc,.66)}" stroke-width="${w.toFixed(2)}" opacity="${(.16+rnd()*.2).toFixed(2)}"/>`).join("")}${lay.m.map(([p,w])=>`<path d="${p}" stroke="${hM}" stroke-width="${w.toFixed(2)}" opacity="${(.12+rnd()*.18).toFixed(2)}"/>`).join("")}${lay.l.map(([p,w])=>`<path d="${p}" stroke="${hL}" stroke-width="${(w*.9).toFixed(2)}" opacity="${(.14+rnd()*.2).toFixed(2)}"/>`).join("")}</g>`); };
   const curls=(n,cx0,cy0,rx,ry,r)=>{ n=Math.round(n*6); r=r*.36; let d=""; for(let i=0;i<n;i++){ const a=rnd()*Math.PI*2, k=Math.sqrt(rnd()); const x=cx0+Math.cos(a)*k*rx, y=cy0+Math.sin(a)*k*ry, rr=r*(.7+rnd()*.6), st=rnd()*6.28; d+=`<path d="M${(x+Math.cos(st)*rr).toFixed(1)} ${(y+Math.sin(st)*rr).toFixed(1)} A${rr.toFixed(1)} ${rr.toFixed(1)} 0 1 1 ${(x+Math.cos(st+2.6)*rr).toFixed(1)} ${(y+Math.sin(st+2.6)*rr).toFixed(1)}" stroke="${i%4?(i%2?hD:shade(hc,.7)):hL}" stroke-width="${(.3+rnd()*.35).toFixed(2)}" opacity="${i%4?.6:.45}"/>`; } sbuf.push(`<g fill="none" stroke-linecap="round">${d}</g>`); };
+  if(HD) MUTE=true;
   if(!FO){ // ---------- hair behind the head ----------
   const longBack=(len,wav,vol)=>{ const L=[]; const R=[]; for(let i=0;i<=10;i++){ const y=60+i*(len-60)/10; const w=60+vol+(i<5?i*1.5:7.5-(i-5)*.6)+(wav?Math.sin(i*1.4)*wav:0); R.push([100+w,y]); }
     const top=[[100,22-vol*.6]]; const tips=[]; for(let k=0;k<=8;k++){ const x=100+56-k*14; tips.push([x,len+(k%2?-6:6)]); } const pts=top.concat(R,tips,R.slice().reverse().map(([x,y])=>[200-x,y])); return crPath(pts,true); };
@@ -2868,18 +2938,20 @@ function toonSVG(t, opts){ opts=opts||{};
   if(hair==="locs"){ const ps=[]; for(let i=0;i<12;i++){ const x=48+i*9.5; ps.push(`M${x} 70 C${x-4} 120 ${x+4} 170 ${x+(x<100?-6:6)} 220`); } strands(ps,5,.35); }
   if(hair==="hijab"){ push(`<path d="${crPath(mirror([[100,14],[146,22],[170,60],[172,108],[164,150],[176,190],[196,224],[100,226]]),true)}" fill="${U("j")}" stroke="${shade(t.hijabColour,.5)}" stroke-width="1.2" stroke-opacity=".6"/>`); }
   }
+  if(HD) MUTE=false;
   if(!opts.headOnly){
   // ---------- neck & shoulders ----------
   const neck=`M${100-21} ${jy+4} C${100-20} 178 ${100-22} 188 ${100-26} 196 L${100+26} 196 C${100+22} 188 ${100+20} 178 ${100+21} ${jy+4} Z`;
-  push(`<path d="${neck}" fill="${shade(sk,.97)}"/>`);
+  NECK=neck; push(`<path d="${neck}" fill="${shade(sk,.97)}"/>`);
 
   const shoulders=fem?`M4 232 C6 206 32 192 ${100-24} 186 Q100 ${t.top==="shirt"?200:196} ${100+24} 186 C168 192 194 206 196 232 Z`:`M-8 232 C-6 204 24 190 ${100-26} 186 Q100 ${t.top==="shirt"?200:196} ${100+26} 186 C176 190 206 204 208 232 Z`;
-  push(`<path d="${shoulders}" fill="${U("t")}" stroke="${shade(tc,.5)}" stroke-width="1.2" stroke-opacity=".5"/>`);
+  SHLD=shoulders; push(`<path d="${shoulders}" fill="${U("t")}" stroke="${shade(tc,.5)}" stroke-width="1.2" stroke-opacity=".5"/>`);
   if(t.top==="hoodie"){ push(`<path d="M${100-40} 188 Q100 222 ${100+40} 188 Q${100+30} 182 ${100+22} 186 Q100 204 ${100-22} 186 Q${100-30} 182 ${100-40} 188 Z" fill="${shade(tc,.78)}"/><path d="M${100-9} 202 L${100-11} 226 M${100+9} 202 L${100+11} 226" stroke="${shade(tc,1.3)}" stroke-width="2.6" stroke-linecap="round"/>`); }
   else if(t.top==="shirt"){ push(`<path d="M${100-26} 185 L100 210 L${100-10} 188 Z M${100+26} 185 L100 210 L${100+10} 188 Z" fill="#FAFAF7" stroke="#C9C9C4" stroke-width="1"/><path d="M100 210 L100 232" stroke="${shade(tc,.6)}" stroke-width="1.6"/><circle cx="100" cy="220" r="1.8" fill="${shade(tc,.5)}"/>`); }
   else if(t.top==="jumper"){ push(`<path d="M${100-28} 186 Q100 204 ${100+28} 186" stroke="${shade(tc,.75)}" stroke-width="7" fill="none"/><path d="M${100-28} 186 Q100 204 ${100+28} 186" stroke="${shade(tc,1.2)}" stroke-width="1.5" fill="none" opacity=".6"/>`); }
   else push(`<path d="M${100-26} 186 Q100 200 ${100+26} 186" stroke="${shade(tc,.7)}" stroke-width="3.5" fill="none"/>`);
   }
+  if(HD) MUTE=true;
   // ---------- ears ----------
   if(!FO) for(const s of [-1,1]){ const ex=100+s*(ck+1); const ear=`M${ex-s*1} 97 C${ex+s*9} 92 ${ex+s*11.5} 108 ${ex+s*8} 120 C${ex+s*5.5} 127 ${ex} 126 ${ex-s*2.5} 122 Z`;
     push(`<path d="${ear}" fill="${shade(sk,.94)}" stroke="${shade(sk,.62)}" stroke-width=".7" stroke-opacity=".35"/><clipPath id="${id}ea${s}"><path d="${ear}"/></clipPath><g clip-path="url(#${id}ea${s})"><path d="M${ex+s*4} 100 C${ex+s*10} 100 ${ex+s*10} 115 ${ex+s*5} 120" stroke="${shade(sk,.6)}" stroke-width="3.2" fill="none" opacity=".5" filter="url(#${id}q)"/><ellipse cx="${ex+s*4}" cy="111" rx="3" ry="5" fill="${shade(sk,.55)}" opacity=".45" filter="url(#${id}q)"/><path d="M${ex+s*9} 96 C${ex+s*14} 102 ${ex+s*13} 114 ${ex+s*9} 122" stroke="${shade(sk,1.15)}" stroke-width="1.6" fill="none" opacity=".45" filter="url(#${id}p)"/><ellipse cx="${ex+s*7}" cy="112" rx="8" ry="14" fill="#D9574F" opacity=".14" filter="url(#${id}q)"/><path d="M${ex-s*1} 96 L${ex-s*1} 126" stroke="${shade(sk,.5)}" stroke-width="5" opacity=".35" filter="url(#${id}q)"/></g>`);
@@ -2887,7 +2959,7 @@ function toonSVG(t, opts){ opts=opts||{};
   // ---------- face ----------
   if(!FO) push(`<path d="${face}" fill="${U("g")}" stroke="${OLc}" stroke-width=".8" stroke-opacity=".28"/>`);
   push(`<g clip-path="url(#${id}f)">`);
-  if(!FO){ const dk=shade(sk,.62), lt=shade(sk,1.18), warm=mix0(sk,"#D9574F",.55);
+  if(!FO){ const dk=skSh, lt=skLt, warm=mix0(sk,"#D9574F",.55);
     push(`<path d="M${100+ck-4} 46 C${100+ck+8} 90 ${100+ck+2} 130 ${100+jx} ${jy+8}" stroke="${dk}" stroke-width="30" fill="none" opacity=".5" filter="url(#${id}b)"/>`); /* far side in shadow */
     push(`<path d="M${100-ck+4} 50 C${100-ck-6} 90 ${100-ck} 130 ${100-jx} ${jy+8}" stroke="${dk}" stroke-width="10" fill="none" opacity=".2" filter="url(#${id}b)"/>`);
     for(const s of [-1,1]) push(`<ellipse cx="${100+s*(ck-6)}" cy="74" rx="9" ry="16" fill="${dk}" opacity="${s>0?.3:.16}" filter="url(#${id}b)"/>`); /* temples */
@@ -2899,6 +2971,7 @@ function toonSVG(t, opts){ opts=opts||{};
     push(`<path d="M${100-jx+2} ${jy+2} Q100 ${chinY+10} ${100+jx-2} ${jy+2}" stroke="${dk}" stroke-width="8" fill="none" opacity=".22" filter="url(#${id}b)"/>`); /* under the jaw */
     for(const s of [-1,1]) push(`<path d="M${100+s*8} 92 Q${100+s*11} 106 ${100+s*13} 122" stroke="${dk}" stroke-width="7" fill="none" opacity="${s>0?.3:.18}" filter="url(#${id}b)"/>`); /* sides of the nose bridge */
     push(`<ellipse cx="100" cy="88" rx="10" ry="6" fill="${lt}" opacity=".28" filter="url(#${id}b)"/>`); /* glabella */
+    if(skL<.5){ const sh=skL<.3?.22:.14; push(`<ellipse cx="92" cy="58" rx="20" ry="7" fill="#FFF6EE" opacity="${sh}" filter="url(#${id}b)"/><ellipse cx="100" cy="112" rx="3.5" ry="9" fill="#FFF6EE" opacity="${sh*1.2}" filter="url(#${id}s)"/><ellipse cx="70" cy="110" rx="9" ry="5" fill="#FFF6EE" opacity="${sh*.9}" filter="url(#${id}b)"/>`); } /* natural sheen */
     for(const s of [-1,1]) push(`<path d="M${100+s*14} ${fem?84:86} Q${100+s*26} ${fem?80:83} ${100+s*40} ${fem?86:88}" stroke="${lt}" stroke-width="5" fill="none" opacity=".2" filter="url(#${id}b)"/>`); /* brow ridge */
   }
   if(!FO && !["bald","hijab","buzz"].includes(hair)) push(`<path d="M50 52 Q100 30 150 52" stroke="${shade(sk,.5)}" stroke-width="16" fill="none" opacity=".32" filter="url(#${id}b)"/>`);
@@ -3000,17 +3073,43 @@ function toonSVG(t, opts){ opts=opts||{};
   if(!FO && ["moustache","goatee","short","full"].includes(t.facial)){ const m=`M${100-18} ${MY} C${100-14} ${MY-9.5} ${100-4} ${MY-9} 100 ${MY-7} C${100+4} ${MY-9} ${100+14} ${MY-9.5} ${100+18} ${MY} C${100+11} ${MY-2.6} ${100+4} ${MY-1.6} 100 ${MY-2.4} C${100-4} ${MY-1.6} ${100-11} ${MY-2.6} ${100-18} ${MY} Z`;
     push(fur("mu", m, [80,MY-11,120,MY+1], 520, 2.2, 5, (x,y)=>{ const sx=x-100; const ux=Math.sign(sx||1)*(.35+Math.abs(sx)*.03), uy=1; const l=Math.hypot(ux,uy); return [ux/l, uy/l]; }, .75)); }
   if(PH){ /* the player's own photo as the face, feathered into the drawn head, under the hair */
+    /* front hair stops at a natural hairline above the brows, so it never covers the eyes */
+    push(`<filter id="${id}pf" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.2"/></filter><mask id="${id}pc" maskUnits="userSpaceOnUse" x="-200" y="-200" width="600" height="600"><rect x="-200" y="-200" width="600" height="600" fill="#fff"/><path d="${phl}" fill="#000" filter="url(#${id}pf)"/></mask>`);
     push(`<mask id="${id}pm" maskUnits="userSpaceOnUse" ${RG}><path d="${face}" fill="#fff" filter="url(#${id}q)"/></mask><image href="${PH}" x="-18.55" y="-19.02" width="237.1" height="237.1" preserveAspectRatio="none" mask="url(#${id}pm)"/>`); }
   if(!FO){ // ---------- hair over the head ----------
   front=true;
   const hl=(y)=>[[100+ck-14,58],[132,y-2],[116,y],[100,y+1],[84,y],[68,y-2],[100-ck+14,58]];
   const S=(ps,w,op)=>strands(ps,w,op);
+  /* ---- shaped short hair: a real silhouette per style, then combed grooves, soft shading and a gloss band clipped inside it ---- */
+  let gs=(hair.length*7919+97)>>>0; const gr=()=>((gs=(gs*1664525+1013904223)>>>0)/4294967296);
+  const styled=(pts,dir,o)=>{ o=o||{}; const d=crPath(pts,true); const cid=id+"sc"+hair.length, mk=front&&PH?` mask="url(#${id}pc)"`:"";
+    /* the hair's soft shadow on the forehead, so it sits on the head instead of floating */
+    if(!PH) push(`<g clip-path="url(#${id}f)"><path d="${d}" transform="translate(0 5)" fill="${skSh}" opacity=".7" filter="url(#${id}b)"/></g>`);
+    H(d);
+    const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]), x0=Math.min(...xs), x1=Math.max(...xs), y0=Math.min(...ys), y1=Math.max(...ys);
+    const dk=[], lt=[]; const N=o.n||150;
+    for(let i=0;i<N;i++){ let x=x0+gr()*(x1-x0), y=y0+gr()*(y1-y0); const seg=[[x,y]], steps=o.steps||9, st=o.step||3.2;
+      for(let k=0;k<steps;k++){ const a=dir(x,y)*Math.PI/180+(gr()-.5)*.12; x+=Math.cos(a)*st; y+=Math.sin(a)*st; seg.push([x,y]); }
+      const pd="M"+seg.map(p=>p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" L"); (gr()<.62?dk:lt).push([pd,.6+gr()*1.3]); }
+    /* clumps: wide tapered locks following the same comb, each lit on top with a darker crease underneath */
+    const cl=[]; for(let i=0;i<(o.clumps||26);i++){ let x=x0+gr()*(x1-x0), y=y0+gr()*(y1-y0); const seg=[[x,y]], steps=(o.steps||9)+2, st=(o.step||3.2)*1.05;
+      for(let k=0;k<steps;k++){ const a=dir(x,y)*Math.PI/180+(gr()-.5)*.08; x+=Math.cos(a)*st; y+=Math.sin(a)*st; seg.push([x,y]); }
+      const w=(o.cw||7)*(.7+gr()*.6), Lp=[], Rp=[]; seg.forEach((p,k)=>{ const q=seg[Math.min(seg.length-1,k+1)], r=seg[Math.max(0,k-1)], tx=q[0]-r[0], ty=q[1]-r[1], l=Math.hypot(tx,ty)||1, nx=-ty/l, ny=tx/l, t=k/(seg.length-1), ww=w*(1-Math.pow(t,1.6))*Math.min(1,.45+t*2.2)/2; Lp.push([p[0]+nx*ww,p[1]+ny*ww]); Rp.push([p[0]-nx*ww,p[1]-ny*ww]); });
+      const f=v=>v.toFixed(1), body="M"+Lp.map(p=>f(p[0])+" "+f(p[1])).join(" L")+" L"+Rp.reverse().map(p=>f(p[0])+" "+f(p[1])).join(" L")+"Z", crease="M"+Rp.slice().reverse().map(p=>f(p[0])+" "+f(p[1])).join(" L"), ridge="M"+seg.map(p=>f(p[0]-.6)+" "+f(p[1]-.6)).join(" L");
+      cl.push(`<path d="${body}" fill="${mix0(hc,hL,.35)}" opacity="${(.3+gr()*.3).toFixed(2)}"/><path d="${crease}" fill="none" stroke="${hD}" stroke-width="1.5" opacity=".62"/><path d="${ridge}" fill="none" stroke="${hL}" stroke-width="1.1" opacity="${(.28+gr()*.25).toFixed(2)}"/>`); }
+    push(`<clipPath id="${cid}"><path d="${d}"/></clipPath><g clip-path="url(#${cid})"${mk}>
+      <path d="${d}" fill="none" stroke="${hD}" stroke-width="6" opacity=".45" filter="url(#${id}b)"/>
+      <g stroke-linecap="round" stroke-linejoin="round">${cl.join("")}</g>
+      <g fill="none" stroke-linecap="round" stroke-linejoin="round">${dk.map(([p,w])=>`<path d="${p}" stroke="${hD}" stroke-width="${w.toFixed(2)}" opacity="${(.28+gr()*.25).toFixed(2)}"/>`).join("")}${lt.map(([p,w])=>`<path d="${p}" stroke="${hL}" stroke-width="${(w*.8).toFixed(2)}" opacity="${(.16+gr()*.2).toFixed(2)}"/>`).join("")}</g>
+      ${(()=>{ /* soft wisps along the front hairline, so the edge isn't a hard cut */ const edge=pts.filter(p=>p[1]>44 && p[0]>48 && p[0]<152); let w=""; for(let k=0;k<edge.length-1;k++){ const [ax,ay]=edge[k],[bx,by]=edge[k+1]; for(let m=0;m<6;m++){ const f=gr(), x=ax+(bx-ax)*f, y=ay+(by-ay)*f-2, L=2.5+gr()*4, an=Math.PI/2+(x-100)/80+(gr()-.5)*.6; w+=`<path d="M${x.toFixed(1)} ${y.toFixed(1)} q${(Math.cos(an)*L*.5).toFixed(1)} ${(Math.sin(an)*L*.5).toFixed(1)} ${(Math.cos(an)*L).toFixed(1)} ${(Math.sin(an)*L).toFixed(1)}" stroke="${gr()<.5?hc:hD}" stroke-width="${(.5+gr()*.7).toFixed(2)}" opacity=".55"/>`; } } return w?`</g><g fill="none" stroke-linecap="round"${mk}>${w}</g><g clip-path="url(#${cid})"${mk}>`:""; })()}
+      ${o.gloss!==0?`<path d="${o.glossPath||"M62 46 Q100 20 140 42"}" stroke="${hL}" stroke-width="${o.gloss||8}" fill="none" stroke-linecap="round" opacity="${o.glossOp||.3}" filter="url(#${id}b)"/>`:""}</g>`); };
+  const away=(cx,cy,k)=>(x,y)=>Math.atan2(y-cy,x-cx)*180/Math.PI+(k?Math.sin(x*.21+y*.17)*k:0);
   switch(hair){
-    case "crop": H(cap(5,96,[[100+ck-6,74],[140,54],[120,44],[100,43],[80,44],[60,54],[100-ck+6,74]])); flow([100,26],[[54,92],[52,66],[66,46],[100,40],[134,46],[148,66],[146,92]],38,6); flow([100,24],[[46,80],[60,34],[100,22],[140,34],[154,80]],20,10); break;
-    case "quiff": H(cap(5,96,[[100+ck-6,72],[142,52],[124,44],[110,42],[92,46],[74,50],[60,58],[100-ck+6,74]])); H(crPath([[70,40],[78,18],[100,6],[126,8],[148,24],[150,44],[132,40],[110,38],[88,44]],true)); flow([70,48],[[84,16],[104,8],[130,12],[148,30],[150,46]],26,-8); flow([100,30],[[54,92],[52,66],[66,50],[134,50],[148,66],[146,92]],24,6); break;
-    case "sidepart": H(cap(6,98,[[100+ck-6,74],[146,60],[132,52],[114,46],[96,44],[78,46],[66,50],[60,58],[100-ck+6,76]])); H(crPath([[80,30],[60,40],[52,58],[60,66],[74,58],[96,50],[120,46],[142,52],[156,62],[154,42],[130,26],[104,22]],true)); flow([80,28],[[60,64],[100,48],[132,52],[156,62],[150,92]],34,8); flow([78,28],[[52,90],[50,60],[62,40]],10,4); push(`<path d="M80 28 Q78 34 76 42" stroke="${shade(hc,.45)}" stroke-width="1.6" opacity=".7"/>`); break;
-    case "pixie": H(cap(4,92,[[100+ck-6,70],[140,56],[124,52],[106,56],[88,66],[72,72],[62,70],[100-ck+6,76]])); flow([130,26],[[150,80],[146,58],[126,54],[100,58],[80,68],[60,72],[54,88]],34,6); break;
-    case "curlytop": { curls(40,100,44,46,26,5); H(cap(3,94,[[100+ck-6,72],[140,54],[120,46],[100,45],[80,46],[60,54],[100-ck+6,72]])); let d=""; const cc=[[64,42],[74,30],[88,22],[102,19],[116,22],[130,30],[140,42],[80,40],[96,34],[112,36],[124,44],[70,52],[134,54]]; for(const [x,y] of cc) d+=`<circle cx="${x}" cy="${y}" r="11" fill="${U("h")}" stroke="${hD}" stroke-width="1" stroke-opacity=".6"/><path d="M${x-5} ${y-2} q5 -6 9 0" stroke="${hL}" stroke-width="1.6" fill="none" opacity=".35"/>`; push(d); break; }
+    case "crop": { styled([[46,92],[44,70],[48,50],[60,34],[80,24],[100,21],[120,24],[140,34],[152,50],[156,70],[154,92],[148,74],[140,62],[128,58],[118,61],[108,57],[96,60],[86,57],[74,61],[62,62],[52,74]], away(100,24,8), {steps:6}); } break;
+    case "quiff": { styled([[46,92],[44,70],[48,52],[56,42],[64,28],[72,14],[86,5],[104,3],[122,7],[136,17],[146,31],[152,46],[156,68],[154,92],[148,72],[140,60],[128,52],[116,48],[104,46],[92,48],[80,50],[68,56],[56,64],[52,74]], (x,y)=>(y<56 && Math.abs(x-100)<40)?-90+(x-100)*.9-(56-y)*.9:Math.atan2(y-24,x-100)*180/Math.PI, {steps:9,glossPath:"M74 30 Q100 6 132 20",gloss:9,glossOp:.34}); } break;
+    case "sidepart": { styled([[46,92],[44,70],[48,50],[58,36],[74,26],[92,21],[112,22],[132,28],[146,40],[154,56],[156,70],[154,92],[150,74],[146,66],[138,62],[126,57],[112,53],[98,50],[86,49],[78,50],[70,54],[60,58],[52,72]], (x,y)=>x>80?18+(y-26)*.9:162-(y-26)*.9, {steps:11,glossPath:"M86 32 Q120 28 146 50",glossOp:.36}); push(`<path d="M80 23 Q79 34 77 47" stroke="${shade(hc,.4)}" stroke-width="1.4" fill="none" opacity=".75"${front&&PH?` mask="url(#${id}pc)"`:""}/>`); } break;
+    case "pixie": { styled([[46,90],[44,68],[48,48],[60,32],[80,22],[104,20],[126,24],[144,36],[154,54],[156,74],[152,90],[146,72],[138,64],[124,62],[110,66],[96,72],[82,76],[70,74],[60,70],[52,78]], (x,y)=>y<42?Math.atan2(y-16,x-120)*180/Math.PI:160-(y-42)*.4, {steps:11,glossPath:"M70 40 Q104 22 140 38"}); } break;
+    case "curlytop": { curls(40,100,44,46,26,5); H(cap(3,94,[[100+ck-6,72],[140,54],[120,46],[100,45],[80,46],[60,54],[100-ck+6,72]])); let d=""; const cc=[[64,42],[74,30],[88,22],[102,19],[116,22],[130,30],[140,42],[80,40],[96,34],[112,36],[124,44]]; for(const [x,y] of cc) d+=`<circle cx="${x}" cy="${y}" r="11" fill="${U("h")}" stroke="${hD}" stroke-width="1" stroke-opacity=".6"/><path d="M${x-5} ${y-2} q5 -6 9 0" stroke="${hL}" stroke-width="1.6" fill="none" opacity=".35"/>`; push(d); break; }
     case "buzz": { const bp=cap(1,92,[[100+ck-6,72],[140,54],[120,46],[100,45],[80,46],[60,54],[100-ck+6,72]]); push(`<path d="${bp}" fill="${hc}" opacity=".55"/><clipPath id="${id}bz"><path d="${bp}"/></clipPath>`); let d=""; for(let i=0;i<320;i++){ const a=(i*137.5)%360*Math.PI/180, r=Math.sqrt(i/320); const x=100+Math.cos(a)*r*60, y=60+Math.sin(a)*r*44; d+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r=".9" fill="${hD}" opacity=".5"/>`; } push(`<g clip-path="url(#${id}bz)">${d}</g>`); } break;
     case "bald": push(`<ellipse cx="114" cy="44" rx="18" ry="8" fill="#fff" opacity=".28" transform="rotate(-18 114 44)" filter="url(#${id}s)"/>`); break;
     case "bob": H(cap(9,142,[[100+ck-5,140],[100+ck-9,100],[100+ck-10,74],[138,64],[120,64],[100,65],[80,64],[62,64],[100-ck+10,74],[100-ck+9,100],[100-ck+5,140]])); flow([100,22],[[42,150],[40,100],[52,64],[80,64],[100,66],[120,64],[148,64],[160,100],[158,150]],52,10); break;
@@ -3026,13 +3125,11 @@ function toonSVG(t, opts){ opts=opts||{};
       flow([100,22],[[64,72],[82,74],[100,75],[118,74],[136,72]],26,6); flow([100,26],[[48,224],[38,170],[40,110],[46,76]],20,8); flow([100,26],[[154,76],[160,110],[162,170],[152,224]],20,8); break;
     case "fade": { const bp=cap(1,94,[[100+ck-6,76],[140,58],[120,50],[100,49],[80,50],[60,58],[100-ck+6,76]]); push(`<path d="${bp}" fill="${hc}" opacity=".5"/><clipPath id="${id}fd"><path d="${bp}"/></clipPath>`); let d=""; for(let i=0;i<260;i++){ const a=(i*137.5)%360*Math.PI/180, r=Math.sqrt(i/260); const x=100+Math.cos(a)*r*62, y=64+Math.sin(a)*r*40; d+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r=".9" fill="${hD}" opacity=".45"/>`; } push(`<g clip-path="url(#${id}fd)">${d}</g>`);
       H(crPath([[62,58],[60,42],[72,28],[100,22],[128,26],[142,40],[140,58],[120,52],[100,51],[80,52]],true)); flow([100,56],[[62,42],[76,28],[100,22],[124,25],[140,38]],26,-4); break; }
-    case "fringe": H(cap(5,94,[[100+ck-6,74],[140,62],[120,60],[100,61],[80,60],[60,62],[100-ck+6,74]])); flow([100,20],[[58,66],[78,62],[100,63],[122,62],[142,66]],34,4); flow([100,22],[[52,90],[54,70]],6,4); flow([100,22],[[146,70],[148,90]],6,4); break;
-    case "messy": H(cap(11,96,[[100+ck-6,74],[144,60],[130,56],[116,64],[100,56],[84,64],[70,56],[58,62],[100-ck+6,74]]));
-      flow([100,18],[[54,66],[70,58],[86,64],[100,58],[116,64],[132,58],[148,64]],34,10); { let d=""; for(const [x,y,a] of [[70,30,-30],[86,20,-12],[102,16,8],[118,20,24],[132,30,40]]) d+=`<path d="M${x} ${y+10} q${a/6} -9 ${a/3} -14" stroke="${hD}" stroke-width="5" stroke-linecap="round" opacity=".5"/>`; sbuf.push(`<g fill="none">${d}</g>`); } break;
-    case "spiky": H(cap(4,94,[[100+ck-6,72],[140,56],[120,50],[100,49],[80,50],[60,56],[100-ck+6,72]])); { const sp=[]; for(let k=-3;k<=3;k++){ const x=100+k*15, top=12+Math.abs(k)*7; sp.push([x-9,46],[x+k*2,top]); } sp.push([109+45,46]); H(crPath([[58,58]].concat(sp,[[146,58],[100,52]]),true)); flow([100,54],sp.filter((_,i)=>i%2).map(p=>[p[0],p[1]+4]),14,0); } break;
-    case "slick": H(cap(7,94,[[100+ck-6,70],[140,52],[120,44],[100,42],[80,44],[60,52],[100-ck+6,70]])); flow([100,46],[[52,84],[54,52],[70,26],[100,14],[130,26],[146,52],[148,84]],40,-10); break;
-    case "curtains": H(cap(7,114,[[100+ck-4,112],[100+ck-8,86],[148,66],[128,54],[110,46],[100,42],[90,46],[72,54],[52,66],[100-ck+8,86],[100-ck+4,112]]));
-      flow([100,28],[[48,112],[50,84],[62,62],[80,50],[96,44]],26,8); flow([100,28],[[104,44],[120,50],[138,62],[150,84],[152,112]],26,8); push(`<path d="M100 28 L100 42" stroke="${shade(hc,.45)}" stroke-width="1.6" opacity=".7"/>`); break;
+    case "fringe": { styled([[46,92],[44,70],[48,50],[60,34],[80,24],[100,21],[120,24],[140,34],[152,50],[156,70],[154,92],[148,76],[140,68],[130,71],[120,66],[110,72],[100,67],[90,72],[80,66],[70,71],[60,68],[52,76]], (x,y)=>y<40?Math.atan2(y-18,x-100)*180/Math.PI:90+(x-100)*.35, {steps:10}); } break;
+    case "messy": { styled([[46,92],[42,70],[44,52],[50,40],[56,30],[64,32],[70,20],[80,24],[88,12],[98,20],[108,10],[116,20],[126,14],[132,26],[142,24],[146,36],[154,46],[158,64],[156,92],[148,74],[140,62],[132,66],[124,58],[114,65],[104,58],[94,65],[84,58],[74,64],[64,60],[54,72]], away(100,44,55), {steps:6,n:170}); } break;
+    case "spiky": { styled([[46,90],[44,70],[44,54],[38,40],[54,42],[52,26],[68,32],[68,14],[84,24],[90,6],[102,22],[112,6],[118,24],[132,14],[134,32],[148,26],[148,42],[162,42],[156,56],[156,90],[148,72],[138,62],[120,58],[100,57],[80,58],[62,62],[52,72]], away(100,86,6), {steps:8,glossOp:.38}); } break;
+    case "slick": { styled([[46,90],[44,70],[48,50],[58,36],[74,26],[100,22],[126,26],[142,36],[152,50],[156,70],[154,90],[148,70],[138,56],[124,50],[100,48],[76,50],[62,56],[52,70]], (x,y)=>-90+(x-100)*1.05, {steps:10,n:170,gloss:10,glossOp:.42,glossPath:"M64 44 Q100 24 138 42"}); } break;
+    case "curtains": { styled([[44,112],[42,84],[44,60],[52,42],[66,30],[84,24],[100,22],[116,24],[134,30],[148,42],[156,60],[158,84],[156,112],[148,96],[144,80],[136,68],[124,58],[112,51],[102,47],[98,47],[88,51],[76,58],[64,68],[56,80],[52,96]], (x,y)=>x>100?40+(y-24)*1.1:140-(y-24)*1.1, {steps:12}); push(`<path d="M100 22 L100 44" stroke="${shade(hc,.45)}" stroke-width="1.4" opacity=".7"/>`); } break;
     case "manbun": H(cap(2,92,[[100+ck-6,70],[140,52],[120,44],[100,43],[80,44],[60,52],[100-ck+6,70]])); flow([100,16],[[52,86],[54,62],[66,48],[84,44],[100,43],[116,44],[134,48],[146,62],[148,86]],34,-4);
       push(`<ellipse cx="100" cy="16" rx="17" ry="14" fill="${U("h")}" stroke="${hD}" stroke-width="1.2" stroke-opacity=".7"/><path d="M88 12 Q100 4 112 12" stroke="${hL}" stroke-width="1.6" fill="none" opacity=".35"/><path d="M90 28 Q100 24 110 28" stroke="${shade(hc,.4)}" stroke-width="4" stroke-linecap="round"/>`); break;
     case "ponytail": case "bun": case "puffs": H(cap(2,94,[[100+ck-6,70],[140,52],[120,44],[100,43],[80,44],[60,52],[100-ck+6,70]])); { const o=hair==="bun"?[100,14]:hair==="ponytail"?[140,46]:[100,30]; flow(o,[[52,86],[54,62],[66,48],[84,44],[100,43],[116,44],[134,48],[146,62],[148,86]],34,-4); }
@@ -3042,18 +3139,40 @@ function toonSVG(t, opts){ opts=opts||{};
     case "braids": H(cap(1.5,92,[[100+ck-6,70],[140,52],[120,44],[100,43],[80,44],[60,52],[100-ck+6,70]])); { let d=""; for(let k=-4;k<=4;k++){ const x=100+k*11; d+=`<path d="M${x} 44 C${x+k*1.5} 30 ${x+k*3} 20 ${x+k*4} 8" stroke="${hD}" stroke-width="2.2" opacity=".55" stroke-dasharray="3 2"/>`; } sbuf.push(`<g fill="none" stroke-linecap="round">${d}</g>`); } break;
     case "afro": curls(120,100,72,80,64,5.5); H(cap(10,98,[[100+ck-6,72],[140,54],[120,46],[100,45],[80,46],[60,54],[100-ck+6,72]])); { let d=""; for(let i=0;i<40;i++){ const a=(i*137.5)%360*Math.PI/180, r=Math.sqrt(i/40)*78; const x=100+Math.cos(a)*r, y=80+Math.sin(a)*r*.8; if(y>58&&Math.abs(x-100)<ck) continue; d+=`<path d="M${(x-4).toFixed(1)} ${(y).toFixed(1)} q4 -5 8 0" stroke="${hL}" stroke-width="1.6" fill="none" opacity=".25"/>`; } push(d); } break;
     case "mohawk": push(`<path d="${cap(1,92,[[100+ck-6,72],[140,54],[120,46],[100,45],[80,46],[60,54],[100-ck+6,72]])}" fill="${hc}" opacity=".3"/>`); H(crPath([[90,46],[86,20],[92,-4],[100,-12],[108,-4],[114,20],[110,46]],true)); flow([100,48],[[92,-2],[100,-10],[108,-2]],12,0); break;
+    case "curlycrop": { /* short tight curls: a bumpy outline and a coat of little ringlets */
+      const ol=[]; for(let i=0;i<=22;i++){ const a=Math.PI*(1.06+.88*i/22), R=55+((i%2)?4:-1); ol.push([100+Math.cos(a)*R*1.02, 70+Math.sin(a)*R*.9]); } ol.push([152,74],[140,62],[100,58],[60,62],[48,74]);
+      styled(ol, away(100,30,40), {steps:3,n:60,clumps:0,gloss:5,glossOp:.18});
+      { const mk=front&&PH?` mask="url(#${id}pc)"`:""; let d=""; for(let i=0;i<150;i++){ const a=Math.PI*(1.05+gr()*.9), r=Math.sqrt(gr()); const x=100+Math.cos(a)*r*54, y=72+Math.sin(a)*r*50; if(y>64) continue; const rr=2.2+gr()*1.6, st=gr()*6.28;
+        d+=`<path d="M${(x+Math.cos(st)*rr).toFixed(1)} ${(y+Math.sin(st)*rr).toFixed(1)} A${rr.toFixed(1)} ${rr.toFixed(1)} 0 1 1 ${(x+Math.cos(st+2.4)*rr).toFixed(1)} ${(y+Math.sin(st+2.4)*rr).toFixed(1)}" stroke="${gr()<.55?hD:hL}" stroke-width="${(.7+gr()*.7).toFixed(2)}" opacity="${(.35+gr()*.3).toFixed(2)}"/>`; }
+        push(`<g fill="none" stroke-linecap="round"${mk}>${d}</g>`); } } break;
+    case "twists": { /* short twists: little rope coils standing up all over */
+      const ol=[]; for(let i=0;i<=20;i++){ const a=Math.PI*(1.06+.88*i/20), R=58+((i%2)?5:0); ol.push([100+Math.cos(a)*R, 72+Math.sin(a)*R*.92]); } ol.push([152,76],[140,62],[100,58],[60,62],[48,76]);
+      styled(ol, away(100,30,0), {steps:3,n:30,clumps:0,gloss:0});
+      { const mk=front&&PH?` mask="url(#${id}pc)"`:""; let d=""; const tw=[]; for(let i=0;i<70;i++){ const a=Math.PI*(1.08+gr()*.84), r=.25+Math.sqrt(gr())*.75; tw.push([100+Math.cos(a)*r*52, 70+Math.sin(a)*r*48, a]); } tw.sort((p,q)=>p[1]-q[1]);
+        for(const [x,y,a] of tw){ if(y>62) continue; const dx=Math.cos(a)*2.2, dy=Math.sin(a)*2.2; for(let k=0;k<4;k++){ const cx=x+dx*k, cy=y+dy*k; d+=`<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="2.9" ry="1.9" transform="rotate(${(a*180/Math.PI+35).toFixed(0)} ${cx.toFixed(1)} ${cy.toFixed(1)})" fill="${k%2?hc:hM}" stroke="${hD}" stroke-width=".55"/>`; } }
+        push(`<g${mk}>${d}</g>`); } } break;
+    case "waves": { /* 360 waves: close-cut with ripples circling the crown */
+      const bp=cap(2,94,[[100+ck-6,74],[142,60],[122,56],[100,56],[78,56],[58,60],[100-ck+6,74]]); H(bp); const mk=front&&PH?` mask="url(#${id}pc)"`:"";
+      let d=""; for(let k=0;k<9;k++){ const yb=27+k*4.3; let p=""; for(let x=38;x<=162;x+=2){ const y=yb+Math.pow((x-100)/60,2)*(14+k*2.2)+Math.sin(x*.32+k*1.7)*1.1; p+=(x>38?" L":"M")+x+" "+y.toFixed(1); } d+=`<path d="${p}" stroke="${hL}" stroke-width="1.8" opacity=".45"/><path d="${p}" transform="translate(0 2.1)" stroke="${hD}" stroke-width="1.6" opacity=".6"/>`; }
+      push(`<clipPath id="${id}wv"><path d="${bp}"/></clipPath><g clip-path="url(#${id}wv)" fill="none" stroke-linecap="round"${mk}>${d}</g>`); } break;
+    case "skinfade": { /* short textured top, sides faded down to skin */
+      const sides=cap(1,92,[[100+ck-6,76],[140,58],[120,52],[100,51],[80,52],[60,58],[100-ck+6,76]]);
+      push(`<linearGradient id="${id}sf" gradientUnits="userSpaceOnUse" x1="0" y1="54" x2="0" y2="94"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient><mask id="${id}sfm" maskUnits="userSpaceOnUse" x="-50" y="-50" width="300" height="300"><rect x="-50" y="-50" width="300" height="300" fill="url(#${id}sf)"/></mask><clipPath id="${id}sfc"><path d="${sides}"/></clipPath>`);
+      { let dd=""; for(let i=0;i<420;i++){ const a=(i*137.5)%360*Math.PI/180, r=Math.sqrt(i/420); const x=100+Math.cos(a)*r*62, y=64+Math.sin(a)*r*40; dd+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r=".8" fill="${hD}"/>`; } push(`<g mask="url(#${id}sfm)" clip-path="url(#${id}sfc)"><path d="${sides}" fill="${hc}" opacity=".85"/><g opacity=".6">${dd}</g></g>`); }
+      styled([[54,62],[52,46],[60,32],[78,22],[100,19],[122,22],[140,32],[148,46],[146,62],[134,58],[118,61],[104,57],[90,61],[74,57],[62,61]], away(100,18,14), {steps:6,clumps:18,cw:6}); } break;
     case "hijab": push(`<path d="${crPath(mirror([[100,16],[146,24],[166,62],[166,110],[158,150],[150,176],[100,182]]),true)} ${faceS.replace("M","M ")}" fill="${U("j")}" fill-rule="evenodd" stroke="${shade(t.hijabColour,.5)}" stroke-width="1.2" stroke-opacity=".6"/><path d="M60 36 Q100 18 140 36" stroke="${shade(t.hijabColour,1.4)}" stroke-width="5" fill="none" opacity=".35" stroke-linecap="round" filter="url(#${id}s)"/><path d="${faceS}" fill="none" stroke="${shade(t.hijabColour,.55)}" stroke-width="2" opacity=".5"/>`); break;
   }
-  if(lastHL && !["bald","buzz","fade","hijab","afro","curlytop","braids","locs","mohawk"].includes(hair)){ let d="", hs=31; const hr=()=>((hs=(hs*1664525+1013904223)>>>0)/4294967296);
+  if(lastHL && !["bald","buzz","fade","hijab","afro","curlytop","braids","locs","mohawk","crop","fringe","messy","spiky","quiff","sidepart","slick","curtains","pixie"].includes(hair)){ let d="", hs=31; const hr=()=>((hs=(hs*1664525+1013904223)>>>0)/4294967296);
     for(let k=0;k<lastHL.length-1;k++){ const [x0,y0]=lastHL[k], [x1,y1]=lastHL[k+1]; for(let m=0;m<14;m++){ const f=hr(), x=x0+(x1-x0)*f, y=y0+(y1-y0)*f-1.5, L=2+hr()*4.5, a=Math.PI/2+(x-100)/90+(hr()-.5)*.7; d+=`<path d="M${x.toFixed(1)} ${y.toFixed(1)} q${(Math.cos(a)*L*.5+(hr()-.5)*2).toFixed(1)} ${(Math.sin(a)*L*.5).toFixed(1)} ${(Math.cos(a)*L).toFixed(1)} ${(Math.sin(a)*L).toFixed(1)}" stroke="${hr()<.5?hc:hD}" stroke-width="${(.18+hr()*.25).toFixed(2)}" opacity="${(.3+hr()*.35).toFixed(2)}"/>`; } }
     var wisps=`<g fill="none" stroke-linecap="round">${d}</g>`; }
-  if(sbuf.length){ push(`<mask id="${id}hm" maskUnits="userSpaceOnUse" ${RG}>${hpB.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}<path d="${face}" fill="#000"/>${hpF.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}</mask><mask id="${id}hx" maskUnits="userSpaceOnUse" ${RG}>${hpB.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}<path d="${face}" fill="#000"/>${hpF.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}</mask><linearGradient id="${id}tgg" gradientUnits="userSpaceOnUse" x1="0" y1="${["afro","curlytop","curlylong","puffs","locs"].includes(hair)?-40:40}" x2="0" y2="${["afro","curlytop","curlylong","puffs","locs"].includes(hair)?0:96}"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#fff" stop-opacity="1"/></linearGradient><mask id="${id}tg" maskUnits="userSpaceOnUse" ${RG}><rect ${RG} fill="url(#${id}tgg)"/></mask><g mask="url(#${id}hx)"><g mask="url(#${id}tg)"><rect ${RG} filter="url(#${id}tx)" opacity="${curly0?.7:.42}"/><rect ${RG} filter="url(#${id}tl)" opacity="${curly0?.45:.24}"/></g></g><g mask="url(#${id}hm)">${sbuf.join("")}</g>`); }
+  if(sbuf.length){ push(`<mask id="${id}hm" maskUnits="userSpaceOnUse" ${RG}>${hpB.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}<path d="${face}" fill="#000"/>${NECK?`<path d="${NECK}" fill="#000"/>`:""}${SHLD?`<path d="${SHLD}" fill="#000"/>`:""}${hpF.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}${PH?`<path d="${phl}" fill="#000"/>`:""}</mask><mask id="${id}hx" maskUnits="userSpaceOnUse" ${RG}>${hpB.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}<path d="${face}" fill="#000"/>${NECK?`<path d="${NECK}" fill="#000"/>`:""}${SHLD?`<path d="${SHLD}" fill="#000"/>`:""}${hpF.map(p=>`<path d="${p}" fill="#fff"/>`).join("")}${PH?`<path d="${phl}" fill="#000"/>`:""}</mask><linearGradient id="${id}tgg" gradientUnits="userSpaceOnUse" x1="0" y1="${["afro","curlytop","curlylong","puffs","locs"].includes(hair)?-40:40}" x2="0" y2="${["afro","curlytop","curlylong","puffs","locs"].includes(hair)?0:96}"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#fff" stop-opacity="1"/></linearGradient><mask id="${id}tg" maskUnits="userSpaceOnUse" ${RG}><rect ${RG} fill="url(#${id}tgg)"/></mask><g mask="url(#${id}hx)"><g mask="url(#${id}tg)"><rect ${RG} filter="url(#${id}tx)" opacity="${curly0?.7:.42}"/><rect ${RG} filter="url(#${id}tl)" opacity="${curly0?.45:.24}"/></g></g><g mask="url(#${id}hm)">${sbuf.join("")}</g>`); }
   if(typeof wisps==="string" && wisps) push(wisps);
   if(fly.length) push(`<g fill="none" stroke="${hM}" stroke-width=".2" opacity=".3" stroke-linecap="round">${fly.map(d=>`<path d="${d}"/>`).join("")}</g>`);
-  if(["crop","quiff","sidepart","curlytop","pixie","bob","long","wavy","curlylong","locs","ponytail","bun","puffs","braids","fringe","messy","spiky","slick","curtains","manbun","medium","midwavy","longside","longfringe"].includes(hair)) push(`<path d="M62 46 Q100 18 140 42" stroke="${hL}" stroke-width="9" fill="none" stroke-linecap="round" opacity=".26" filter="url(#${id}b)"/><path d="M72 38 Q100 24 128 36" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".14" filter="url(#${id}s)"/>`);
+  if(["curlytop","bob","long","wavy","curlylong","locs","ponytail","bun","puffs","braids","manbun","medium","midwavy","longside","longfringe"].includes(hair)) push(`<path d="M62 46 Q100 18 140 42" stroke="${hL}" stroke-width="9" fill="none" stroke-linecap="round" opacity=".26" filter="url(#${id}b)"/><path d="M72 38 Q100 24 128 36" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".14" filter="url(#${id}s)"/>`);
   // ---------- hats ----------
   }
   if(!FO){
+  if(t.hair==="hijab" && t.hat!=="none") t=Object.assign({},t,{hat:"none"}); /* no hat over a hijab */
   if(t.hat==="beanie"){ const bc=tc; push(`<path d="${crPath([[38,76],[40,40],[66,10],[100,2],[134,10],[160,40],[162,76]],false)} Z" fill="${U("t")}" stroke="${shade(bc,.5)}" stroke-width="1.2"/><rect x="34" y="62" width="132" height="22" rx="11" fill="${shade(bc,.82)}" stroke="${shade(bc,.5)}" stroke-width="1.2"/><circle cx="100" cy="0" r="11" fill="${shade(bc,1.1)}" stroke="${shade(bc,.5)}" stroke-width="1.2"/>`); for(let x=44;x<160;x+=8) push(`<path d="M${x} 64 L${x} 82" stroke="${shade(bc,.65)}" stroke-width="1.4" opacity=".6"/>`); }
   if(t.hat==="cap"){ const bc=tc; push(`<path d="${crPath([[40,64],[44,32],[70,8],[100,2],[130,8],[156,32],[160,64]],false)} Q100 54 40 64 Z" fill="${U("t")}" stroke="${shade(bc,.5)}" stroke-width="1.2"/><path d="M44 60 Q100 46 178 64 Q120 80 44 68 Z" fill="${shade(bc,.75)}" stroke="${shade(bc,.45)}" stroke-width="1.2"/><circle cx="100" cy="4" r="4" fill="${shade(bc,.65)}"/><path d="M100 4 L100 54" stroke="${shade(bc,.65)}" stroke-width="1.2" opacity=".6"/>`); }
   // ---------- glasses ----------
@@ -3065,6 +3184,8 @@ function toonSVG(t, opts){ opts=opts||{};
       push(`<path d="M${ex-10} ${gy-6} l7 -4" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".5"/>`); }
     push(`<path d="M${100-7} ${EY-2} Q100 ${EY-6} ${100+7} ${EY-2}" stroke="${gc}" stroke-width="3" fill="none"/><path d="M${100-42} ${EY-4} L${100-ck} ${EY-6} M${100+42} ${EY-4} L${100+ck} ${EY-6}" stroke="${gc}" stroke-width="3"/>`); }
   }
+  if(HD){ MUTE=false; /* the photo is two halves side by side: colour on the left, the cut-out mask on the right */
+    push(`<mask id="${id}hd" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200"><image href="${PH}" x="-200" y="0" width="400" height="200" preserveAspectRatio="none"/></mask><image href="${PH}" x="0" y="0" width="400" height="200" preserveAspectRatio="none" mask="url(#${id}hd)"/>`); }
   push(`</g>`);
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${opts.vb||"6 -6 188 204"}">${mergeFilters(out.join(""))}</svg>`;
 }
@@ -3620,6 +3741,19 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -4020,7 +4154,7 @@ const HAIR_STYLE={ // len: card length, n: card count, flow: "crown"|"fwd"|"back
   medium:{len:.1,n:950,flow:"crown",mess:.35}, midwavy:{len:.1,n:950,flow:"crown",curl:.5,mess:.3}, bob:{len:.1,n:950,flow:"crown",mess:.2},
   long:{len:.13,n:1100,flow:"crown",mess:.25}, longside:{len:.13,n:1100,flow:"part",part:.035,mess:.25}, longfringe:{len:.13,n:1100,flow:"fwd",mess:.25},
   wavy:{len:.12,n:1100,flow:"crown",curl:.7,mess:.3}, curlylong:{len:.1,n:1200,flow:"crown",curl:1.3,mess:.4},
-  curlytop:{len:.04,n:1000,flow:"out",curl:1.6,mess:.6}, curly:{len:.04,n:1000,flow:"out",curl:1.6,mess:.6},
+  curlytop:{len:.04,n:1000,flow:"out",curl:1.6,mess:.6}, curlycrop:{len:.034,n:1100,flow:"out",curl:2,mess:.6}, twists:{len:.05,n:900,flow:"up",curl:2.4,mess:.35}, waves:{len:.014,n:950,flow:"crown",curl:.9,mess:.1,tight:1}, skinfade:{len:.04,n:650,flow:"fwd",mess:.35}, curly:{len:.04,n:1000,flow:"out",curl:1.6,mess:.6},
   afro:{len:.035,n:1500,flow:"out",curl:2,mess:.8}, puffs:{len:.035,n:1200,flow:"out",curl:2,mess:.8},
   braids:{len:.07,n:1000,flow:"crown",curl:.25,mess:.1}, locs:{len:.08,n:1000,flow:"crown",curl:.3,mess:.2},
   ponytail:{len:.08,n:1000,flow:"back",mess:.15}, bun:{len:.07,n:900,flow:"back",mess:.15}, mohawk:{len:.05,n:600,flow:"up",mess:.3}, buzz:{len:.016,n:900,flow:"crown",mess:.2}
@@ -4029,7 +4163,7 @@ function hairCardsGeo(P, tname, hairF, skinF, allF){
   const st0=HAIR_STYLE[tname]||HAIR_STYLE[P.d.hair], st=st0&&Object.assign({},st0,{n:Math.round(st0.n*((typeof navigator!=="undefined"&&/iPhone|iPad|iPod|Android/i.test(navigator.userAgent||""))?1.1:1.4))}); if(!st || (!st.beard && (P.d.hair==="bald" || P.d.hair==="hijab"))) return null;
   let rs=(chHash(String(tname)+P.hc)>>>0)||7; const R=()=>((rs=(rs*1664525+1013904223)>>>0)/4294967296);
   const e=.0012, grad=(f,x,y,z)=>{ const gx=f(x+e,y,z)-f(x-e,y,z), gy=f(x,y+e,z)-f(x,y-e,z), gz=f(x,y,z+e)-f(x,y,z-e), l=Math.hypot(gx,gy,gz)||1; return [gx/l,gy/l,gz/l]; };
-  const C=[0,.115,-.012], hatTop=["beanie","cap","wizard","crown"].includes(P.d.hat)?.118:9;
+  const C=[0,.115,-.012], hs=hatSpace(P.d.hat), inHat=q=>!!hs && (hs(...q)<.004 || hs.above(...q)), hatTop=["wizard","crown"].includes(P.d.hat)?.118:9;
   const crown=st.flow==="fwd"?[0,.2,-.08]:st.flow==="back"?[0,.16,.13]:[0,.215,-.035];
   const hc=lin(P.d.hcHex||P.hc).map(v=>v*1.22), Pp=[],Nn=[],U=[],Cc=[],Mm=[],I=[]; let made=0;
   const dirAt=(p,n)=>{ let d;
@@ -4044,7 +4178,7 @@ function hairCardsGeo(P, tname, hairF, skinF, allF){
     const u1=R()*2-1, a=R()*Math.PI*2, r=Math.sqrt(1-u1*u1), dir=[r*Math.cos(a),u1,r*Math.sin(a)];
     let p=[C[0]+dir[0]*.4,C[1]+dir[1]*.4,C[2]+dir[2]*.4], hit=false;
     for(let k=0;k<80;k++){ const d=allF(...p); if(d<.0004){ hit=true; break; } const s=Math.max(d,.0015); p=[p[0]-dir[0]*s,p[1]-dir[1]*s,p[2]-dir[2]*s]; if(Math.hypot(p[0]-C[0],p[1]-C[1],p[2]-C[2])<.02) break; }
-    if(!hit) continue; const inMouth=q=>st.beard && Math.abs(q[0])<.03 && q[1]>.012 && q[1]<.05 && q[2]>.07; if(inMouth(p)) continue; const hd=hairF(...p); if(hd>.0015 || hd>skinF(...p)+.0005 || p[1]>hatTop) continue;
+    if(!hit) continue; const inFace=q=>(P.d.photo?(q[2]>.035 && Math.abs(q[0])<.064 && q[1]<.136):(q[2]>.045 && Math.abs(q[0])<.058 && q[1]<.112)) && q[1]>-.03; /* a real-face photo: no strands across the face */ if(inFace(p)) continue; const inMouth=q=>st.beard && Math.abs(q[0])<.03 && q[1]>.012 && q[1]<.05 && q[2]>.07; if(inMouth(p)) continue; const hd=hairF(...p); if(hd>.0015 || hd>skinF(...p)+.0005 || p[1]>hatTop || inHat(p)) continue;
     const MS=Math.min(1.4,(st.mess||0)+.55), off=.0006+R()*.005, len=st.len*(.45+R()*1.0), segs=Math.max(3,Math.min(11,Math.round(len/.011))), step=len/segs, lift=R()<.32?(.002+R()*.009)*(1+MS):0;
     const w=(st.flow==="out"?.008:.011)*(.55+R()*.8), phase=R()*6.28, cfreq=(st.curl||0)>0?(55+R()*25):0, cv=.85+R()*.3;
     let n=grad(allF,...p); p=[p[0]+n[0]*off,p[1]+n[1]*off,p[2]+n[2]*off]; let t=dirAt(p,n); if(!t) continue;
@@ -4058,10 +4192,10 @@ function hairCardsGeo(P, tname, hairF, skinF, allF){
       let q=[p[0]+t[0]*step,p[1]+t[1]*step,p[2]+t[2]*step];
       const want=off+lift*s/segs; let gn=grad(allF,...q); const dq=allF(...q)-want; q=[q[0]-gn[0]*dq,q[1]-gn[1]*dq,q[2]-gn[2]*dq];
       if(st.flow==="out"||st.flow==="up"){ const o=s*step*.35; q=[q[0]+gn[0]*o*.4,q[1]+gn[1]*o*.4,q[2]+gn[2]*o*.4]; }
-      if(q[1]>hatTop || inMouth(q)) break;
+      if(q[1]>hatTop || inHat(q) || inMouth(q) || inFace(q)) break;
       if(hairF(...q)>.007){ // past the edge of the hairstyle: let the tips hang free (ragged, natural ends) without going into the skin
         let fr=[p[0]+t[0]*step,p[1]+t[1]*step-step*.35,p[2]+t[2]*step]; const sd=skinF(...fr); if(sd<.003){ const sg=grad(skinF,...fr); fr=[fr[0]+sg[0]*(.003-sd),fr[1]+sg[1]*(.003-sd),fr[2]+sg[2]*(.003-sd)]; }
-        free+=step; if(st.tight || free>Math.min(.045,len*.6)) break; p=fr; pts.push(p); nrm.push(n); continue; }
+        free+=step; if(st.tight || free>Math.min(.045,len*.6) || inFace(fr) || inHat(fr)) break; p=fr; pts.push(p); nrm.push(n); continue; }
       p=q; n=gn; pts.push(p); nrm.push(n); }
     if(pts.length<3) continue;
     const base=Pp.length/3, m=pts.length-1;
@@ -4080,6 +4214,12 @@ function hairStrandCanvas(){ if(hairStrandCanvas.c) return hairStrandCanvas.c; c
     const grd=x.createLinearGradient(0,0,0,end); grd.addColorStop(0,`rgba(${g},${g},${g},1)`); grd.addColorStop(.8,`rgba(${g},${g},${g},.95)`); grd.addColorStop(1,`rgba(${g},${g},${g},0)`);
     x.strokeStyle=grd; x.lineWidth=wdt; x.beginPath(); x.moveTo(cx,0); x.bezierCurveTo(cx+wv,end*.35,cx-wv,end*.7,cx+wv*.5,end); x.stroke(); }
   return (hairStrandCanvas.c=c); }
+/* the space a hat takes up on the head (head units): hair inside it is cut away so nothing pokes through the hat */
+function hatSpace(hat){ const H={beanie:{c:[0,.118,-.012],a:.28,r:[.091,.112,.112],lo:-.004}, cap:{c:[0,.122,-.012],a:.1,r:[.09,.1,.11],lo:-.002}}[hat]; if(!H) return null;
+  const ca=Math.cos(H.a), sa=Math.sin(H.a), m=Math.min(...H.r);
+  const f=(x,y,z)=>{ const px=x-H.c[0], py=y-H.c[1], pz=z-H.c[2], qy=py*ca-pz*sa, qz=py*sa+pz*ca; /* undo the hat's tilt */
+    const e=(Math.hypot(px/H.r[0],qy/H.r[1],qz/H.r[2])-3)*m; return Math.max(e, H.lo-qy); }; /* everything above the brim, out to well past the hat */
+  f.above=(x,y,z)=>{ const py=y-H.c[1], pz=z-H.c[2]; return py*ca-pz*sa>H.lo-.004; }; return f; }
 function headSculpt(P){
   const b=BI, d=P.d, L=[], A=(f,bb,k,m)=>({f,b:bb,k,m}); const jw={square:1.12,round:1.04,heart:.86,long:.95,oval:1}[d.face]||1, fy={long:-.008,round:.004,heart:.002}[d.face]||0;
   const sk=[
@@ -4115,7 +4255,7 @@ function headSculpt(P){
   switch(d.hair){
     case "short": H.push(A(cap([.0835,.1,.105]),hb,.02), A(masked(SD.ell([0,.158,.02],[.066,.045,.085]),natHL(.14)),hb,.03)); break;
     case "side": H.push(A(cap([.0835,.099,.105]),hb,.02), A(masked(SD.ell([0,.163,.01],[.07,.048,.085]),natHL(.15)),hb,.03), A(SD.rot(SD.ell([-.018,.152,.062],[.062,.026,.045]),[-.018,.152,.062],0,0,.35),hb,.025)); break;
-    case "buzz": H.push(A(cap([.0805,.093,.1015],.148,.08,.02),hb,.01)); post=grooves(.0002,90); break;
+    case "buzz": H.push(A(cap([.0835,.0995,.105],.148,.08,.02),hb,.01)); /* thick enough to show as a short coat of hair, not bare scalp */ post=grooves(.0002,90); break;
     case "bald": hairOn=false; break;
     case "long": case "wavy": {
       H.push(A(cap([.085,.1,.106]),hb,.02), A(masked(SD.ell([0,.163,.015],[.07,.048,.085]),natHL(.15)),hb,.03));
@@ -4135,7 +4275,7 @@ function headSculpt(P){
     case "mohawk": H.push(A(cap([.0785,.0915,.0995],.148,.09,.03),hb,.005), A(masked(SD.ell([0,.165,-.01],[.016,.07,.115]),(x,y,z)=>.1-y),hb,.01)); break;
     case "hijab": hairOn=false; L.push({mat:"cloth", prims:[A(SD.ell([0,.1,-.012],[.094,.118,.113]),hb,.02), A(SD.cap([0,-.04,-.03],[0,-.2,-.035],.088,.13),b.neck,.06)], subs:[{f:SD.ell([0,.062,.086],[.058,.079,.062]),k:.012}], post:grooves(.0006,20)}); break;
   }
-  if(hairOn && H.length){ const p0=post; post=(dd,x,y,z)=>p0(dd,x,y,z)+.0032*Math.sin(x*61+y*23)*Math.sin(y*47-z*39)+.0022*Math.sin(z*83+x*29+y*11); L.push({mat:"hair", prims:H, post, main:true}); }
+  if(hairOn && H.length){ const p0=post; post=(dd,x,y,z)=>p0(dd,x,y,z)+.0032*Math.sin(x*61+y*23)*Math.sin(y*47-z*39)+.0022*Math.sin(z*83+x*29+y*11); const hs=hatSpace(d.hat); L.push({mat:"hair", prims:H, post, main:true, subs:hs?[{f:hs,k:.003}]:[]}); }
   if(d.beard){ L.push({mat:"beard", beard:true, prims:[A((x,y,z)=>Math.max(SD.ell([0,.036,.03],[.065,.06,.08])(x,y,z), y-.064, -.035-z),b.jaw,.01)], subs:[{f:SD.ell([0,.027,.1],[.025,.0135,.03]),k:.006}], post:grooves(.0012,140)}); }
   if(d.beard||d.tache) L.push({mat:"beard", beard:true, prims:[A(SD.cap([-.021,.0395,.103],[.021,.0395,.103],.0058),b.head,.004)]});
   return {layers:L};
@@ -4295,6 +4435,7 @@ function makeChar(gx, id, geo){
     add(RB,bc,b.hips,M4.ch(T(-.2,.97,.03),M4.RY(-.5),M4.S(.2,.15,.065)),{spec:.25,gloss:30}); add(RB,shade(bc,.85),b.hips,M4.ch(T(-.195,1.005,.065),M4.RY(-.5),M4.S(.19,.08,.012)),{spec:.25}); add(CY,GOLD,b.hips,M4.ch(T(-.172,.985,.086),M4.RX(Math.PI/2),M4.S(.008,.004,.008)),met); }
   if(d.headphones){ add(HUM.torus(gx,.112,.009,Math.PI),"#1C1C22",b.head,M4.ch(HT(0,.108,-.01),M4.RX(Math.PI/2)),{spec:.6,gloss:40}); for(const s of [1,-1]) add(HUM.cyl(gx),"#F2F2F0",b.head,M4.ch(HT(.088*s,.08,-.01),M4.RZ(Math.PI/2*s),M4.T(0,-.012,0),M4.S(.036,.028,.036)),{spec:.5,gloss:40}); }
   if(d.bow) for(const s of [1,-1]) add(S,"#FF4F8B",b.head,M4.ch(HT(.055+.025*s,.195,.04),M4.RZ(.4*s),M4.S(.028,.017,.012)),{spec:.3});
+  if(d.hair==="hijab") d.hat=null;
   if(d.hat==="beanie"){ add(HUM.cap(gx,1.55),d.hatc,b.head,M4.ch(HT(0,.118,-.012),M4.RX(-.28),M4.S(.091,.112,.112)),{wrap:.3,spec:.05}); add(HUM.torus(gx,.093,.016),d.hatc,b.head,M4.ch(HT(0,.122,-.0),M4.RX(-.28),M4.S(1,1.1,1.16)),{wrap:.3,spec:.05}); add(S,d.hatc,b.head,M4.ch(HT(0,.235,-.05),M4.S(.026,.026,.026)),{wrap:.3,spec:.05}); }
   if(d.hat==="cap"){ add(HUM.cap(gx,1.57),d.hatc,b.head,M4.ch(HT(0,.122,-.012),M4.RX(-.1),M4.S(.09,.1,.11)),{spec:.12}); add(HUM.cyl(gx),d.hatc,b.head,M4.ch(HT(0,.135,.1),M4.RX(.12),M4.S(.078,.005,.07)),{spec:.12}); }
   if(d.hat==="party"){ add(HUM.cyl(gx,1,0),"#FF4F8B",b.head,M4.ch(HT(0,.19,0),M4.RZ(-.15),M4.S(.055,.16,.055)),{spec:.4}); add(S,"#FFE14D",b.head,M4.ch(HT(-.024,.35,0),M4.S(.018,.018,.018))); }
@@ -4729,7 +4870,8 @@ const Room={
 };
 
 /* ---------------- 3D portraits ---------------- */
-const PORT_V="v11";
+const PORT_V="v12"; /* bump when how characters look changes, so saved avatar pictures are redrawn */
+try{ for(let i=localStorage.length-1;i>=0;i--){ const k=localStorage.key(i); if(k && k.startsWith("sq-port-") && !k.startsWith("sq-port-"+PORT_V+"-")) localStorage.removeItem(k); } }catch(e){}
 const Portrait={ gx:null, ok:null, cache:{}, cv:null, busy:false, q:[], wait:new Set(),
   key(id){ return id+(BIG.on?"B":""); },
   get(id){ const k=this.key(id); if(this.cache[k]) return this.cache[k];
@@ -6584,7 +6726,7 @@ function mkTabBody(tab){ const m=mkState(), sec=(h,b)=>`<div class="mk-sec"><div
     case "nose": return sec("Nose",mkTiles("nose",TOON.nose))+sec("Lips",mkTiles("lips",TOON.lips));
     case "beard": return m.hair==="hijab"?`<p class="muted">Not available with a hijab.</p>`:sec("Facial hair",mkTiles("facial",TOON.facial));
     case "glasses": return sec("Glasses",mkTiles("glasses",TOON.glasses));
-    case "outfit": return mkSw("topColour",MK.tops,"Colour")+sec("Top",mkTiles("top",TOON.top,"10 40 180 180"))+sec("Hat",mkTiles("hat",TOON.hat));
+    case "outfit": return mkSw("topColour",MK.tops,"Colour")+sec("Top",mkTiles("top",TOON.top,"10 40 180 180"))+(m.hair==="hijab"?"":sec("Hat",mkTiles("hat",TOON.hat)));
     case "extras": return sec("Extras",`<div class="mk-tiles">${mkToggle("freckles","Freckles")}${mkToggle("earrings","Earrings")}</div>`);
   } return ""; }
 /* ---------- real-face photos ---------- */
