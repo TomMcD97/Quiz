@@ -275,6 +275,13 @@ async function callClaude(b) {
 }
 
 /* ---------------- reports, error log, owner stats (Nov 2026) ---------------- */
+/* the game page, kept ready-compressed in memory (re-read if the file changes) */
+let PAGEC = null;
+function pageC() { const z = require("zlib"), st = fs.statSync(PAGE); if (PAGEC && PAGEC.m === st.mtimeMs) return PAGEC; const body = fs.readFileSync(PAGE);
+  PAGEC = { m: st.mtimeMs, body, br: z.brotliCompressSync(body, { params: { [z.constants.BROTLI_PARAM_QUALITY]: 11, [z.constants.BROTLI_PARAM_SIZE_HINT]: body.length } }), gz: z.gzipSync(body, { level: 9 }), etag: '"' + crypto.createHash("sha1").update(body).digest("base64").replace(/[^A-Za-z0-9]/g, "").slice(0, 20) + '"' }; return PAGEC; }
+/* the word grid dictionary: its own file, so it isn't part of the first download and phones keep it */
+let DICTC = null; function dictC() { if (!DICTC) DICTC = fs.readFileSync(path.join(__dirname, "dict.gz")); return DICTC; }
+setTimeout(() => { try { pageC(); } catch (e) {} }, 100);
 const STATIC = { "/og.png": ["og.png", "image/png"], "/icon-192.png": ["icon-192.png", "image/png"], "/icon-512.png": ["icon-512.png", "image/png"], "/apple-touch-icon.png": ["icon-180.png", "image/png"], "/manifest.webmanifest": ["manifest.webmanifest", "application/manifest+json"] };
 const hits = new Map(); /* simple per-IP rate limit for reports and error logs */
 function tooMany(req, kind, max) { const k = kind + ":" + ipOf(req), now = Date.now(), h = (hits.get(k) || []).filter(t => now - t < 3600e3); h.push(now); hits.set(k, h); return h.length > max; }
@@ -381,8 +388,13 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   try {
     if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" });
-      return fs.createReadStream(PAGE).pipe(res);
+      /* the page is sent compressed (about a third of the size), and a phone that already has this version is told "no change" instead of downloading it again */
+      const pc = pageC(), ae = req.headers["accept-encoding"] || "";
+      const h = { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", "etag": pc.etag, "vary": "accept-encoding" };
+      if ((req.headers["if-none-match"] || "") === pc.etag) { res.writeHead(304, h); return res.end(); }
+      if (/\bbr\b/.test(ae)) { res.writeHead(200, Object.assign(h, { "content-encoding": "br" })); return res.end(pc.br); }
+      if (/\bgzip\b/.test(ae)) { res.writeHead(200, Object.assign(h, { "content-encoding": "gzip" })); return res.end(pc.gz); }
+      res.writeHead(200, h); return res.end(pc.body);
     }
     if (url.pathname === "/healthz") return json(res, 200, { ok: true });
     if (req.method === "GET" && (url.pathname === "/geo/low.json" || url.pathname === "/geo/high.json")) {
@@ -404,6 +416,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/report" && req.method === "POST") { await ready; return reportRoute(req, res); }
     if (url.pathname === "/api/log" && req.method === "POST") { await ready; return logRoute(req, res); }
     if (url.pathname === "/admin" && req.method === "GET") { await ready; return adminRoute(req, res, url); }
+    if (req.method === "GET" && url.pathname === "/dict.gz") { try { const body = dictC(); res.writeHead(200, { "content-type": "application/octet-stream", "cache-control": "public, max-age=31536000, immutable" }); return res.end(body); } catch (e) { return json(res, 404, { error: "no dictionary" }); } }
     if (req.method === "GET" && STATIC[url.pathname]) { const f = STATIC[url.pathname]; try { const body = fs.readFileSync(path.join(__dirname, f[0])); res.writeHead(200, { "content-type": f[1], "cache-control": "public, max-age=86400" }); return res.end(body); } catch (e) {} }
     if (url.pathname === "/api/db" && req.method === "POST") {
       await ready; const b = await readBody(req, 100000); const r = dbOp(b, b.op === "set" ? await userOf(req) : null);
