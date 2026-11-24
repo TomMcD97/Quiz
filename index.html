@@ -3761,6 +3761,7 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -9155,7 +9156,7 @@ function renderBoard(){
     if(!n || !n.isConnected){
       n=document.createElement("div"); n.className="ct"+(RM?"":" new"); n.dataset.pid=r.pid;
       n.innerHTML=`<span class="badge" hidden></span><span class="crownbox"></span><span class="avbox"></span><div class="plate"><span class="nm"></span><span class="sc num"></span><span class="sub"></span></div>`;
-      ctEls[r.pid]=n; ctState[r.pid]=ctState[r.pid]||{};
+      ctEls[r.pid]=n; ctState[r.pid]=ctState[r.pid]||{}; ctState[r.pid].av=null; /* a fresh card has an empty picture slot, so always draw the avatar into it */
     }
     if(el.children[idx]!==n) el.insertBefore(n, el.children[idx]||null);
     const st=ctState[r.pid], av=avOf(r.pid);
