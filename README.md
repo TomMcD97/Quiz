@@ -1,4 +1,4 @@
-# Spotlight Quiz
+# Dougle (formerly Spotlight Quiz)
 
 A live party quiz you play together on your phones. This folder is the whole website: the game page plus a small server that runs the multiplayer.
 
