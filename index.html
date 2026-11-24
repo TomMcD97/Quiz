@@ -302,6 +302,7 @@ header.top{display:flex;align-items:center;gap:12px;justify-content:space-betwee
 .progress i{flex:1;height:6px;border-radius:3px;background:var(--line)}
 .progress i.done{background:var(--accent)}
 .progress i.cur{background:var(--spot)}
+.sharecard{display:flex;justify-content:center}.sharecard:empty{display:none}.sharecard img{width:100%;max-width:340px;aspect-ratio:1;border-radius:18px;box-shadow:0 10px 30px rgba(18,23,51,.25)}
 .share{white-space:pre;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;padding:12px;border-radius:10px;background:var(--panel-2);border:1px solid var(--line);overflow-x:auto}
 .scoreline{font-family:var(--f-display);font-weight:800;font-size:clamp(44px,8vw,72px);line-height:1}
 .banner{padding:10px 14px;border-radius:10px;background:var(--spot-soft);border:1px solid var(--spot);font-size:14px}
@@ -3497,6 +3498,12 @@ function avSVG2D(id, bg){
   return (avCache[key]=svg);
 }
 function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(avSVG2D(id, bg)); }
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
@@ -7292,9 +7299,11 @@ async function loadLBTab(){ const el=$("#lbmain"); if(!el) return; const what=ap
   const ids=Object.keys(L.members||{}), rows=ids.map(id=>{ let wk=0, td=null; all.forEach((D,i)=>{ const r=D.find(x=>x.id===id); if(r){ wk+=Number(r.score)||0; if(days[i]===today) td=Number(r.score)||0; } }); return {id, nick:L.members[id], wk, td}; }).sort((a,b)=>(b.td??-1)-(a.td??-1)||b.wk-a.wk);
   el.innerHTML=`<div class="eyebrow" style="margin:0 0 6px">${esc(L.name)} · ${ids.length} player${ids.length===1?"":"s"}</div><div class="lg-cols muted"><span></span><span>Today</span><span>Week</span></div>${rows.map((r,i)=>`<div class="lg-r ${r.id===myScoreId()?"me":""}"><span><span class="rk">${i+1}</span>${esc(String(r.nick).slice(0,18))}</span><b class="num">${r.td==null?`<span class="muted">–</span>`:r.td.toLocaleString("en-GB")}</b><span class="num">${r.wk.toLocaleString("en-GB")}</span></div>`).join("")}`; }
 /* results screen: where you finished today, with a jump to the leaderboards */
+/* where you came on today's word grid, for the share card */
+async function gridRankFill(){ if(!app.db || DG.rank || !DG.key) return; try{ const L=await scoresOf("g", DG.key), i=L.findIndex(r=>r.id===myScoreId()); if(i>=0){ DG.rank=[i+1,L.length]; showShareCard("g"); } }catch(e){} }
 async function fillDoneRank(){ const el=$("#donerank"); if(!el || !app.db) return; await new Promise(r=>setTimeout(r,1500)); const L=await scoresOf("q", todayKey()); const e2=$("#donerank"); if(!e2) return;
   const i=L.findIndex(r=>r.id===myScoreId()); if(i<0){ e2.innerHTML=`<button type="button" class="dc-go" data-act="golb">See today's leaderboard →</button>`; return; }
-  e2.innerHTML=`<div class="dr-in"><span>You're <b>${ORD(i+1)}</b> of ${L.length}${L.length>=100?"+":""} today${i===0?" 🥇":i<3?" 🏅":""}</span><button type="button" class="dc-go" data-act="golb">See leaderboards →</button></div>`; }
+  D.rank=[i+1,L.length]; showShareCard("q"); e2.innerHTML=`<div class="dr-in"><span>You're <b>${ORD(i+1)}</b> of ${L.length}${L.length>=100?"+":""} today${i===0?" 🥇":i<3?" 🏅":""}</span><button type="button" class="dc-go" data-act="golb">See leaderboards →</button></div>`; }
 /* the teaser line on the Daily tab: who's top today, and where you are */
 async function loadTeaser(){ const el=$("#dcteaser"); if(!el) return; const go=`<button type="button" class="dc-go" data-act="htab" data-v="lb">Leaderboards →</button>`;
   if(!app.db){ el.innerHTML=go; return; } const L=await scoresOf("q", todayKey()); if(!$("#dcteaser")) return;
@@ -7326,6 +7335,41 @@ function maybeDailyPop(){ try{ if(!DAILY_POP || app.view!=="home" || $("#howto")
     const q=LS.get(DQ_LS+key), g=LS.get(DG_LS+key); if(q && g) return;
     LS.set("sq-dpop-"+key,1); const d=document.createElement("div"); d.innerHTML=dailyPopHTML(q,g); const el=d.firstChild; el.addEventListener("click",ev=>{ if(ev.target===el) el.remove(); }); document.body.appendChild(el); }catch(e){} }
 function lowEnd(){ if(!FEAT.lowend) return false; try{ const m=navigator.deviceMemory, c=navigator.hardwareConcurrency; return (m && m<=2) || (c && c<=2) || LS.get("sq-lowend")===1; }catch(e){ return false; } }
+/* a picture of your result to share: draws a card on a canvas, so it looks good in any chat */
+async function shareCard(kind, r){ try{ await Promise.all([document.fonts.load('900 80px "Inter Display"'), document.fonts.load('600 30px "Inter"')]); }catch(e){}
+  const W=1080, H=1080, c=document.createElement("canvas"); c.width=W; c.height=H; const g=c.getContext("2d"), F=(w,s,f)=>`${w} ${s}px ${f||'"Inter Display", "Inter", system-ui, sans-serif'}`;
+  const rr=(x,y,w,h,r)=>{ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); };
+  /* stage: deep navy with a warm spotlight from above */
+  g.fillStyle="#121733"; g.fillRect(0,0,W,H);
+  const beam=g.createRadialGradient(W/2,-120,40,W/2,260,900); beam.addColorStop(0,"rgba(255,196,84,.55)"); beam.addColorStop(.45,"rgba(255,170,40,.16)"); beam.addColorStop(1,"rgba(255,170,40,0)"); g.fillStyle=beam; g.fillRect(0,0,W,H);
+  const flr=g.createLinearGradient(0,H-220,0,H); flr.addColorStop(0,"rgba(43,69,240,0)"); flr.addColorStop(1,"rgba(43,69,240,.35)"); g.fillStyle=flr; g.fillRect(0,H-220,W,220);
+  g.textAlign="center"; g.textBaseline="alphabetic";
+  g.fillStyle="#F5A511"; g.font=F(800,40); g.fillText(kind==="g"?"SPOTLIGHT WORD GRID":"SPOTLIGHT DAILY",W/2,112);
+  g.fillStyle="rgba(255,255,255,.7)"; g.font=F(600,32,'"Inter", system-ui, sans-serif'); g.fillText(new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"}),W/2,162);
+  g.fillStyle="#fff"; g.font=F(900,168); g.fillText(Number(r.score).toLocaleString("en-GB"),W/2,345); g.fillStyle="rgba(255,255,255,.6)"; g.font=F(700,38); g.fillText("POINTS",W/2,398);
+  const cols={3:"#1FB36B",2:"#F2C230",1:"#F08A24",0:"#3A4166"};
+  if(kind!=="g"){ const T=(r.pts||[]).map((p,i)=>r.pmax?tier(p,r.pmax[i]):p), n=T.length||15, per=5, rows=Math.ceil(n/per), sz=rows>2?98:118, gap=rows>2?18:22;
+    for(let i=0;i<n;i++){ const row=Math.floor(i/per), col=i%per, cnt=Math.min(per,n-row*per), x0=W/2-(cnt*sz+(cnt-1)*gap)/2, x=x0+col*(sz+gap), y=450+row*(sz+gap);
+      rr(x,y,sz,sz,22); g.fillStyle=cols[T[i]||0]; g.fill(); g.fillStyle="rgba(255,255,255,.18)"; rr(x+8,y+8,sz-16,(sz-16)*.42,16); g.fill();
+      g.fillStyle=T[i]>=2?"#121733":"rgba(255,255,255,.85)"; g.font=F(800,sz>100?40:34); g.fillText(String(i+1),x+sz/2,y+sz/2+13); }
+    const good=T.filter(t=>t===3).length; g.fillStyle="rgba(255,255,255,.85)"; g.font=F(600,34,'"Inter", system-ui, sans-serif'); g.fillText(`${good} of ${n} spot on`,W/2,450+rows*(sz+gap)+30);
+  } else { const by={}; for(const w of (r.words||[])) by[w.length]=(by[w.length]||0)+1; const L=Object.keys(by).map(Number).sort((a,b)=>b-a).slice(0,5), gc=n=>n>=7?"#E5484D":n>=6?"#F08A24":n>=5?"#F2C230":n>=4?"#1FB36B":"#4C7BF4";
+    let y=455; const mx=Math.max(1,...L.map(n=>by[n])), bw=380, bx=W/2-90;
+    if(!L.length){ g.fillStyle="rgba(255,255,255,.7)"; g.font=F(600,40,'"Inter", system-ui, sans-serif'); g.fillText("No words this time!",W/2,560); }
+    for(const n of L){ g.textAlign="right"; g.fillStyle="rgba(255,255,255,.85)"; g.font=F(800,40); g.fillText(`${n} letters`,bx-24,y+44); g.textAlign="left";
+      const w=Math.max(86,bw*by[n]/mx); rr(bx,y+4,w,54,18); g.fillStyle=gc(n); g.fill(); g.fillStyle="#121733"; g.font=F(800,34); g.fillText("×"+by[n],bx+20,y+44); y+=68; }
+    g.textAlign="center"; g.fillStyle="rgba(255,255,255,.85)"; g.font=F(600,34,'"Inter", system-ui, sans-serif'); g.fillText(`${r.n} word${r.n===1?"":"s"} found`,W/2,Math.max(y+40,560)); }
+  /* chips: streak and rank */
+  const chips=[]; const st=kind==="g"?(()=>{ try{ const x=statsOf("dg"); return x?x.cur:0; }catch(e){ return 0; } })():calcStreak(); if(st>1) chips.push(`🔥 ${st}-day streak`); const rk=kind==="g"?DG.rank:D.rank; if(rk) chips.push(`🏆 ${ORD(rk[0])} of ${rk[1]}${rk[1]>=100?"+":""} today`);
+  if(chips.length){ g.font=F(700,34); const ws=chips.map(t=>g.measureText(t).width+60), tot=ws.reduce((a,b)=>a+b,0)+(chips.length-1)*20; let x=W/2-tot/2; chips.forEach((t,i)=>{ rr(x,H-232,ws[i],70,35); g.fillStyle="rgba(255,255,255,.12)"; g.fill(); g.fillStyle="#fff"; g.textAlign="center"; g.fillText(t,x+ws[i]/2,H-185); x+=ws[i]+20; }); }
+  g.textAlign="center"; g.fillStyle="#fff"; g.font=F(800,40); g.fillText("Can you beat me?",W/2,H-96); g.fillStyle="#F5A511"; g.font=F(700,36); g.fillText(SITE_URL,W/2,H-48);
+  return new Promise(res=>c.toBlob(b=>res(b),"image/png")); }
+async function shareResult(kind){ const r=kind==="g"?(DG.result||{score:0,n:0,words:[]}):(D.result||{score:0,pts:[]}), txt=kind==="g"?gridShareText(r):shareText(r);
+  if(canNativeShare()){ try{ const b=await shareCard(kind,r), f=b&&new File([b],kind==="g"?"spotlight-word-grid.png":"spotlight-daily.png",{type:"image/png"});
+      if(f && navigator.canShare && navigator.canShare({files:[f]})){ await navigator.share({files:[f], text:txt}); return; } }catch(e){ if(e && e.name==="AbortError") return; } }
+  shareOrCopy(txt); }
+/* the card shown on the results screen */
+async function showShareCard(kind){ const el=$("#sharecard"); if(!el) return; const r=kind==="g"?DG.result:D.result; if(!r) return; try{ const b=await shareCard(kind,r); const e2=$("#sharecard"); if(!e2||!b) return; if(e2.dataset.u) URL.revokeObjectURL(e2.dataset.u); const u=URL.createObjectURL(b); e2.dataset.u=u; e2.innerHTML=`<img src="${u}" alt="Your result card">`; }catch(e){} }
 function canNativeShare(){ return FEAT.share && window.SQ_STANDALONE && navigator.share; }
 async function shareOrCopy(txt){ if(canNativeShare()){ try{ await navigator.share({text:txt}); return; }catch(e){ if(e && e.name==="AbortError") return; } } try{ await navigator.clipboard.writeText(txt); toast("Copied. Paste it into your group chat"); }catch(err){ toast("Select the text above to copy it"); const s=$("#sharetxt"); if(s){ const r=document.createRange(); r.selectNodeContents(s); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); } } }
 const HTAB_MQ="(max-width:1100px)"; /* phones and upright tablets (including iPad Pro) get tabs; wider screens get the side-by-side page */
@@ -9654,9 +9698,13 @@ function dailyTick(now){
   const pa=$("#dpav"); if(pa){ const q=D.qs[D.i]; if(q.t==="gk"||q.t==="hl") pa.textContent=dailyAvail(q, now-D.start); }
   if(now>D.end){ const q=D.qs[D.i]; let v=null; if(q.t==="pin"||q.t==="ctry"||q.t==="est") v=D.draft; if(q.t==="rank" && rkMoved==="daily-"+D.i && Array.isArray(draft)) v=draft.join(","); dailyAnswer(v); }
 }
-function shareText(res){ const sq=(res.pts||[]).map((p,i)=>["⬜","🟧","🟨","🟩"][res.pmax?tier(p,res.pmax[i]):p]||"⬜").join(""); const st=calcStreak();
-  if(!FEAT.share) return `Spotlight Quiz · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}\n${sq}\n${res.score.toLocaleString("en-GB")} points`;
-  return `Spotlight Daily · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}\n${sq.slice(0,5)}\n${sq.slice(5,10)}\n${sq.slice(10)}\n${res.score.toLocaleString("en-GB")} points${st>1?` · 🔥 ${st}-day streak`:""}\nCan you beat me? ${SITE_URL}`; }
+function shareDate(){ return new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}); }
+function shareText(res){ const T=(res.pts||[]).map((p,i)=>res.pmax?tier(p,res.pmax[i]):p), sq=T.map(t=>["⬜","🟧","🟨","🟩"][t]||"⬜"), st=calcStreak(), rk=D.rank;
+  const grid=[]; for(let i=0;i<sq.length;i+=5) grid.push(sq.slice(i,i+5).join(""));
+  const l1=[`⭐ ${res.score.toLocaleString("en-GB")} pts`, `🎯 ${T.filter(t=>t===3).length}/${T.length} spot on`], l2=[];
+  if(st>1) l2.push(`🔥 ${st}-day streak`); if(rk && rk[0]<=Math.max(10,rk[1]/2)) l2.push(`🏆 ${ORD(rk[0])} today`);
+  const head=FEAT.share?"🎤 SPOTLIGHT DAILY":"🎤 SPOTLIGHT QUIZ";
+  return [head, shareDate(), "", ...grid, "", l1.join(" · "), ...(l2.length?[l2.join(" · ")]:[]), ...(FEAT.share?["",`Can you beat me? 👉 ${SITE_URL}`]:[])].join("\n"); }
 function renderDaily(){
   const el=$("#dstage"); if(!el) return;
   if(mapView){ mapView.destroy(); mapView=null; }
@@ -9684,10 +9732,10 @@ function renderDaily(){
     const M=resMax(r), f=r.score/M;
     if(f>=0.6) setTimeout(()=>confetti(f>=0.8?180:90), 400);
     const txt=shareText(r);
-    h=`<div class="intro"><div class="eyebrow">Today's score</div><div class="scoreline num">${r.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts</span></div><p>${f>=0.8?"Brilliant.":f>=0.53?"Solid effort.":"Tomorrow's another quiz."} ${calcStreak()>1?`You're on a ${calcStreak()}-day streak.`:""} Come back tomorrow for a new set.</p></div>${guestDone(r)?acctCTA("Guest scores don't go on the leaderboard. Log in before tomorrow's quiz to get ranked."):""}<div id="donerank" class="donerank"></div><div class="share" id="sharetxt">${esc(txt)}</div><div class="row">${canNativeShare()?`<button class="btn primary" data-act="nshare">Share</button>`:""}<button class="btn" data-act="copyshare">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div><div style="margin-top:18px">${statsCardHTML("dq")}${subjCardHTML()}</div>`;
+    h=`<div class="intro"><div class="eyebrow">Today's score</div><div class="scoreline num">${r.score.toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> pts</span></div><p>${f>=0.8?"Brilliant.":f>=0.53?"Solid effort.":"Tomorrow's another quiz."} ${calcStreak()>1?`You're on a ${calcStreak()}-day streak.`:""} Come back tomorrow for a new set.</p></div>${guestDone(r)?acctCTA("Guest scores don't go on the leaderboard. Log in before tomorrow's quiz to get ranked."):""}<div id="donerank" class="donerank"></div><div class="sharecard" id="sharecard"></div><div class="share" id="sharetxt" hidden>${esc(txt)}</div><div class="row">${canNativeShare()?`<button class="btn primary" data-act="nshare">Share</button>`:""}<button class="btn" data-act="copyshare">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div><div style="margin-top:18px">${statsCardHTML("dq")}${subjCardHTML()}</div>`;
   }
   el.innerHTML=h;
-  if(D.phase==="done") fillDoneRank();
+  if(D.phase==="done"){ fillDoneRank(); showShareCard("q"); }
   if((D.phase==="q"||D.phase==="fb") && (D.qs[D.i].t==="pin"||D.qs[D.i].t==="ctry")){
     const q=D.qs[D.i], ct=q.t==="ctry";
     if(D.phase==="q") mapView=new MapView($("#map"),{labels:ct?false:undefined, pick:ll=>{ D.draft=ll; mapView.setPins([{...ll,color:pcol(me.pid),label:"You",av:me.av}]); const b=$("#dlockpin"); if(b) b.disabled=false; }});
@@ -9748,7 +9796,12 @@ async function dgFinish(){
   if(app.acct) window.SQ_AUTH.saveProfile({dg:{[DG.key]:{score, n:ws.length}}}).catch(()=>{});
   await postScore("dg", DG.key, res);
 }
-function gridShareText(r){ return `Spotlight Word Grid · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"})}\n${r.n} word${r.n===1?"":"s"} · ${Number(r.score).toLocaleString("en-GB")} points${r.words&&r.words[0]?`\nLongest: ${r.words[0].length} letters`:""}${FEAT.share?`\nCan you beat me? ${SITE_URL}`:""}`; }
+/* words found, by length: one coloured square per word, longer words in warmer colours (no spoilers: no letters) */
+function gridLenRows(r){ const by={}; for(const w of (r.words||[])) by[w.length]=(by[w.length]||0)+1; const col=n=>n>=7?"🟥":n>=6?"🟧":n>=5?"🟨":n>=4?"🟩":"🟦", key=n=>({3:"3️⃣",4:"4️⃣",5:"5️⃣",6:"6️⃣",7:"7️⃣",8:"8️⃣",9:"9️⃣",10:"🔟"})[n]||(n+"");
+  return Object.keys(by).map(Number).sort((a,b)=>b-a).map(n=>`${key(n)} ${col(n).repeat(Math.min(by[n],8))}${by[n]>8?" +"+(by[n]-8):""}`); }
+function gridShareText(r){ const rows=gridLenRows(r), st=(()=>{ try{ const x=statsOf("dg"); return x?x.cur:0; }catch(e){ return 0; } })(), rk=DG.rank;
+  const l1=[`⭐ ${Number(r.score).toLocaleString("en-GB")} pts`, `📝 ${r.n} word${r.n===1?"":"s"}`], l2=[]; if(st>1) l2.push(`🔥 ${st}-day streak`); if(rk && rk[0]<=Math.max(10,rk[1]/2)) l2.push(`🏆 ${ORD(rk[0])} today`);
+  return ["🔠 SPOTLIGHT WORD GRID", shareDate(), "", ...(rows.length?[...rows,""]:[]), l1.join(" · "), ...(l2.length?[l2.join(" · ")]:[]), ...(FEAT.share?["",`Can you beat me? 👉 ${SITE_URL}`]:[])].join("\n"); }
 function renderDGrid(){
   const el=$("#gstage"); if(!el) return;
   const date=esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}));
@@ -9763,9 +9816,9 @@ function renderDGrid(){
     h=`<div class="intro"><div class="eyebrow">Today's word grid</div><div class="scoreline num">${Number(r.score).toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> points</span></div><p>${r.n} word${r.n===1?"":"s"}${DG.all?` out of ${DG.all.length} in the grid`:""}. Come back tomorrow for a new grid.</p></div>`;
     if(DG.grid) h+=`<div class="wgwrap"><div class="wg" style="max-width:220px">${DG.grid.map(c=>`<div class="tile" style="font-size:22px">${esc(c)}</div>`).join("")}</div><div style="display:grid;gap:10px;min-width:0">${(r.words||[]).length?`<div><div class="eyebrow" style="margin-bottom:6px">Your words</div><div class="words">${r.words.map(w=>`<span class="w">${esc(w.toUpperCase())}<sup>${wordPts(w.length)}</sup></span>`).join("")}</div></div>`:""}${missed.length?`<div><div class="eyebrow" style="margin-bottom:6px">Longest words you missed</div><div class="words">${missed.map(w=>`<span class="w pend">${esc(w.toUpperCase())}<sup>${wordPts(w.length)}</sup></span>`).join("")}</div></div>`:""}</div></div>`;
     if(guestDone(r)) h+=acctCTA("Guest scores don't go on the leaderboard. Log in before tomorrow's grid to get ranked.");
-    h+=`<div class="share" id="sharetxt">${esc(gridShareText(r))}</div><div class="row">${canNativeShare()?`<button class="btn primary" data-act="nsharegrid">Share</button>`:""}<button class="btn" data-act="copygrid">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div>`;
+    h+=`<div class="sharecard" id="sharecard"></div><div class="row">${canNativeShare()?`<button class="btn primary" data-act="nsharegrid">Share</button>`:""}<button class="btn" data-act="copygrid">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div>`;
   }
-  el.innerHTML=h;
+  el.innerHTML=h; if(DG.phase==="done"){ showShareCard("g"); gridRankFill(); }
   if(DG.phase==="play"){ renderWordList(); paintTiles(); }
 }
 function renderDGridBoard(){
@@ -9985,8 +10038,8 @@ document.addEventListener("click", async e=>{
   if(a==="repsend"){ sendReport(b.dataset.r); return; }
   if(a==="repclose"){ repQ=null; const el=$("#repsheet"); if(el) el.remove(); return; }
   if(a==="copylink"||a==="sharelink"){ const u=joinUrl(S&&S.code||app.code); if(a==="sharelink"){ try{ await navigator.share({text:"Join my Spotlight Quiz party: "+u}); return; }catch(e){ if(e&&e.name==="AbortError") return; } } try{ await navigator.clipboard.writeText(u); toast("Link copied"); }catch(e){ toast(u); } return; }
-  if(a==="nshare"){ shareOrCopy(shareText(D.result||{score:0,pts:[]})); return; }
-  if(a==="nsharegrid"){ shareOrCopy(gridShareText(DG.result||{score:0,n:0})); return; }
+  if(a==="nshare"){ shareResult("q"); return; }
+  if(a==="nsharegrid"){ shareResult("g"); return; }
   if(a==="copygrid"){ const txt=gridShareText(DG.result||{score:0,n:0}); try{ await navigator.clipboard.writeText(txt); toast("Copied"); }catch(err){ toast("Select the text above to copy it"); } return; }
   if(a==="copycode"||a==="copyshare"){ const txt = a==="copycode" ? app.code : shareText(D.result||{score:0,pts:[]}); try{ await navigator.clipboard.writeText(txt); toast("Copied"); }catch(err){ toast(a==="copycode"?"Code: "+txt:"Select the text above to copy it"); const s=$("#sharetxt"); if(s){ const r=document.createRange(); r.selectNodeContents(s); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); } } return; }
   if(a==="savetopic"){ const v=($("#topic").value||"").trim().slice(0,60); me.topic=v; LS.set("sq-topic", v); setMyPresence({topic:v}); toast(v?"Subject saved":"Subject cleared"); renderBoard(); return; }
