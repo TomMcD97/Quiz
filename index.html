@@ -1,12 +1,12 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="Spotlight Quiz: a live party quiz you play together on your phones.">
-<title>Spotlight Quiz</title>
-<meta property="og:type" content="website"><meta property="og:site_name" content="Spotlight Quiz"><meta property="og:title" content="Spotlight Quiz – Quiz night on everyone's phone">
+<meta name="description" content="Dougle: a live party quiz you play together on your phones.">
+<title>Dougle</title>
+<meta property="og:type" content="website"><meta property="og:site_name" content="Dougle"><meta property="og:title" content="Dougle – Quiz night on everyone's phone">
 <meta property="og:description" content="A daily quiz, a daily word grid and live party quiz games you play together on your phones. No app needed.">
 <meta property="og:image" content="https://spotlightquiz.app/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:url" content="https://spotlightquiz.app/">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://spotlightquiz.app/og.png">
 <meta name="theme-color" content="#000000"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
-<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Spotlight"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Dougle"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
 <script>/* Stand-in for the Claude runtime when the game runs on its own server. */
 (function(){
@@ -121,7 +121,7 @@
   } };
 })();
 </script></head><body>
-<title>Spotlight Quiz</title>
+<title>Dougle</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap">
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -517,7 +517,7 @@ button.mf-tile:disabled{cursor:default}
   .rounds-preview{grid-template-columns:1fr}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
-/* ===== Spotlight Quiz: bold, crisp broadcast look =====
+/* ===== Dougle: bold, crisp broadcast look =====
    Layout: square-edged panels on a cobalt studio; huge display type; black, white, cobalt and one signal yellow. */
 :root{
   --bg:#F2F2EF; --panel:#FFFFFF; --panel-2:#F2F2EF; --ink:#0C0C0E; --muted:#5B5B64; --line:#D7D7D1;
@@ -1415,9 +1415,9 @@ body.tvmode .lb-invite{max-width:520px}body.tvmode .inv-qr{width:220px;height:22
 
 <div class="wrap">
   <header class="top">
-    <button class="brand" data-act="home" aria-label="Spotlight Quiz home">
+    <button class="brand" data-act="home" aria-label="Dougle home">
       <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="17" fill="none" stroke="var(--ink)" stroke-width="1.5"/><circle cx="20" cy="20" r="11" fill="none" stroke="var(--acc)" stroke-width="1.5" style="filter:drop-shadow(0 0 4px var(--acc))"/><circle cx="20" cy="20" r="3.2" fill="var(--ink)"/></svg>
-      <b>Spotlight<i>.</i></b>
+      <b>Dougle<i>.</i></b>
     </button>
     <div class="row" id="status"></div>
   </header>
@@ -4765,9 +4765,9 @@ const Room={
     box(0,3.3,-4.58,5.5,2.3,.08,"#050507",{spec:1.2,gloss:90,noCast:true}); /* raised so a back row of players doesn't hide the code */
     this.boardItem=box(0,3.3,-4.53,5.2,2.08,.02,"#FFFFFF",{tex:this.boardTex,emit:.85,spec:.7,gloss:90,noCast:true,noRecv:true});
     ac(box(0,2.08,-4.55,5.5,.035,.03,acc0,{emit:2.2,spec:0,noCast:true,noRecv:true}));
-    // neon "SPOTLIGHT QUIZ" sign above the screen
+    // neon "DOUGLE" sign above the screen
     const sg=cvs(1024,160,(c,w,h)=>{ c.fillStyle="#08080B"; c.fillRect(0,0,w,h); c.textAlign="center"; c.textBaseline="middle"; c.font=`800 104px ${DISPLAY_FONT}`;
-      c.shadowColor="rgba(255,255,255,.9)"; c.shadowBlur=26; c.fillStyle="#FFFFFF"; c.fillText("SPOTLIGHT QUIZ",w/2,h/2+4); c.shadowBlur=8; c.fillText("SPOTLIGHT QUIZ",w/2,h/2+4); });
+      c.shadowColor="rgba(255,255,255,.9)"; c.shadowBlur=26; c.fillStyle="#FFFFFF"; c.fillText("DOUGLE",w/2,h/2+4); c.shadowBlur=8; c.fillText("DOUGLE",w/2,h/2+4); });
     box(0,4.85,-4.6,3.4,.53,.02,"#FFFFFF",{tex:gx.texCanvas("neonS",sg),emit:1.1,spec:0,noCast:true,noRecv:true});
     // LED towers either side, showing a soft moving-light gradient
     const tw=cvs(128,512,(c,w,h)=>{ const g=c.createLinearGradient(0,0,0,h); g.addColorStop(0,"#FFFFFF"); g.addColorStop(.5,"#9A9AA6"); g.addColorStop(1,"#2A2A33"); c.fillStyle=g; c.fillRect(0,0,w,h); c.fillStyle="rgba(0,0,0,.55)"; for(let y=0;y<h;y+=8) c.fillRect(0,y,w,2); for(let x=0;x<w;x+=8) c.fillRect(x,0,2,h); });
@@ -4811,7 +4811,7 @@ const Room={
     x.fillStyle="#F4F1E8"; x.textAlign="center"; x.textBaseline="middle";
     if(b.code){ x.globalAlpha=.7; x.font=`600 40px ${MONO_FONT}`; x.fillText("PARTY CODE",W/2,60); x.globalAlpha=1; x.font=`800 280px ${DISPLAY_FONT}`; x.fillText(b.code,W/2,225);
       x.strokeStyle=ACC.css; x.lineWidth=12; x.lineCap="round"; x.beginPath(); x.moveTo(W/2-300,372); x.bezierCurveTo(W/2-100,390,W/2+120,360,W/2+300,376); x.stroke(); }
-    else { let fs=170; const tt=b.title||"Spotlight"; x.font=`800 ${fs}px ${DISPLAY_FONT}`; while(x.measureText(tt).width>W-120 && fs>60){ fs-=8; x.font=`800 ${fs}px ${DISPLAY_FONT}`; } x.fillText(tt,W/2,280); } /* long names shrink to fit the screen */
+    else { let fs=170; const tt=b.title||"Dougle"; x.font=`800 ${fs}px ${DISPLAY_FONT}`; while(x.measureText(tt).width>W-120 && fs>60){ fs-=8; x.font=`800 ${fs}px ${DISPLAY_FONT}`; } x.fillText(tt,W/2,280); } /* long names shrink to fit the screen */
     let cap=b.cap||""; x.font=`500 50px ${DISPLAY_FONT}`; x.globalAlpha=.85; while(x.measureText(cap).width>W-180 && cap.length>4) cap=cap.slice(0,-2)+"…"; x.fillText(cap,W/2,b.code?450:560); x.globalAlpha=1;
     x.fillStyle="rgba(0,0,0,.28)"; for(let y=0;y<H;y+=6) x.fillRect(0,y,W,2);
     this.boardTex=this.gx.texCanvas("board",c); if(this.boardItem) this.boardItem.tex=this.boardTex; this.boardHue=ACC.hue; },
@@ -7364,11 +7364,11 @@ async function loadTeaser(){ const el=$("#dcteaser"); if(!el) return; const go=`
   const top=L[0], mine=L.findIndex(r=>r.id===myScoreId());
   el.innerHTML=`<span>🥇 <b>${esc(String(top.nick||"Player").slice(0,18))}</b> <span class="num">${(Number(top.score)||0).toLocaleString("en-GB")}</span>${mine>0?` · You're ${ORD(mine+1)}`:mine===0?" · That's you!":""}</span>${go}`; }
 function handleLeagueLink(){ if(!FEAT.leagues) return; let c=null; try{ c=new URLSearchParams(location.search).get("league"); }catch(e){} if(!c){ const m=/^#league-([a-z0-9]{5})$/i.exec(location.hash||""); if(m) c=m[1]; } if(!c) return; try{ history.replaceState(null,"",location.pathname); }catch(e){} app.homeTab="lb"; app.dcTab="l"; if(app.view==="home") render(); setTimeout(()=>leagueJoin(c), 1500); }
-function howtoHTML(){ return `<div class="rep-sheet howto" id="howto" role="dialog" aria-label="How to play"><div class="rep-card"><b style="font-size:20px">How Spotlight Quiz works</b>
+function howtoHTML(){ return `<div class="rep-sheet howto" id="howto" role="dialog" aria-label="How to play"><div class="rep-card"><b style="font-size:20px">How Dougle works</b>
   <div class="ht-s"><span>1</span><div><b>The Daily</b><p class="muted">Fifteen questions, the same for everyone, new every day. Answer fast: points count down. Share your score and keep your streak going.</p></div></div>
   <div class="ht-s"><span>2</span><div><b>Party mode</b><p class="muted">One person hosts and gets a 4-letter code. Friends join on their own phones with the code, the link or the QR code.</p></div></div>
   <div class="ht-s"><span>3</span><div><b>Eleven rounds</b><p class="muted">From general knowledge to maps, word grids and Heist, where you can steal points off the leader. Highest score at the end wins.</p></div></div>
-  ${window.SQ_STANDALONE?`<p class="muted" style="font-size:13px;margin:0">Tip: add Spotlight to your home screen so it opens like an app. On iPhone, tap Share then <b>Add to Home Screen</b>.</p>`:""}
+  ${window.SQ_STANDALONE?`<p class="muted" style="font-size:13px;margin:0">Tip: add Dougle to your home screen so it opens like an app. On iPhone, tap Share then <b>Add to Home Screen</b>.</p>`:""}
   <button class="btn primary" data-act="howtoclose">Let's play</button></div></div>`; }
 let installEv=null; window.addEventListener("beforeinstallprompt", e=>{ e.preventDefault(); installEv=e; const b=$("#installbtn"); if(b) b.hidden=false; });
 function maybeHowto(){ if(!FEAT.howto || LS.get("sq-howto") || app.view!=="home" || $("#howto")) return; const d=document.createElement("div"); d.innerHTML=howtoHTML(); document.body.appendChild(d.firstChild); }
@@ -7397,7 +7397,7 @@ async function shareCard(kind, r){ try{ await Promise.all([document.fonts.load('
   const beam=g.createRadialGradient(W/2,-120,40,W/2,260,900); beam.addColorStop(0,"rgba(255,196,84,.55)"); beam.addColorStop(.45,"rgba(255,170,40,.16)"); beam.addColorStop(1,"rgba(255,170,40,0)"); g.fillStyle=beam; g.fillRect(0,0,W,H);
   const flr=g.createLinearGradient(0,H-220,0,H); flr.addColorStop(0,"rgba(43,69,240,0)"); flr.addColorStop(1,"rgba(43,69,240,.35)"); g.fillStyle=flr; g.fillRect(0,H-220,W,220);
   g.textAlign="center"; g.textBaseline="alphabetic";
-  g.fillStyle="#F5A511"; g.font=F(800,40); g.fillText(kind==="g"?"SPOTLIGHT WORD GRID":"SPOTLIGHT DAILY",W/2,112);
+  g.fillStyle="#F5A511"; g.font=F(800,40); g.fillText(kind==="g"?"DOUGLE WORD GRID":"DOUGLE DAILY",W/2,112);
   g.fillStyle="rgba(255,255,255,.7)"; g.font=F(600,32,'"Inter", system-ui, sans-serif'); g.fillText(new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"}),W/2,162);
   g.fillStyle="#fff"; g.font=F(900,168); g.fillText(Number(r.score).toLocaleString("en-GB"),W/2,345); g.fillStyle="rgba(255,255,255,.6)"; g.font=F(700,38); g.fillText("POINTS",W/2,398);
   const cols={3:"#1FB36B",2:"#F2C230",1:"#F08A24",0:"#3A4166"};
@@ -7418,7 +7418,7 @@ async function shareCard(kind, r){ try{ await Promise.all([document.fonts.load('
   g.textAlign="center"; g.fillStyle="#fff"; g.font=F(800,40); g.fillText("Can you beat me?",W/2,H-96); g.fillStyle="#F5A511"; g.font=F(700,36); g.fillText(SITE_URL,W/2,H-48);
   return new Promise(res=>c.toBlob(b=>res(b),"image/png")); }
 async function shareResult(kind){ const r=kind==="g"?(DG.result||{score:0,n:0,words:[]}):(D.result||{score:0,pts:[]}), txt=kind==="g"?gridShareText(r):shareText(r);
-  if(canNativeShare()){ try{ const b=await shareCard(kind,r), f=b&&new File([b],kind==="g"?"spotlight-word-grid.png":"spotlight-daily.png",{type:"image/png"});
+  if(canNativeShare()){ try{ const b=await shareCard(kind,r), f=b&&new File([b],kind==="g"?"dougle-word-grid.png":"dougle-daily.png",{type:"image/png"});
       if(f && navigator.canShare && navigator.canShare({files:[f]})){ await navigator.share({files:[f], text:txt}); return; } }catch(e){ if(e && e.name==="AbortError") return; } }
   shareOrCopy(txt); }
 /* the card shown on the results screen */
@@ -8594,7 +8594,7 @@ function lobbyHTML(){
     <div class="lb-beams" aria-hidden="true"><i></i><i></i></div>
     <div class="lb-mq-in">
       <div class="lb-onair"><i></i><span>${status}</span></div>
-      <div class="eyebrow lb-pre">Tonight on Spotlight Quiz</div>
+      <div class="eyebrow lb-pre">Tonight on Dougle</div>
       <h2 class="lb-title" data-t="${esc(title)}">${esc(title)}</h2>
       <div class="lb-coderow"><div class="lb-code"><span class="eyebrow">Party code</span><b class="code">${esc(S.code)}</b></div>
         <div class="lb-codeact">${!local?`<button class="btn small" data-act="copycode">Copy code</button>`:""}<span class="lb-chip">${local?"Solo vs bots":S.pub?"Public party":"Private party"}</span></div></div>
@@ -8605,7 +8605,7 @@ function lobbyHTML(){
     <section class="lb-sec"><div class="lb-sh"><span class="eyebrow">Running order</span><span class="muted lb-diff">${DIFF_LAB[diffOf(S)]} mode</span></div><div id="lbprog">${lbProgHTML()}</div></section></div>`;
   if(host){
     if(!local) h+=`<div class="pset"><form class="answer-row" data-form="pname" style="margin:0"><input class="input" id="pnamein" maxlength="30" autocomplete="off" placeholder="Name your party (optional)" value="${esc(S.pname||"")}"><button class="btn">Save name</button></form>
-      <div class="lenpick" role="radiogroup" aria-label="Who can join"><span class="lp-l">Who can join</span><div class="seg"><button type="button" role="radio" aria-checked="${!S.pub}" class="${!S.pub?"on":""}" data-act="pub" data-pub="0">Private</button><button type="button" role="radio" aria-checked="${!!S.pub}" class="${S.pub?"on":""}" data-act="pub" data-pub="1">Public</button></div><span class="muted">${S.pub?"Listed under Open parties: anyone on Spotlight can join.":"Hidden: only people you give the code to can join."}</span></div></div>`;
+      <div class="lenpick" role="radiogroup" aria-label="Who can join"><span class="lp-l">Who can join</span><div class="seg"><button type="button" role="radio" aria-checked="${!S.pub}" class="${!S.pub?"on":""}" data-act="pub" data-pub="0">Private</button><button type="button" role="radio" aria-checked="${!!S.pub}" class="${S.pub?"on":""}" data-act="pub" data-pub="1">Public</button></div><span class="muted">${S.pub?"Listed under Open parties: anyone on Dougle can join.":"Hidden: only people you give the code to can join."}</span></div></div>`;
     h+=`<details class="hostcfg"${app.cfgOpen?" open":""}><summary>Game setup <span class="muted">Only you can see this.</span></summary><div class="rcfg" id="rcfg">${roundsCfgHTML()}</div></details>`;
     h+=`<div class="lb-go"><div class="lb-go-meta"><span class="eyebrow">Ready up</span><span class="num" id="lbgo">${rdyCounts().r} of ${ps.length} ready · about ${estMinutes(S.rounds)} min</span></div><span data-rdybtn>${rdyBtnHTML("I'm ready")}</span><button class="btn small" data-act="start" title="Start without waiting for everyone">Start now</button><button class="btn ghost small" data-act="leave">Close party</button></div>`;
   } else h+=`<div class="lb-go"><div class="lb-go-meta"><span class="eyebrow">Ready up</span><span class="num" id="lbgo">${rdyCounts().r} of ${ps.length} ready</span></div><span data-rdybtn>${rdyBtnHTML("I'm ready")}</span><button class="btn ghost small" data-act="leave">Leave party</button></div>`;
@@ -9782,7 +9782,7 @@ function shareText(res){ const T=(res.pts||[]).map((p,i)=>res.pmax?tier(p,res.pm
   const grid=[]; for(let i=0;i<sq.length;i+=5) grid.push(sq.slice(i,i+5).join(""));
   const l1=[`⭐ ${res.score.toLocaleString("en-GB")} pts`, `🎯 ${T.filter(t=>t===3).length}/${T.length} spot on`], l2=[];
   if(st>1) l2.push(`🔥 ${st}-day streak`); if(rk && rk[0]<=Math.max(10,rk[1]/2)) l2.push(`🏆 ${ORD(rk[0])} today`);
-  const head=FEAT.share?"🎤 SPOTLIGHT DAILY":"🎤 SPOTLIGHT QUIZ";
+  const head=FEAT.share?"🎤 DOUGLE DAILY":"🎤 DOUGLE";
   return [head, shareDate(), "", ...grid, "", l1.join(" · "), ...(l2.length?[l2.join(" · ")]:[]), ...(FEAT.share?["",`Can you beat me? 👉 ${SITE_URL}`]:[])].join("\n"); }
 function renderDaily(){
   const el=$("#dstage"); if(!el) return;
@@ -9880,7 +9880,7 @@ function gridLenRows(r){ const by={}; for(const w of (r.words||[])) by[w.length]
   return Object.keys(by).map(Number).sort((a,b)=>b-a).map(n=>`${key(n)} ${col(n).repeat(Math.min(by[n],8))}${by[n]>8?" +"+(by[n]-8):""}`); }
 function gridShareText(r){ const rows=gridLenRows(r), st=(()=>{ try{ const x=statsOf("dg"); return x?x.cur:0; }catch(e){ return 0; } })(), rk=DG.rank;
   const l1=[`⭐ ${Number(r.score).toLocaleString("en-GB")} pts`, `📝 ${r.n} word${r.n===1?"":"s"}`], l2=[]; if(st>1) l2.push(`🔥 ${st}-day streak`); if(rk && rk[0]<=Math.max(10,rk[1]/2)) l2.push(`🏆 ${ORD(rk[0])} today`);
-  return ["🔠 SPOTLIGHT WORD GRID", shareDate(), "", ...(rows.length?[...rows,""]:[]), l1.join(" · "), ...(l2.length?[l2.join(" · ")]:[]), ...(FEAT.share?["",`Can you beat me? 👉 ${SITE_URL}`]:[])].join("\n"); }
+  return ["🔠 DOUGLE WORD GRID", shareDate(), "", ...(rows.length?[...rows,""]:[]), l1.join(" · "), ...(l2.length?[l2.join(" · ")]:[]), ...(FEAT.share?["",`Can you beat me? 👉 ${SITE_URL}`]:[])].join("\n"); }
 function renderDGrid(){
   const el=$("#gstage"); if(!el) return;
   const date=esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}));
@@ -10091,7 +10091,7 @@ document.addEventListener("click", async e=>{
   if(a==="lgcreate"){ const n=($("#lgname")||{}).value||""; leagueCreate(n); return; }
   if(a==="lgjoin"){ const c=($("#lgcode")||{}).value||""; leagueJoin(c); return; }
   if(a==="lgleave"){ leagueLeave(b.dataset.code); return; }
-  if(a==="lgshare"){ const c=b.dataset.code, u=(window.SQ_STANDALONE?location.origin:"https://"+SITE_URL)+"/?league="+c, t=`Join my Spotlight Quiz league "${b.dataset.name}" and we'll see who wins the daily: ${u}`; shareOrCopy(t); return; }
+  if(a==="lgshare"){ const c=b.dataset.code, u=(window.SQ_STANDALONE?location.origin:"https://"+SITE_URL)+"/?league="+c, t=`Join my Dougle league "${b.dataset.name}" and we'll see who wins the daily: ${u}`; shareOrCopy(t); return; }
   if(a==="bighead"){ BIG.set(!BIG.on); document.querySelectorAll('[data-act="bighead"]').forEach(x=>x.setAttribute("aria-pressed",String(BIG.on))); document.querySelectorAll("img[data-pav]").forEach(im=>{ const u=Portrait.get(im.dataset.pav); im.src=u||(im.dataset.flat?im.src:avURI(im.dataset.pav)); im.classList.toggle("r3",!!u); }); return; }
   if(a==="maker"){ if(document.getElementById("mkmodal")) closeMaker(); else { app.mkOpen=true; app.mk=null; mkState(); openMaker(); } return; }
   if(a==="mktab"){ app.mkTab=b.dataset.tab; renderMaker(); const bd=document.getElementById("mkbody"); if(bd) bd.scrollTop=0; return; }
@@ -10116,7 +10116,7 @@ document.addEventListener("click", async e=>{
   if(a==="reportq"){ let q; if(b.dataset.src==="daily") q=D.qs&&D.qs[D.i]; else if(S&&S.q){ q=Object.assign({}, S.q, S.rev||{}, {text:S.q.text||(S.rev&&S.rev.text)||"", t:S.q.t}); } if(q) openReport(q, b.dataset.src); return; }
   if(a==="repsend"){ sendReport(b.dataset.r); return; }
   if(a==="repclose"){ repQ=null; const el=$("#repsheet"); if(el) el.remove(); return; }
-  if(a==="copylink"||a==="sharelink"){ const u=joinUrl(S&&S.code||app.code); if(a==="sharelink"){ try{ await navigator.share({text:"Join my Spotlight Quiz party: "+u}); return; }catch(e){ if(e&&e.name==="AbortError") return; } } try{ await navigator.clipboard.writeText(u); toast("Link copied"); }catch(e){ toast(u); } return; }
+  if(a==="copylink"||a==="sharelink"){ const u=joinUrl(S&&S.code||app.code); if(a==="sharelink"){ try{ await navigator.share({text:"Join my Dougle party: "+u}); return; }catch(e){ if(e&&e.name==="AbortError") return; } } try{ await navigator.clipboard.writeText(u); toast("Link copied"); }catch(e){ toast(u); } return; }
   if(a==="nshare"){ shareResult("q"); return; }
   if(a==="nsharegrid"){ shareResult("g"); return; }
   if(a==="copygrid"){ const txt=gridShareText(DG.result||{score:0,n:0}); try{ await navigator.clipboard.writeText(txt); toast("Copied"); }catch(err){ toast("Select the text above to copy it"); } return; }

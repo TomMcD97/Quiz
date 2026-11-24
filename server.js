@@ -1,4 +1,4 @@
-/* Spotlight Quiz server
+/* Dougle server
  * - serves the game (public/index.html)
  * - relays live multiplayer over WebSockets (/ws)
  * - optional: Claude-written questions via your Anthropic API key (/api/sample)
@@ -314,8 +314,8 @@ function adminRoute(req, res, url) {
   const errs = errRing.slice(-40).reverse(), live = [...rooms.keys()].filter(n => /^(p:)?sq-[a-z]{4}$/.test(n) && rooms.get(n).members.size);
   const e = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const t = new Date().toLocaleString("en-GB", { timeZone: "Europe/London" });
-  const html = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Spotlight Quiz admin</title><style>body{font:15px/1.45 system-ui,sans-serif;background:#0b0b0c;color:#eee;margin:0;padding:20px max(16px,env(safe-area-inset-left))}h1{font-size:24px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}table{border-collapse:collapse;width:100%;font-size:14px}td,th{border-bottom:1px solid #2a2a2e;padding:7px 6px;text-align:left;vertical-align:top}th{color:#999;font-weight:600}.n{font-variant-numeric:tabular-nums;text-align:right}.m{color:#999}.box{overflow-x:auto}.big{display:flex;gap:12px;flex-wrap:wrap}.big div{border:1px solid #2a2a2e;border-radius:12px;padding:12px 16px}.big b{display:block;font-size:26px}</style>
-<h1>Spotlight Quiz</h1><div class="m">Owner stats · ${e(t)}</div>
+  const html = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dougle admin</title><style>body{font:15px/1.45 system-ui,sans-serif;background:#0b0b0c;color:#eee;margin:0;padding:20px max(16px,env(safe-area-inset-left))}h1{font-size:24px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}table{border-collapse:collapse;width:100%;font-size:14px}td,th{border-bottom:1px solid #2a2a2e;padding:7px 6px;text-align:left;vertical-align:top}th{color:#999;font-weight:600}.n{font-variant-numeric:tabular-nums;text-align:right}.m{color:#999}.box{overflow-x:auto}.big{display:flex;gap:12px;flex-wrap:wrap}.big div{border:1px solid #2a2a2e;border-radius:12px;padding:12px 16px}.big b{display:block;font-size:26px}</style>
+<h1>Dougle</h1><div class="m">Owner stats · ${e(t)}</div>
 <div class="big" style="margin-top:16px"><div><b>${rows[0].dq}</b>daily quiz players today</div><div><b>${rows[0].dg}</b>word grid players today</div><div><b>${rows[0].parties}</b>parties today</div><div><b>${live.length}</b>parties live now</div><div><b>${users}</b>accounts</div></div>
 <h2>Last 14 days</h2><div class="box"><table><tr><th>Day</th><th class="n">Daily quiz</th><th class="n">Word grid</th><th class="n">Parties</th><th class="n">Party joins</th></tr>${rows.map(r => `<tr><td>${r.d}</td><td class="n">${r.dq}</td><td class="n">${r.dg}</td><td class="n">${r.parties}</td><td class="n">${r.joins}</td></tr>`).join("")}</table></div>
 <p class="m">Daily counts are players with an account on the leaderboard. Party counts started on the day this page went live.</p>
@@ -490,4 +490,4 @@ server.on("upgrade", (req, sock) => {
 });
 setInterval(() => { for (const c of conns.values()) { c.send(JSON.stringify({ t: "ping" })); } }, 25000);
 
-server.listen(PORT, () => console.log(`Spotlight Quiz running on port ${PORT}${API_KEY ? " (Claude questions on)" : " (built-in questions only)"}${SB_ON ? ", accounts + Supabase storage on" : ", accounts off (data.json storage)"}`));
+server.listen(PORT, () => console.log(`Dougle running on port ${PORT}${API_KEY ? " (Claude questions on)" : " (built-in questions only)"}${SB_ON ? ", accounts + Supabase storage on" : ", accounts off (data.json storage)"}`));
