@@ -439,11 +439,15 @@ button.tile:hover:not(:disabled){border-color:var(--accent)}
   .contestants{margin:0 -8px;padding-inline:8px;justify-content:flex-start}
   .ct{width:86px}.ct .av{width:58px;height:58px}.ct .sc{font-size:22px}
 }
-.mzoom{position:absolute;right:10px;top:10px;z-index:3;display:grid;gap:4px}
+.mzoom{position:absolute;right:10px;top:10px;z-index:3;display:grid;gap:4px}.mzoom .mz-ans{font-size:17px;animation:dotin2 .35s ease-out both}.mzoom .mz-ans.on{background:var(--spot);border-color:var(--spot)}@keyframes dotin2{0%{transform:scale(.4);opacity:0}100%{transform:none;opacity:1}}
 .mzoom button{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-size:20px;font-weight:700;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,.15)}
 .map{cursor:crosshair}
 .mov{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:2}
 .mpin{position:absolute;left:0;top:0;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center}
+.mpin.target{z-index:5;transform:translate(-50%,-50%)}
+.mpin .tdot{width:14px;height:14px;border-radius:50%;background:var(--spot);border:2.5px solid #fff;box-shadow:0 0 0 0 var(--spot),0 1px 4px rgba(0,0,0,.6);animation:tpulse 1.6s ease-out infinite}
+@keyframes tpulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--spot) 70%,transparent),0 1px 4px rgba(0,0,0,.6)}100%{box-shadow:0 0 0 16px transparent,0 1px 4px rgba(0,0,0,.6)}}
+.mpin.target.drop{animation:dotin .35s ease-out both}@keyframes dotin{0%{transform:translate(-50%,-50%) scale(0)}100%{transform:translate(-50%,-50%) scale(1)}}
 .mpin .hd{width:42px;height:42px;border-radius:50%;border:3px solid var(--c);background:#fff;overflow:hidden;box-shadow:0 5px 12px rgba(0,0,0,.35);display:grid;place-items:center}
 .mpin .hd svg{width:100%;height:100%;display:block}
 .mpin.target .hd{background:var(--spot);padding:6px;width:40px;height:40px}
@@ -451,7 +455,7 @@ button.tile:hover:not(:disabled){border-color:var(--accent)}
 .mpin .sh{width:16px;height:6px;border-radius:50%;background:rgba(0,0,0,.35);margin-top:-3px}
 .mpin .lb{position:absolute;bottom:100%;margin-bottom:3px;white-space:nowrap;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--panel);color:var(--ink);border:1px solid var(--line);box-shadow:0 2px 6px rgba(0,0,0,.18)}
 .mpin.drop{animation:pindrop .55s cubic-bezier(.3,1.5,.5,1) both}
-.mpin.target.drop{animation:pindrop .7s cubic-bezier(.3,1.6,.5,1) both}
+
 @keyframes pindrop{0%{transform:translate(-50%,-320%);opacity:0}50%{opacity:1}100%{transform:translate(-50%,-100%);opacity:1}}
 .awards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,182px),1fr));gap:8px}
 .award{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:10px;row-gap:1px;align-items:center;text-align:left;padding:10px 12px;min-width:0;border-radius:14px;background:linear-gradient(180deg,var(--spot-soft),var(--panel-2));border:1px solid var(--line);animation:pop .5s cubic-bezier(.2,1.3,.5,1) both}
@@ -2159,7 +2163,7 @@ function sculptMesh(sdf, bmin, bmax, h, o){
     PP[v*3]=x+off[0]; PP[v*3+1]=y+off[1]; PP[v*3+2]=z+off[2]; }
   const out={P:PP, N, C:Cc, J:Jj, W:Ww, M:Mt, I:new Uint32Array(I)}; if(UV) out.U=UV; return out;
 }
-const BIG={ get on(){ try{ return (typeof localStorage!=="undefined") && localStorage.getItem("sq-bighead")!=="0"; }catch(e){ return true; } }, s:2.35,
+const BIG={ get on(){ return true; } /* big heads for everyone: the switch was removed */, s:2.35,
   set(v){ try{ localStorage.setItem("sq-bighead",v?"1":"0"); }catch(e){} } };
 /* spring-loaded bobblehead wobble, driven by how the body moves */
 function bobble(ch, dt){ const b=ch.bob, J=ch.J; if(!b || !(J.head.sc>1.01) || dt<=0){ return; }
@@ -3764,6 +3768,14 @@ function avURI(id, bg){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComp
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 /* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
+/* ---------------- 3D engine (WebGL2, no libraries) ---------------- */
 const V3={ sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], norm:a=>{ const l=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/l,a[1]/l,a[2]/l]; } };
 const M4={
   I(){ const m=new Float32Array(16); m[0]=m[5]=m[10]=m[15]=1; return m; },
@@ -4020,7 +4032,7 @@ function sculptMesh(sdf, bmin, bmax, h, o){
     PP[v*3]=x+off[0]; PP[v*3+1]=y+off[1]; PP[v*3+2]=z+off[2]; }
   const out={P:PP, N, C:Cc, J:Jj, W:Ww, M:Mt, I:new Uint32Array(I)}; if(UV) out.U=UV; return out;
 }
-const BIG={ get on(){ try{ return (typeof localStorage!=="undefined") && localStorage.getItem("sq-bighead")!=="0"; }catch(e){ return true; } }, s:2.35,
+const BIG={ get on(){ return true; } /* big heads for everyone: the switch was removed */, s:2.35,
   set(v){ try{ localStorage.setItem("sq-bighead",v?"1":"0"); }catch(e){} } };
 /* spring-loaded bobblehead wobble, driven by how the body moves */
 function bobble(ch, dt){ const b=ch.bob, J=ch.J; if(!b || !(J.head.sc>1.01) || dt<=0){ return; }
@@ -8462,7 +8474,7 @@ const EMO_ICON={
   bow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="8" r="2.5"/><path d="M4 7l8 5 2 0M12 12l-1 9M12 12l4 9M8 10l2 5"/></svg>',
   cheer:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="6" r="2.5"/><path d="M5 3l4 7h6l4-7M9 10l-1 11M15 10l1 11"/></svg>'
 };
-function emoteBarHTML(){ const big=Room.ok!==false && BIG.on; return `<div class="emotes" role="group" aria-label="Emotes">${EMOTES.map(e=>`<button type="button" class="emo" data-act="emote" data-e="${e[0]}"><span class="ei" aria-hidden="true">${e[2]}</span><span>${e[1]}</span></button>`).join("")}</div>${Room.ok!==false?`<div class="bigrow"><button type="button" class="bigtog" data-act="bighead" aria-pressed="${big}"><span class="sw" aria-hidden="true"></span>Big heads</button></div>`:""}`; }
+function emoteBarHTML(){ const big=Room.ok!==false && BIG.on; return `<div class="emotes" role="group" aria-label="Emotes">${EMOTES.map(e=>`<button type="button" class="emo" data-act="emote" data-e="${e[0]}"><span class="ei" aria-hidden="true">${e[2]}</span><span>${e[1]}</span></button>`).join("")}</div>`; }
 function stageHTML(caption){ if(Room.init()) return `<div class="room3d" id="room3d"></div><div class="lstage-cap" id="lcap">${caption}</div>${emoteBarHTML()}`; return `<div class="lstage-wrap"><div class="lstage" id="lstage"></div><div class="lstage-floor"></div></div><div class="lstage-cap" id="lcap">${caption}</div>${emoteBarHTML()}`; }
 const figEls={}, figEmo={};
 function renderLobbyStage(){
@@ -8787,10 +8799,10 @@ function revealHTML(q, rev){
     h += `<div class="bigans"><div class="eyebrow">Answer</div><b class="num">${esc(fmtNum(rev.ans, rev.unit))}</b> <span>${esc(rev.unit&&rev.unit!=="year"?rev.unit:"")}</span></div>`;
     h += `<div class="res">${rev.rows.map(r=>row(r, r.a==null?'<span class="muted">no valid number</span>':`<span class="num">${esc(fmtNum(r.a, rev.unit))}</span>`, r.d==null?"":`${r.d===0?"Spot on":"Off by "+fmtNum(r.d, rev.unit==="year"?"":rev.unit)}`)).join("")}${rev.rows.length?"":'<p class="muted">Nobody answered.</p>'}</div>`;
   } else if(rev.t==="ctry"){
-    h += `<div class="bigans"><div class="eyebrow">The country</div><b>${esc(rev.place)}</b></div><div class="map" id="map"></div>`;
+    h += `<div class="map" id="map"></div><div class="bigans"><div class="eyebrow">The country</div><b>${esc(rev.place)}</b></div>`;
     h += `<div class="res">${rev.rows.map(r=>row(r, r.km==null?'<span class="muted">no pin</span>':r.in?`<span class="num ctry-in">Inside${r.fast?", fastest":""}</span>`:`<span class="num">${r.km.toLocaleString("en-GB")} km off</span>`)).join("")}${rev.rows.length?"":'<p class="muted">Nobody dropped a pin.</p>'}</div>`;
   } else if(rev.t==="pin"){
-    h += `<div class="bigans"><div class="eyebrow">Answer</div><b>${esc(rev.place)}</b></div><div class="map" id="map"></div>`;
+    h += `<div class="map" id="map"></div><div class="bigans"><div class="eyebrow">Answer</div><b>${esc(rev.place)}</b></div>`;
     h += `<div class="res">${rev.rows.map(r=>row(r, r.km==null?'<span class="muted">no pin</span>':`<span class="num">${r.km.toLocaleString("en-GB")} km away</span>`)).join("")}${rev.rows.length?"":'<p class="muted">Nobody dropped a pin.</p>'}</div>`;
   } else if(rev.t==="grid"){
     const mineBad=new Set(((rev.rows.find(r=>r.p===me.pid)||{}).bad)||[]);
@@ -9326,6 +9338,7 @@ class MapView{
     el.appendChild(zb);
     zb.children[0].addEventListener("click", e=>{ e.stopPropagation(); this.animZoom(2, this.w/2, this.h/2); });
     zb.children[1].addEventListener("click", e=>{ e.stopPropagation(); this.animZoom(.5, this.w/2, this.h/2); });
+    this.zb=zb;
     zb.addEventListener("pointerdown", e=>e.stopPropagation());
     zb.addEventListener("pointerup", e=>e.stopPropagation());
     this.bind();
@@ -9338,7 +9351,7 @@ class MapView{
     const w=this.el.clientWidth, h=this.el.clientHeight; if(!w||!h) return;
     const dpr=Math.min(2, window.devicePixelRatio||1); this.w=w; this.h=h; this.dpr=dpr;
     this.cv.width=Math.round(w*dpr); this.cv.height=Math.round(h*dpr); this.cv.style.width=w+"px"; this.cv.style.height=h+"px";
-    if(!this.view) this.view={cx:12, cy:mY(20), z:this.minZ()};
+    if(!this.view){ this.view={cx:12, cy:mY(20), z:this.minZ()}; if(this.pendFit){ const pf=this.pendFit; this.pendFit=null; this.fitNow(pf,true); } }
     this.clamp(); this.render();
   }
   minZ(){ return Math.max(this.w/360, this.h/(MAP_TOP-MAP_BOT)); }
@@ -9418,9 +9431,11 @@ class MapView{
       c.lineJoin="round"; c.strokeStyle=cssv("--land-edge"); c.lineWidth=Math.max(.6, Math.min(1.6, v.z/this.minZ()*.6)); c.stroke();
       c.beginPath(); LAKES_P.forEach(trace); c.fillStyle=cssv("--sea"); c.fill(); }
     if(this.target){
-      const t=this.toPx(this.target); c.setLineDash([6,5]); c.lineWidth=2.2;
-      this.pins.forEach(p=>{ const q=this.toPx(p); c.strokeStyle=p.color||"#888"; c.beginPath(); c.moveTo(q[0],q[1]); c.lineTo(t[0],t[1]); c.stroke(); });
-      c.setLineDash([]);
+      /* a dotted line from each guess to the answer: a dark edge under the player's colour so it shows on any part of the map */
+      const t=this.toPx(this.target); c.lineCap="round";
+      this.pins.forEach(p=>{ const q=this.toPx(p); c.setLineDash([]); c.strokeStyle="rgba(0,0,0,.55)"; c.lineWidth=5; c.beginPath(); c.moveTo(q[0],q[1]); c.lineTo(t[0],t[1]); c.stroke();
+        c.setLineDash([7,6]); c.strokeStyle=p.color||"#fff"; c.lineWidth=3; c.beginPath(); c.moveTo(q[0],q[1]); c.lineTo(t[0],t[1]); c.stroke(); });
+      c.setLineDash([]); c.lineCap="butt";
     }
     this.place();
   }
@@ -9428,14 +9443,26 @@ class MapView{
   lock(){ this.locked=true; }
   reveal(pins, target){
     let i=0; this.pins=[]; this.target=null; this.draw();
-    const step=()=>{ if(this.dead) return; if(i<pins.length){ i++; this.pins=pins.slice(0,i); this.draw(); setTimeout(step, 600); } else { this.target=target; this.draw(); const hf=this.opts.hl?ctryFeature(this.opts.hl):null; const ex=hf?[{lat:hf.bb[1],lng:hf.bb[0]},{lat:hf.bb[3],lng:hf.bb[2]}]:[]; setTimeout(()=>this.fit([...pins, target, ...ex]), 450); } };
-    setTimeout(step, 400);
+    const hf=this.opts.hl?ctryFeature(this.opts.hl):null; const ex=hf?[{lat:hf.bb[1],lng:hf.bb[0]},{lat:hf.bb[3],lng:hf.bb[2]}]:[];
+    this.fit([...pins, target, ...ex]); /* move the map first, so every pin and the answer land in view */
+    const step=()=>{ if(this.dead) return; if(i<pins.length){ i++; this.pins=pins.slice(0,i); this.draw(); setTimeout(step, 600); } else { this.target=target; this.draw();
+        const kmTo=p=>{ const R=Math.PI/180, a=Math.sin((p.lat-target.lat)*R/2)**2+Math.cos(p.lat*R)*Math.cos(target.lat*R)*Math.sin((p.lng-target.lng)*R/2)**2; return 12742*Math.asin(Math.sqrt(Math.min(1,a))); };
+        const near=pins.slice().sort((a,b)=>kmTo(a)-kmTo(b)).filter((p,k)=>k<2 && kmTo(p)<1500);
+        const span=[{lat:target.lat+1.2,lng:target.lng-1.8},{lat:target.lat-1.2,lng:target.lng+1.8}]; /* never closer than a couple of hundred km across */
+        const all=[...pins, target, ...ex], close=[target, ...near, ...span, ...ex];
+        setTimeout(()=>this.fit(all), 450); /* end on everyone, so the wild guesses are on show */
+        /* 🎯 next to + and −: jump to the answer and the closest guesses, tap again to see everyone */
+        if(this.zb && !this.zb.querySelector(".mz-ans")){ const bt=document.createElement("button"); bt.type="button"; bt.className="mz-ans"; bt.setAttribute("aria-label","Zoom to the answer"); bt.textContent="🎯"; this.zb.appendChild(bt); let inA=false;
+          bt.addEventListener("click", e=>{ e.stopPropagation(); inA=!inA; bt.classList.toggle("on",inA); bt.setAttribute("aria-label",inA?"Show everyone":"Zoom to the answer"); this.fit(inA?close:all, inA?[2,3]:undefined); }); }
+      } };
+    setTimeout(step, RM?100:800);
   }
-  fit(pts){
+  fit(pts,pad){ if(!this.view || !this.w){ this.pendFit=pts; return; } this.fitNow(pts,false,pad); }
+  fitNow(pts, instant, pad){ const PX=pad?pad[0]:10, PY=pad?pad[1]:12;
     if(this.dead || !pts.length) return;
     const lo=pts.map(p=>p.lng), la=pts.map(p=>mY(p.lat)), x0=Math.min(...lo), x1=Math.max(...lo), y0=Math.min(...la), y1=Math.max(...la);
-    const to={cx:(x0+x1)/2, cy:(y0+y1)/2, z:Math.min(this.w/(x1-x0+30), this.h/(y1-y0+30))};
-    const from={...this.view}, t0=performance.now(), dur=RM?0:700;
+    /* fit in pixels: keep room for the faces above each pin and for the zoom buttons on the right */ const mL=28, mR=58, mT=76, mB=22, zz=Math.min((this.w-mL-mR)/(x1-x0+PX*.4), (this.h-mT-mB)/(y1-y0+PY*.4)), to={cx:(x0+x1)/2+(mR-mL)/2/zz, cy:(y0+y1)/2+(mT-mB)/2/zz, z:zz}; /* close enough that nearby guesses separate, with room above for the faces */
+    const from={...this.view}, t0=performance.now(), dur=(RM||instant)?0:700;
     const step=t=>{ if(this.dead) return; const k=dur?Math.min(1,(t-t0)/dur):1, e=1-Math.pow(1-k,3);
       this.view={cx:from.cx+(to.cx-from.cx)*e, cy:from.cy+(to.cy-from.cy)*e, z:from.z+(to.z-from.z)*e}; this.clamp(); this.render(); if(k<1) requestAnimationFrame(step); };
     requestAnimationFrame(step);
@@ -9449,7 +9476,7 @@ class MapView{
       if(!n){ n=document.createElement("div"); n.className="mpin"+(p.target?" target":""); this.ov.appendChild(n); if(!RM) n.classList.add("drop"); }
       else if(moved && !RM){ n.classList.remove("drop"); void n.offsetWidth; n.classList.add("drop"); }
       n.style.setProperty("--c", p.target ? cssv("--spot") : (p.color||"#888"));
-      const html=`<span class="lb">${esc(p.label||"")}</span><div class="hd">${p.target?STAR_SVG:(p.av?avSVG(p.av,undefined,p.pid):"")}</div><div class="tl"></div><div class="sh"></div>`;
+      const html=p.target?`<div class="tdot"></div>`:`<div class="hd">${p.av?avSVG(p.av,undefined,p.pid):""}</div><div class="tl"></div><div class="sh"></div>`;
       if(n._html!==html){ n.innerHTML=html; n._html=html; }
       n._p=p; keep.set(p.key, n);
     }
