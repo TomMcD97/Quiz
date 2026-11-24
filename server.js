@@ -384,9 +384,47 @@ function geoGet(kind) {
 }
 setTimeout(() => { geoGet("low").then(() => geoGet("high")); }, 1500); /* warm the cache at start-up */
 
+/* ---- Moving house: spotlightquiz.app now lives at dougle.app ----
+   A phone's saved data (login, streak, avatar, leagues) belongs to the address it was saved under,
+   so old-address pages get a tiny hand-off page that packs that data into the link and carries it across.
+   The API and live-game socket keep answering on the old address so any tab already open finishes its game. */
+const NEW_HOST = "dougle.app";
+const OLD_HOST = /(^|\.)spotlightquiz\.app$/i;
+const MOVE_PAGE = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dougle</title><meta name="robots" content="noindex">
+<meta property="og:type" content="website"><meta property="og:site_name" content="Dougle"><meta property="og:title" content="Dougle – Quiz night on everyone's phone">
+<meta property="og:description" content="Daily quiz, word grid and live party quiz games you play together on your phones.">
+<meta property="og:image" content="https://${NEW_HOST}/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://${NEW_HOST}/og.png">
+<noscript><meta http-equiv="refresh" content="0;url=https://${NEW_HOST}/"></noscript>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0b0c;color:#f3f2f0;font:600 18px/1.4 system-ui,sans-serif;text-align:center;padding:24px}a{color:#ff8f6b}</style></head>
+<body><div>Spotlight Quiz is now <b>Dougle</b>.<br>Taking you there…<br><br><a id="go" href="https://${NEW_HOST}/">Go to dougle.app</a></div>
+<script>(function(){
+  var dest="https://${NEW_HOST}"+location.pathname+location.search, d={}, n=0;
+  try{ for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if(k&&k.indexOf("sq-")===0){ d[k]=localStorage.getItem(k); n++; } } }catch(e){}
+  var pack=function(o){ try{ return n?"#sqmove="+encodeURIComponent(JSON.stringify(o)):""; }catch(e){ return ""; } };
+  var h=pack(d);
+  if(h.length>1500000){ for(var k in d){ if(/selfie|charkeys|port-/.test(k)) delete d[k]; } h=pack(d); } /* very long links can fail: drop the big image caches, keep the rest */
+  if(h.length>1500000) h="";
+  document.getElementById("go").href=dest+h;
+  location.replace(dest+h);
+})();</script></body></html>`;
+function moveIfOld(req, res, url) {
+  const host = String(req.headers.host || "").split(":")[0];
+  if (!OLD_HOST.test(host)) return false;
+  if (url.pathname.startsWith("/api/") || url.pathname === "/ws" || url.pathname === "/healthz") return false;
+  if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+    res.end(MOVE_PAGE); return true;
+  }
+  res.writeHead(301, { location: "https://" + NEW_HOST + url.pathname + url.search, "cache-control": "max-age=3600" });
+  res.end(); return true;
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   try {
+    if (moveIfOld(req, res, url)) return;
     if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
       /* the page is sent compressed (about a third of the size), and a phone that already has this version is told "no change" instead of downloading it again */
       const pc = pageC(), ae = req.headers["accept-encoding"] || "";

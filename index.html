@@ -3,11 +3,19 @@
 <title>Dougle</title>
 <meta property="og:type" content="website"><meta property="og:site_name" content="Dougle"><meta property="og:title" content="Dougle – Quiz night on everyone's phone">
 <meta property="og:description" content="A daily quiz, a daily word grid and live party quiz games you play together on your phones. No app needed.">
-<meta property="og:image" content="https://spotlightquiz.app/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:url" content="https://spotlightquiz.app/">
-<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://spotlightquiz.app/og.png">
+<meta property="og:image" content="https://dougle.app/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:url" content="https://dougle.app/">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://dougle.app/og.png">
 <meta name="theme-color" content="#000000"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Dougle"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+<script>/* Moving house: phones arriving from spotlightquiz.app bring their saved data (login, streak, avatar, leagues) in the link.
+   Only fills in what this address doesn't already have, then tidies the link so it never sits in history. */
+(function(){ try{ var h=location.hash; if(h.indexOf("#sqmove=")!==0) return;
+  var d=JSON.parse(decodeURIComponent(h.slice(8)));
+  for(var k in d){ if(k.indexOf("sq-")===0 && typeof d[k]==="string" && localStorage.getItem(k)===null) localStorage.setItem(k,d[k]); }
+  history.replaceState(null,"",location.pathname+location.search);
+}catch(e){ try{ history.replaceState(null,"",location.pathname+location.search); }catch(_){} } })();
+</script>
 <script>/* Stand-in for the Claude runtime when the game runs on its own server. */
 (function(){
   const NET=(()=>{ let ws=null, id=null, open=false, retry=0; const rooms=new Map(), connFns=new Set();
@@ -7258,7 +7266,7 @@ const QR=(function(){
 
 var HOME_TABS=true;
 var FEAT={share:1, joinlink:1, report:1, leagues:1, weekly:1, tv:1, kick:1, howto:1, lowend:1, errlog:1};
-const SITE_URL="spotlightquiz.app";
+const SITE_URL="dougle.app";
 function joinUrl(code){ return (window.SQ_STANDALONE?location.origin:"https://"+SITE_URL)+"/?join="+encodeURIComponent(code); }
 function inviteHTML(code, host){ if(!FEAT.joinlink||!code) return ""; const url=joinUrl(code);
   return `<details class="lb-invite"${host?" open":""}><summary>Invite friends</summary><div class="inv-in"><div class="inv-qr">${QR.svg(url,"#000","#fff")}</div><div class="inv-t"><b>Scan to join</b><span class="muted">Point a phone camera at the code, or send the link:</span><code class="inv-url">${esc(url.replace(/^https?:\/\//,""))}</code><div class="row">${canNativeShare()?`<button class="btn small primary" data-act="sharelink">Share link</button>`:""}<button class="btn small" data-act="copylink">Copy link</button></div>${FEAT.tv?`<p class="muted inv-tv">Got a TV or laptop? Open <b>${esc((tvUrl(code)).replace(/^https?:\/\//,""))}</b> on it to show the stage and scores on the big screen.</p>`:""}</div></div></details>`; }
