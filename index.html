@@ -7602,7 +7602,7 @@ async function sendFeedback(){ const t=(($("#fbtext")||{}).value||"").trim(); if
 function privacyHTML(){ const signed=!!(window.SQ_AUTH && window.SQ_AUTH.signedIn && window.SQ_AUTH.signedIn()), hasPhoto=!!LS.get("sq-selfie");
   return `<div class="rep-card priv"><div class="priv-head"><b>Privacy, terms &amp; your data</b><button type="button" class="btn ghost small" data-act="sheetclose" data-id="privsheet" aria-label="Close">✕</button></div>
   <div class="priv-body">
-  <p class="muted">Last updated 26 November 2026. Dougle is made by Tom McDougall in the UK. Questions or requests: <span class="sel">${CONTACT}</span></p>
+  <p class="muted">Last updated 26 November 2026. Dougle is an independent UK game. Questions or requests: <span class="sel">${CONTACT}</span></p>
   <h4>Your data</h4>
   <div class="priv-actions">
     ${hasPhoto?`<button type="button" class="btn small" data-act="privphoto">Remove my face photo</button>`:""}
@@ -7619,7 +7619,7 @@ function privacyHTML(){ const signed=!!(window.SQ_AUTH && window.SQ_AUTH.signedI
   <h4>Your face photo</h4>
   <p>Your photo is cut out and lined up on your own device. We don't store it on our servers. In a party, it's sent to the other players in that party so your bobblehead appears on their screens, and it isn't kept after the party ends.</p>
   <h4>Who else is involved</h4>
-  <p>Dougle runs on Render (website hosting) and Supabase (database and logins). They process data for us and nobody else. We never sell your data or show ads.</p>
+  <p>We use trusted hosting and database providers to run Dougle. They only process data on our behalf. We never sell your data or show ads.</p>
   <h4>How long we keep it</h4>
   <p>Daily leaderboard scores are kept for a few months so weekly and streak boards work. Your account is kept until you delete it. Feedback and reports are deleted once dealt with.</p>
   <h4>Your rights</h4>
