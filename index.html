@@ -990,6 +990,10 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 /* compact daily box: two small tiles side by side, leaderboards live on the results screens */
 .daily-card.dc-compact{padding:16px!important;gap:12px;align-self:start}
 .dc-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.dc-date{font-weight:700;font-size:14px}
+/* The Daily Dougle: a small newspaper masthead (title over a double rule, the date as the dateline) */
+.dc-head.dc-mast{flex-direction:column;align-items:center;text-align:center;gap:0}
+.dc-mast .dc-title{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,7.4vw,38px);line-height:1.05;letter-spacing:-.015em;padding-bottom:8px;text-wrap:balance}
+.dc-mast .dc-date{width:100%;border-top:3px double var(--line);border-bottom:1px solid var(--line);padding:5px 0;font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .dc-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .dc-tile{border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:0}
 .dc-tile>b{font-size:16px}.dc-tile>small{font-size:12px;color:var(--muted);line-height:1.3}
@@ -7516,7 +7520,7 @@ let lgBusy=false;
 async function loadLeagues(){ const el=$("#homeleague"); if(!el||lgBusy) return; lgBusy=true;
   try{ const codes=myLeagues(); let h="";
     const form=`<div class="lg-form">${(me.nick||app.acct)?"":`<input class="input" id="lgnick" maxlength="18" placeholder="Your name" aria-label="Your name" autocomplete="nickname">`}<div class="lg-f"><input class="input" id="lgcode" maxlength="5" placeholder="League code" aria-label="League code"><button class="btn small" data-act="lgjoin">Join</button></div><div class="lg-f"><input class="input" id="lgname" maxlength="30" placeholder="New league name, e.g. The Office" aria-label="New league name"><button class="btn small" data-act="lgcreate">Create</button></div>${leagueNeedsLogin()?`<p class="muted" style="font-size:12px;margin:0">You'll need to log in so your scores count for your league.</p>`:""}</div>`;
-    if(!codes.length){ el.innerHTML=`<p class="muted" style="font-size:13px;margin:0 0 8px">Make a league for your friends, family or office, and see who wins the daily each day and each week.</p>${form}`; return; }
+    if(!codes.length){ el.innerHTML=`<p class="muted" style="font-size:13px;margin:0 0 8px">Make a league for your friends, family or office, and see who wins the Daily Dougle each day and each week.</p>${form}`; return; }
     el.innerHTML=`<p class="muted" style="font-size:13px;margin:0">Loading your leagues…</p>`;
     const days=weekDays(), today=days[days.length-1], all=app.db?await Promise.all(days.map(dayScores)):days.map(()=>[]);
     for(const code of codes){ const L=app.db?await leagueDoc(code):null; const mine=L&&L.members&&L.members[leagueId()], nm=String(me.nick||(app.acct&&app.acct.name)||"").slice(0,18);
@@ -7536,18 +7540,18 @@ function lbTabHTML(){ const what=app.lbWhat==="g"?"g":"q", Ls=FEAT.leagues?myLea
   const chip=(k,l)=>`<button type="button" class="lbc" data-act="lbwhen" data-v="${k}" aria-pressed="${when===k}">${esc(l)}</button>`, N=lgNames();
   const lgCode=when.startsWith("L:")?when.slice(2):null;
   const form=`<div class="lg-form">${(me.nick||app.acct)?"":`<input class="input" id="lgnick" maxlength="18" placeholder="Your name" aria-label="Your name" autocomplete="nickname">`}<div class="lg-f"><input class="input" id="lgcode" maxlength="5" placeholder="League code" aria-label="League code"><button class="btn small" data-act="lgjoin">Join</button></div><div class="lg-f"><input class="input" id="lgname" maxlength="30" placeholder="New league, e.g. The Office" aria-label="New league name"><button class="btn small" data-act="lgcreate">Create</button></div>${leagueNeedsLogin()?`<p class="muted" style="font-size:12px;margin:0">You'll need to log in so your scores count for your league.</p>`:""}</div>`;
-  return `<section class="panel lbtab"><div class="lbt-seg" role="tablist" aria-label="Which game"><button type="button" role="tab" data-act="lbwhat" data-v="q" aria-selected="${what==="q"}">Daily quiz</button><button type="button" role="tab" data-act="lbwhat" data-v="g" aria-selected="${what==="g"}">Word grid</button></div>
+  return `<section class="panel lbtab"><div class="lbt-seg" role="tablist" aria-label="Which game"><button type="button" role="tab" data-act="lbwhat" data-v="q" aria-selected="${what==="q"}">The Quiz</button><button type="button" role="tab" data-act="lbwhat" data-v="g" aria-selected="${what==="g"}">The Word Grid</button></div>
     <div class="lbt-chips">${chip("t","Today")}${FEAT.weekly?chip("w","This week"):""}${Ls.map(c=>chip("L:"+c, N[c]||c)).join("")}</div>
     <div id="lbmain"><p class="muted" style="font-size:13px;margin:0">Loading…</p></div>
     ${lgCode?`<div class="row lbt-lgact"><button class="btn small" data-act="lgshare" data-code="${esc(lgCode)}" data-name="${esc(N[lgCode]||lgCode)}">Invite to this league</button><button class="btn ghost small" data-act="lgleave" data-code="${esc(lgCode)}">Leave</button><span class="muted" style="font-size:12px">Code ${esc(lgCode)}</span></div>`:""}
-    ${FEAT.leagues?`<details class="lbt-lg"${Ls.length?"":" open"}><summary>${Ls.length?"Create or join another league":"Play against your friends: create or join a league"}</summary>${Ls.length?"":`<p class="muted" style="font-size:13px;margin:8px 0">Make a league for your friends, family or office and see who wins the daily, today and every week.</p>`}${form}</details>`:""}
+    ${FEAT.leagues?`<details class="lbt-lg"${Ls.length?"":" open"}><summary>${Ls.length?"Create or join another league":"Play against your friends: create or join a league"}</summary>${Ls.length?"":`<p class="muted" style="font-size:13px;margin:8px 0">Make a league for your friends, family or office and see who wins the Daily Dougle, today and every week.</p>`}${form}</details>`:""}
   </section>`; }
 async function scoresOf(kind, day){ const db=kind==="g"?DG_DB:DQ_DB; if(!app.db) return []; try{ const snap=await app.db.collection(`${db}/${day}/scores`).orderBy("score","desc").limit(100).get(); return snap.docs.map(d=>({id:d.id, ...(d.data()||{})})); }catch(e){ return []; } }
 const lbRow=(i,id,nick,val,sub)=>`<li class="${id===myScoreId()?"me":""}"><span class="rk">${i+1}</span><span>${esc(String(nick||"Player").slice(0,18))}${sub?` <span class="muted" style="font-size:12px">· ${sub}</span>`:""}</span><b class="num">${val}</b></li>`;
 let lbSeq=0;
 async function loadLBTab(){ const el=$("#lbmain"); if(!el) return; const what=app.lbWhat==="g"?"g":"q", Ls=myLeagues(); let when=app.lbWhen||"t"; if(when.startsWith("L:")&&!Ls.includes(when.slice(2))) when="t"; const my=++lbSeq;
   if(!app.db){ el.innerHTML=`<p class="muted" style="font-size:13px;margin:0">The leaderboard can't be reached right now.</p>`; return; }
-  const today=todayKey(), title=what==="g"?"Today's word grid":"Today's daily quiz";
+  const today=todayKey(), title=what==="g"?"Today's Word Grid":"Today's Quiz";
   if(when==="t"){ subscribeLB(`${what==="g"?DG_DB:DQ_DB}/${today}/scores`, "#lbmain", 20, title); return; }
   if(LBS["#lbmain"]){ try{ LBS["#lbmain"](); }catch(e){} delete LBS["#lbmain"]; }
   const days=weekDays(), all=await Promise.all(days.map(d=>scoresOf(what,d))); if(my!==lbSeq || !$("#lbmain")) return;
@@ -7571,7 +7575,7 @@ async function loadTeaser(){ const el=$("#dcteaser"); if(!el) return; const go=`
   el.innerHTML=`<span>🥇 <b>${esc(String(top.nick||"Player").slice(0,18))}</b> <span class="num">${(Number(top.score)||0).toLocaleString("en-GB")}</span>${mine>0?` · You're ${ORD(mine+1)}`:mine===0?" · That's you!":""}</span>${go}`; }
 function handleLeagueLink(){ if(!FEAT.leagues) return; let c=null; try{ c=new URLSearchParams(location.search).get("league"); }catch(e){} if(!c){ const m=/^#league-([a-z0-9]{5})$/i.exec(location.hash||""); if(m) c=m[1]; } if(!c) return; try{ history.replaceState(null,"",location.pathname); }catch(e){} app.homeTab="lb"; app.dcTab="l"; if(app.view==="home") render(); setTimeout(()=>leagueJoin(c), 1500); }
 function howtoHTML(){ return `<div class="rep-sheet howto" id="howto" role="dialog" aria-label="How to play"><div class="rep-card"><b style="font-size:20px">How Dougle works</b>
-  <div class="ht-s"><span>1</span><div><b>The Daily</b><p class="muted">Fifteen questions, the same for everyone, new every day. Answer fast: points count down. Share your score and keep your streak going.</p></div></div>
+  <div class="ht-s"><span>1</span><div><b>The Daily Dougle</b><p class="muted">Today's edition, new every morning and the same for everyone: a 15-question quiz (answer fast, points count down) and a 60-second word grid. Share your score and keep your streak going.</p></div></div>
   <div class="ht-s"><span>2</span><div><b>Party mode</b><p class="muted">One person hosts and gets a 4-letter code. Friends join on their own phones with the code, the link or the QR code.</p></div></div>
   <div class="ht-s"><span>3</span><div><b>Eleven rounds</b><p class="muted">From general knowledge to maps, word grids and Heist, where you can steal points off the leader. Highest score at the end wins.</p></div></div>
   ${window.SQ_STANDALONE?`<p class="muted" style="font-size:13px;margin:0">Tip: add Dougle to your home screen so it opens like an app. On iPhone, tap Share then <b>Add to Home Screen</b>.</p>`:""}
@@ -7581,10 +7585,10 @@ function maybeHowto(){ if(!FEAT.howto || LS.get("sq-howto") || app.view!=="home"
 /* once a day, a pop-up offers whichever of today's daily quiz and word grid you haven't played yet */
 function dailyPopHTML(q,g){ const key=todayKey(), tile=(name,sub,done,act,sc)=>`<div class="dp-tile${done?" done":""}"><div><b>${name}</b><small class="muted">${sub}</small></div>${done?`<span class="dp-done">✓ ${Number(sc||0).toLocaleString("en-GB")} pts</span>`:`<button class="btn spot" data-act="dpop" data-v="${act}">Play</button>`}</div>`;
   const streak=calcStreak();
-  return `<div class="rep-sheet dpop" id="dpop" role="dialog" aria-label="Today's daily"><div class="rep-card"><div class="dp-head"><span class="eyebrow">Today's daily</span><span class="muted">${new Date().toLocaleDateString("en-GB",{weekday:"short", day:"numeric", month:"short"})}</span></div>
+  return `<div class="rep-sheet dpop" id="dpop" role="dialog" aria-label="The Daily Dougle"><div class="rep-card"><div class="dp-head"><span class="eyebrow">The Daily Dougle</span><span class="muted">${new Date().toLocaleDateString("en-GB",{weekday:"short", day:"numeric", month:"short"})}</span></div>
   <b style="font-size:20px">${q||g?"One more to go today":"Fancy a quick one first?"}</b>
-  ${tile("Daily quiz","15 questions, same for everyone",!!q,"daily",q&&q.score)}
-  ${tile("Word grid","60 seconds, one grid",!!g,"dgrid",g&&g.score)}
+  ${tile("The Quiz","15 questions, same for everyone",!!q,"daily",q&&q.score)}
+  ${tile("The Word Grid","60 seconds, one grid",!!g,"dgrid",g&&g.score)}
   ${streak?`<p class="muted">${q?`${streak}-day streak`:`Play today to keep your ${streak}-day streak`}</p>`:""}
   <button class="btn" data-act="dpop" data-v="later">Maybe later</button></div></div>`; }
 const DAILY_POP=false; /* 21 Nov 2026: pop-up switched off */
@@ -7603,7 +7607,7 @@ async function shareCard(kind, r){ try{ await Promise.all([document.fonts.load('
   const beam=g.createRadialGradient(W/2,-120,40,W/2,260,900); beam.addColorStop(0,"rgba(255,196,84,.55)"); beam.addColorStop(.45,"rgba(255,170,40,.16)"); beam.addColorStop(1,"rgba(255,170,40,0)"); g.fillStyle=beam; g.fillRect(0,0,W,H);
   const flr=g.createLinearGradient(0,H-220,0,H); flr.addColorStop(0,"rgba(43,69,240,0)"); flr.addColorStop(1,"rgba(43,69,240,.35)"); g.fillStyle=flr; g.fillRect(0,H-220,W,220);
   g.textAlign="center"; g.textBaseline="alphabetic";
-  g.fillStyle="#F5A511"; g.font=F(800,40); g.fillText(kind==="g"?"DOUGLE WORD GRID":"DOUGLE DAILY",W/2,112);
+  g.fillStyle="#F5A511"; g.font=F(800,40); g.fillText(kind==="g"?"THE DAILY DOUGLE · WORD GRID":"THE DAILY DOUGLE · QUIZ",W/2,112);
   g.fillStyle="rgba(255,255,255,.7)"; g.font=F(600,32,'"Inter", system-ui, sans-serif'); g.fillText(new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"}),W/2,162);
   g.fillStyle="#fff"; g.font=F(900,168); g.fillText(Number(r.score).toLocaleString("en-GB"),W/2,345); g.fillStyle="rgba(255,255,255,.6)"; g.font=F(700,38); g.fillText("POINTS",W/2,398);
   const cols={3:"#1FB36B",2:"#F2C230",1:"#F08A24",0:"#3A4166"};
@@ -7624,7 +7628,7 @@ async function shareCard(kind, r){ try{ await Promise.all([document.fonts.load('
   g.textAlign="center"; g.fillStyle="#fff"; g.font=F(800,40); g.fillText("Can you beat me?",W/2,H-96); g.fillStyle="#F5A511"; g.font=F(700,36); g.fillText(SITE_URL,W/2,H-48);
   return new Promise(res=>c.toBlob(b=>res(b),"image/png")); }
 async function shareResult(kind){ const r=kind==="g"?(DG.result||{score:0,n:0,words:[]}):(D.result||{score:0,pts:[]}), txt=kind==="g"?gridShareText(r):shareText(r);
-  if(canNativeShare()){ try{ const b=await shareCard(kind,r), f=b&&new File([b],kind==="g"?"dougle-word-grid.png":"dougle-daily.png",{type:"image/png"});
+  if(canNativeShare()){ try{ const b=await shareCard(kind,r), f=b&&new File([b],kind==="g"?"daily-dougle-word-grid.png":"daily-dougle-quiz.png",{type:"image/png"});
       if(f && navigator.canShare && navigator.canShare({files:[f]})){ await navigator.share({files:[f], text:txt}); return; } }catch(e){ if(e && e.name==="AbortError") return; } }
   shareOrCopy(txt); }
 /* the card shown on the results screen */
@@ -7653,10 +7657,10 @@ function homePartyHTML(){ return `
     </section>`; }
 function homeDailyHTML(tabs){ return `
     <section class="panel daily-card dc-compact" id="dailycard">
-      <div class="dc-head"><span class="eyebrow">Today's daily</span><span class="dc-date">${new Date().toLocaleDateString("en-GB",{weekday:"short", day:"numeric", month:"short"})}</span></div>
+      <div class="dc-head dc-mast"><span class="dc-title">The Daily Dougle</span><span class="dc-date">${new Date().toLocaleDateString("en-GB",{weekday:"long", day:"numeric", month:"long"})} · Today's edition</span></div>
       <div class="dc-tiles">
-        <div class="dc-tile"><b>Daily quiz</b><small>15 questions, same for everyone</small><div id="dailyinfo"></div></div>
-        <div class="dc-tile"><b>Word grid</b><small>60 seconds, one grid</small><div id="gridinfo"></div></div>
+        <div class="dc-tile"><b>The Quiz</b><small>15 questions, same for everyone</small><div id="dailyinfo"></div></div>
+        <div class="dc-tile"><b>The Word Grid</b><small>60 seconds, one grid</small><div id="gridinfo"></div></div>
       </div>
       ${tabs?`<div class="dc-teaser" id="dcteaser"></div>`:`      <div class="dc-lb"><button type="button" class="bigtog dc-lbtog" data-act="dclbshow" aria-pressed="${!LS.get("sq-dclb-off")}"><span class="sw" aria-hidden="true"></span>Show leaderboard</button><div class="dc-lbin"${LS.get("sq-dclb-off")?" hidden":""}>${dcTabsHTML()}<div id="homelb"${dcT()!=="q"?" hidden":""}></div><div id="homegridlb"${dcT()!=="g"?" hidden":""}></div><div id="homeweek"${dcT()!=="w"?" hidden":""}></div><div id="homeleague"${dcT()!=="l"?" hidden":""}></div></div></div>`}
     </section>`; }
@@ -9988,7 +9992,7 @@ function shareText(res){ const T=(res.pts||[]).map((p,i)=>res.pmax?tier(p,res.pm
   const grid=[]; for(let i=0;i<sq.length;i+=5) grid.push(sq.slice(i,i+5).join(""));
   const l1=[`⭐ ${res.score.toLocaleString("en-GB")} pts`, `🎯 ${T.filter(t=>t===3).length}/${T.length} spot on`], l2=[];
   if(st>1) l2.push(`🔥 ${st}-day streak`); if(rk && rk[0]<=Math.max(10,rk[1]/2)) l2.push(`🏆 ${ORD(rk[0])} today`);
-  const head=FEAT.share?"🎤 DOUGLE DAILY":"🎤 DOUGLE";
+  const head=FEAT.share?"🗞️ THE DAILY DOUGLE · QUIZ":"🗞️ THE DAILY DOUGLE";
   return [head, shareDate(), "", ...grid, "", l1.join(" · "), ...(l2.length?[l2.join(" · ")]:[]), ...(FEAT.share?["",`Can you beat me? 👉 ${SITE_URL}`]:[])].join("\n"); }
 function renderDaily(){
   const el=$("#dstage"); if(!el) return;
@@ -9996,7 +10000,7 @@ function renderDaily(){
   const prog = D.qs ? `<div class="progress">${D.qs.map((_,i)=>`<i class="${i<D.i||(i===D.i&&D.phase==="fb")?"done":i===D.i&&D.phase==="q"?"cur":""}"></i>`).join("")}</div>` : "";
   let h="";
   if(D.phase==="loading") h=`<div class="intro"><div class="spinner"></div><h2>Loading today's quiz</h2><p>Everyone gets the same set today.</p></div>`;
-  else if(D.phase==="intro") h=`${prog}<div class="intro"><div class="eyebrow">Daily quiz · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}))}</div><div class="ri">${D.qs.length} questions</div><p>Ten questions on ten different topics, from easy to tough, plus two guesstimates, a rank it, a country to find and a higher-or-lower. Multiple-choice and higher-or-lower questions start at <b>100 points</b> and count down, so be quick. Maps and guesstimates score up to 100 for how close you get. One go per day.</p>${acctPromptHTML()}<div class="row"><button class="btn spot" data-act="dbegin">Start</button></div></div>`;
+  else if(D.phase==="intro") h=`${prog}<div class="intro"><div class="eyebrow">The Daily Dougle · Quiz · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}))}</div><div class="ri">${D.qs.length} questions</div><p>Ten questions on ten different topics, from easy to tough, plus two guesstimates, a rank it, a country to find and a higher-or-lower. Multiple-choice and higher-or-lower questions start at <b>100 points</b> and count down, so be quick. Maps and guesstimates score up to 100 for how close you get. One go per day.</p>${acctPromptHTML()}<div class="row"><button class="btn spot" data-act="dbegin">Start</button></div></div>`;
   else if(D.phase==="q"||D.phase==="fb"){
     const q=D.qs[D.i]; const fb=D.phase==="fb";
     h = prog + `<div class="stagehead"><div><div class="eyebrow">${esc(q.cat||DNAME[q.t]||"Question")}</div><div class="muted num" style="font-size:14px">Question ${D.i+1} of ${D.qs.length}${q.t==="gk"&&D.i>=5&&D.src==="ai"?" · hard":""}</div></div>${fb?`<span class="pts on" style="font-size:28px">+${D.pts[D.i]}<span class="muted" style="font-size:.45em;display:block;text-align:right">${D.answers[D.i]==null?"no answer":"in "+D.secs[D.i].toFixed(1)+"s"}</span></span>`:`<div class="row" style="gap:12px;flex-wrap:nowrap">${(q.t==="gk"||q.t==="hl")?`<span class="pts on num" style="font-size:28px;min-width:2.4em;text-align:right" title="Points available"><span id="dpav">100</span><span class="muted" style="font-size:.4em;display:block">pts left</span></span>`:""}${timerHTML(D.end, DDUR[q.t])}</div>`}</div><div class="qtext">${esc(q.text)}</div>`;
@@ -10086,19 +10090,19 @@ function gridLenRows(r){ const by={}; for(const w of (r.words||[])) by[w.length]
   return Object.keys(by).map(Number).sort((a,b)=>b-a).map(n=>`${key(n)} ${col(n).repeat(Math.min(by[n],8))}${by[n]>8?" +"+(by[n]-8):""}`); }
 function gridShareText(r){ const rows=gridLenRows(r), st=(()=>{ try{ const x=statsOf("dg"); return x?x.cur:0; }catch(e){ return 0; } })(), rk=DG.rank;
   const l1=[`⭐ ${Number(r.score).toLocaleString("en-GB")} pts`, `📝 ${r.n} word${r.n===1?"":"s"}`], l2=[]; if(st>1) l2.push(`🔥 ${st}-day streak`); if(rk && rk[0]<=Math.max(10,rk[1]/2)) l2.push(`🏆 ${ORD(rk[0])} today`);
-  return ["🔠 DOUGLE WORD GRID", shareDate(), "", ...(rows.length?[...rows,""]:[]), l1.join(" · "), ...(l2.length?[l2.join(" · ")]:[]), ...(FEAT.share?["",`Can you beat me? 👉 ${SITE_URL}`]:[])].join("\n"); }
+  return ["🗞️ THE DAILY DOUGLE · WORD GRID", shareDate(), "", ...(rows.length?[...rows,""]:[]), l1.join(" · "), ...(l2.length?[l2.join(" · ")]:[]), ...(FEAT.share?["",`Can you beat me? 👉 ${SITE_URL}`]:[])].join("\n"); }
 function renderDGrid(){
   const el=$("#gstage"); if(!el) return;
   const date=esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}));
   let h="";
   if(DG.phase==="loading") h=`<div class="intro"><div class="spinner"></div><h2>Loading today's grid</h2></div>`;
-  else if(DG.phase==="intro") h=`<div class="intro"><div class="eyebrow">Daily word grid · ${date}</div><div class="ri">60 seconds</div><p>Everyone gets the same grid today. Drag across touching letters, including diagonally, to make words of 3 letters or more. You can also type them. Only real dictionary words count: no names, abbreviations or made-up words.</p><p class="num" style="font-size:15px;margin:0">3 letters <b>10</b> · 4 <b>20</b> · 5 <b>40</b> · 6 <b>100</b> · 7 <b>150</b> · 8 <b>200</b>, then +50 a letter</p><p class="muted" style="font-size:14px;margin:0">${DG.all?`There are ${DG.all.length} words hidden in today's grid.`:""} You get one go per day.</p>${acctPromptHTML()}<div class="row"><button class="btn spot" data-act="dgstart">Start the clock</button></div></div>`;
-  else if(DG.phase==="play") h=`<div class="stagehead"><div><div class="eyebrow">Daily word grid</div><div class="muted num" style="font-size:14px">${date}</div></div>${timerHTML(DG.end, DG_SECS)}</div>`+gridAreaHTML({grid:DG.grid}, false);
+  else if(DG.phase==="intro") h=`<div class="intro"><div class="eyebrow">The Daily Dougle · Word Grid · ${date}</div><div class="ri">60 seconds</div><p>Everyone gets the same grid today. Drag across touching letters, including diagonally, to make words of 3 letters or more. You can also type them. Only real dictionary words count: no names, abbreviations or made-up words.</p><p class="num" style="font-size:15px;margin:0">3 letters <b>10</b> · 4 <b>20</b> · 5 <b>40</b> · 6 <b>100</b> · 7 <b>150</b> · 8 <b>200</b>, then +50 a letter</p><p class="muted" style="font-size:14px;margin:0">${DG.all?`There are ${DG.all.length} words hidden in today's grid.`:""} You get one go per day.</p>${acctPromptHTML()}<div class="row"><button class="btn spot" data-act="dgstart">Start the clock</button></div></div>`;
+  else if(DG.phase==="play") h=`<div class="stagehead"><div><div class="eyebrow">The Daily Dougle · Word Grid</div><div class="muted num" style="font-size:14px">${date}</div></div>${timerHTML(DG.end, DG_SECS)}</div>`+gridAreaHTML({grid:DG.grid}, false);
   else if(DG.phase==="done"){
     const r=DG.result||{score:0,n:0,words:[]}; const mine=new Set(r.words||[]);
     const missed=(DG.all||[]).filter(w=>!mine.has(w)).slice(0,8);
     if(r.score>=600) setTimeout(()=>confetti(r.score>=1200?160:80), 400);
-    h=`<div class="intro"><div class="eyebrow">Today's word grid</div><div class="scoreline num">${Number(r.score).toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> points</span></div><p>${r.n} word${r.n===1?"":"s"}${DG.all?` out of ${DG.all.length} in the grid`:""}. Come back tomorrow for a new grid.</p></div>`;
+    h=`<div class="intro"><div class="eyebrow">The Daily Dougle · Today's Word Grid</div><div class="scoreline num">${Number(r.score).toLocaleString("en-GB")}<span class="muted" style="font-size:.4em"> points</span></div><p>${r.n} word${r.n===1?"":"s"}${DG.all?` out of ${DG.all.length} in the grid`:""}. Come back tomorrow for a new grid.</p></div>`;
     if(DG.grid) h+=`<div class="wgwrap"><div class="wg" style="max-width:220px">${DG.grid.map(c=>`<div class="tile" style="font-size:22px">${esc(c)}</div>`).join("")}</div><div style="display:grid;gap:10px;min-width:0">${(r.words||[]).length?`<div><div class="eyebrow" style="margin-bottom:6px">Your words</div><div class="words">${r.words.map(w=>`<span class="w">${esc(w.toUpperCase())}<sup>${wordPts(w.length)}</sup></span>`).join("")}</div></div>`:""}${missed.length?`<div><div class="eyebrow" style="margin-bottom:6px">Longest words you missed</div><div class="words">${missed.map(w=>`<span class="w pend">${esc(w.toUpperCase())}<sup>${wordPts(w.length)}</sup></span>`).join("")}</div></div>`:""}</div></div>`;
     if(guestDone(r)) h+=acctCTA("Guest scores don't go on the leaderboard. Log in before tomorrow's grid to get ranked.");
     h+=`<div class="sharecard" id="sharecard"></div><div class="row">${canNativeShare()?`<button class="btn primary" data-act="nsharegrid">Share</button>`:""}<button class="btn" data-act="copygrid">Copy result</button><button class="btn ghost" data-act="home">Back home</button></div>`;
@@ -10108,7 +10112,7 @@ function renderDGrid(){
 }
 function renderDGridBoard(){
   const el=$("#gboard"); if(!el) return;
-  el.innerHTML=`<h3>Daily word grid</h3><p class="muted" style="font-size:13px;margin:0">Same grid for everyone today, 60 seconds each. ${app.db?"":"The shared leaderboard isn't available on this view."}</p><div id="gridlb"></div><div class="row"><button class="btn small ghost" data-act="home">Back home</button></div>`;
+  el.innerHTML=`<h3>The Daily Dougle · Word Grid</h3><p class="muted" style="font-size:13px;margin:0">Same grid for everyone today, 60 seconds each. ${app.db?"":"The shared leaderboard isn't available on this view."}</p><div id="gridlb"></div><div class="row"><button class="btn small ghost" data-act="home">Back home</button></div>`;
   if(app.db) subscribeLB(`${DG_DB}/${todayKey()}/scores`, "#gridlb", 15, "Today's grid leaderboard");
 }
 
@@ -10136,7 +10140,7 @@ function statsOf(kind){ const m=statDays(kind), days=Object.keys(m).sort(); if(!
   let run=0, top=0, prev=null; for(const d of days){ const t=Date.parse(d+"T12:00:00Z"); run = prev!=null && Math.round((t-prev)/864e5)===1 ? run+1 : 1; top=Math.max(top,run); prev=t; }
   const last=[...Array(14)].map((_,i)=>{ const k=dayKeyBack(13-i); return {k, v:m[k]}; });
   return {n:days.length, best, bestDay, avg, total:sc.reduce((a,b)=>a+b,0), cur, top, first:days[0], last}; }
-function statsCardHTML(kind){ const st=statsOf(kind), title=kind==="dq"?"Daily quiz":"Daily word grid";
+function statsCardHTML(kind){ const st=statsOf(kind), title=kind==="dq"?"The Daily Dougle · Quiz":"The Daily Dougle · Word Grid";
   if(!st) return `<div class="stat-card"><div class="eyebrow">${title}</div><p class="muted" style="margin:6px 0 0;font-size:14px">No games yet. Play today's to start your record.</p></div>`;
   const fd=d=>new Date(d+"T12:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"}), mx=Math.max(1,...st.last.map(x=>x.v||0));
   const cell=(v,l)=>`<div class="stat-c"><b class="num">${v}</b><span>${l}</span></div>`;
@@ -10265,7 +10269,7 @@ async function acctSubmit(kind){
 }
 function renderDailyBoard(){
   const el=$("#dboard"); if(!el) return;
-  el.innerHTML=`<h3>Daily quiz</h3><p class="muted" style="font-size:13px;margin:0">Everyone gets the same questions today. Faster answers score more. ${app.db?"":"The shared leaderboard isn't available on this view."}</p><div id="dailylb"></div><div class="row"><button class="btn small ghost" data-act="home">Back home</button></div>`;
+  el.innerHTML=`<h3>The Daily Dougle · Quiz</h3><p class="muted" style="font-size:13px;margin:0">Everyone gets the same questions today. Faster answers score more. ${app.db?"":"The shared leaderboard isn't available on this view."}</p><div id="dailylb"></div><div class="row"><button class="btn small ghost" data-act="home">Back home</button></div>`;
   if(app.db) subscribeDailyLB(todayKey(), "#dailylb", 15);
 }
 
@@ -10297,7 +10301,7 @@ document.addEventListener("click", async e=>{
   if(a==="lgcreate"){ const n=($("#lgname")||{}).value||""; leagueCreate(n); return; }
   if(a==="lgjoin"){ const c=($("#lgcode")||{}).value||""; leagueJoin(c); return; }
   if(a==="lgleave"){ leagueLeave(b.dataset.code); return; }
-  if(a==="lgshare"){ const c=b.dataset.code, u=(window.SQ_STANDALONE?location.origin:"https://"+SITE_URL)+"/?league="+c, t=`Join my Dougle league "${b.dataset.name}" and we'll see who wins the daily: ${u}`; shareOrCopy(t); return; }
+  if(a==="lgshare"){ const c=b.dataset.code, u=(window.SQ_STANDALONE?location.origin:"https://"+SITE_URL)+"/?league="+c, t=`Join my Dougle league "${b.dataset.name}" and we'll see who wins the Daily Dougle: ${u}`; shareOrCopy(t); return; }
   if(a==="bighead"){ BIG.set(!BIG.on); document.querySelectorAll('[data-act="bighead"]').forEach(x=>x.setAttribute("aria-pressed",String(BIG.on))); document.querySelectorAll("img[data-pav]").forEach(im=>{ const u=Portrait.get(im.dataset.pav); im.src=u||(im.dataset.flat?im.src:avURI(im.dataset.pav)); im.classList.toggle("r3",!!u); }); return; }
   if(a==="maker"){ if(document.getElementById("mkmodal")) closeMaker(); else { app.mkOpen=true; app.mk=null; mkState(); openMaker(); } return; }
   if(a==="mktab"){ app.mkTab=b.dataset.tab; renderMaker(); const bd=document.getElementById("mkbody"); if(bd) bd.scrollTop=0; return; }
