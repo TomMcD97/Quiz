@@ -1015,6 +1015,16 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 @keyframes awInJ{0%{opacity:0;transform:translateX(-50%) scale(1.5) rotate(8deg)}100%{opacity:1;transform:translateX(-50%) scale(1) rotate(1.5deg)}}
 @keyframes awOut{to{opacity:0;transform:translateX(-50%) scale(.75) rotate(6deg)}}
 @keyframes awPop{0%{transform:scale(0) rotate(-30deg)}100%{transform:scale(1) rotate(0)}}
+.fin-board .fb-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 10px}.fin-board .fb-aw{margin-top:6px;padding:3px 10px;border-radius:999px;border:1px solid rgba(255,210,122,.8);background:rgba(10,10,14,.7);font-weight:700;font-size:13px;color:#fff;animation:fhIn .5s ease .7s both}
+.room-aw{position:absolute;left:0;top:0;pointer-events:none;z-index:3;display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 8px 5px;border-radius:10px;text-align:center;color:#fff;
+  background:rgba(10,10,14,.82);border:1px solid rgba(255,210,122,.8);box-shadow:0 0 14px rgba(255,190,80,.35);font-size:11px;line-height:1.15;animation:awBub .45s cubic-bezier(.2,1.7,.4,1) both}
+.room-aw b{font-family:var(--f-display);font-weight:800;font-size:11.5px;letter-spacing:-.005em;text-wrap:balance}
+.room-aw small{font-size:9.5px;color:rgba(255,255,255,.72);text-wrap:balance}
+.room-aw small:empty{display:none}
+.room-aw.tight{padding:3px 5px 4px;border-radius:8px}.room-aw.tight b{font-size:10px}.room-aw.tight small{display:none}
+.room-aw.joke{border-color:rgba(255,130,185,.85);box-shadow:0 0 14px rgba(255,90,170,.35)}
+@media (min-width:700px){ .room-aw{font-size:12.5px;padding:5px 10px 6px}.room-aw b{font-size:13px}.room-aw small{font-size:10.5px} }
+@keyframes awBub{0%{opacity:0;scale:.4}100%{opacity:1;scale:1}}
 .dc-head.dc-mast{flex-direction:column;align-items:center;text-align:center;gap:0}
 .dc-mast .dc-title{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,7.4vw,38px);line-height:1.05;letter-spacing:-.015em;padding-bottom:8px;text-wrap:balance}
 .dc-mast .dc-date{width:100%;border-top:3px double var(--line);border-bottom:1px solid var(--line);padding:5px 0;font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
@@ -5017,7 +5027,9 @@ const Room={
   /* stage layout. Lobby: up to 4 across on a phone (8 on a wide screen); bigger groups get a second row standing on a riser
      behind, offset so everyone shows between the people in front. Podium: one row, winner in the middle, then outwards. */
   layout(){ const n=this.order.length, asp=(this.cv.clientWidth||800)/(this.cv.clientHeight||400), phone=asp<1.45;
-    if(this.pod && this.pod.rank){ const rk=this.pod.rank.filter(p=>this.order.includes(p)), slots=[]; rk.forEach((p,i)=>{ slots[i]=i===0?0:(i%2?-Math.ceil(i/2):Math.ceil(i/2)); });
+    if(this.pod && this.pod.rank){ const rk=this.pod.rank.filter(p=>this.order.includes(p)), slots=[], m=rk.length, mid=(m-1)/2;
+      /* evenly spaced and centred: the winner takes the middle spot, then the others fill outwards alternately */
+      const byCentre=[...Array(m).keys()].sort((a,b)=>Math.abs(a-mid)-Math.abs(b-mid) || b-a); rk.forEach((p,i)=>{ slots[i]=byCentre[i]-mid; });
       const gap=phone?(n>6?.78:n>4?.86:1.0):(n>8?.9:1.05); this.rows=1;
       this.order.forEach(pid=>{ const c=this.chars[pid]; if(!c) return; const i=rk.indexOf(pid), sl=i<0?0:slots[i]; c.row=0; c.baseLift=0; c.x=sl*gap; c.z=.55-Math.abs(sl)*.06; c.ry=-c.x*.07; });
       const mn=Math.min(0,...slots), mx=Math.max(0,...slots); this.span=Math.max(1.8,(mx-mn)*gap+1.3); return; }
@@ -5083,7 +5095,8 @@ const Room={
     if(pod){ /* finale light show: six moving heads sweep the stage in colour, swing onto whoever is getting an award, then all
          lock onto the champion in gold */
       const at=pid=>{ const c=this.chars[pid]; return c?[c.J.root.off[0], c.J.root.off[2]]:null; };
-      const fp=this.awFocus?at(this.awFocus):(pod.fired?at(pod.rank[0]):null); this.focusK=(this.focusK||0)+((fp?1:0)-(this.focusK||0))*Math.min(1,dt*2.5); if(fp) this.focusP=fp;
+      let just=null, jt=-1; for(const p in pod.done){ if(t-pod.done[p]<2.5 && pod.done[p]>jt){ jt=pod.done[p]; just=p; } }
+      const fp=pod.fired?at(pod.rank[0]):(just?at(just):null); this.focusK=(this.focusK||0)+((fp?1:0)-(this.focusK||0))*Math.min(1,dt*2.5); if(fp) this.focusP=fp;
       /* one moving head per player, each roaming gently around its own player */
       const who=this.order.filter(p=>this.chars[p]), NB=who.length, COLS=[[1,.25,.75],[.25,.8,1],[1,.72,.25],[.6,.35,1],[.25,1,.7],[1,.45,.3]], gold=[1,.78,.35], fk=this.focusK||0, fq=this.focusP||[0,.6];
       for(let i=0;i<NB;i++){ const home=at(who[i])||[0,.6], src=[home[0]*1.15,5.3,-1.3], sp=pod.fired?.35:1, sw=[home[0]+Math.sin(t*.7*sp+i*1.7)*.45, home[1]+.15+Math.cos(t*.55*sp+i*1.1)*.3];
@@ -5106,6 +5119,14 @@ const Room={
     if(this.tags){ const crowd=this.order.length>4; if(this.tags._crowd!==crowd){ this.tags._crowd=crowd; this.tags.classList.toggle("rt-crowd",crowd); } const pd=!!pod; if(this.tags._pod!==pd){ this.tags._pod=pd; this.tags.classList.toggle("rt-pod",pd); } }
     /* podium with lots of players: alternate the name tags up and down so neighbours don't overlap */
     const alt=new Map(); if(pod && tags.length>5) tags.map(x=>x[0]).sort((a,b)=>a.J.root.off[0]-b.J.root.off[0]).forEach((c,i)=>alt.set(c,i%2));
+    /* accolade bubbles: above each head once their pillar has risen */
+    const nOn=this.order.length||1;
+    for(const pid of this.order){ const c=this.chars[pid]; if(!c) continue; const aw=pod && pod.aw && pod.aw[pid], show=aw && pod.done[pid] && pod.rank[0]!==pid; /* the champion's goes under their name on the big screen */
+      if(!show){ if(c.awTag){ c.awTag.remove(); c.awTag=null; } continue; }
+      if(!c.awTag){ c.awTag=document.createElement("div"); c.awTag.className="room-aw"+(aw.joke?" joke":""); c.awTag.innerHTML=`<b><span aria-hidden="true">${aw.icon}</span> ${esc(aw.title)}</b><small>${esc(aw.line||"")}</small>`; this.tags.appendChild(c.awTag); }
+      const hw=c.J.head.world, champ=false, q=M4.xf(VP,[hw[12],hw[13]+.62,hw[14]]);
+      const slotW=Math.min(170,cv.clientWidth/nOn-4); c.awTag.style.maxWidth=Math.max(56,slotW)+"px"; c.awTag.classList.toggle("tight",slotW<96);
+      c.awTag.style.transform=`translate(${((q[0]*.5+.5)*cv.clientWidth).toFixed(1)}px,${((.5-q[1]*.5)*cv.clientHeight).toFixed(1)}px) ${champ?"translate(0,-50%)":"translate(-50%,-100%)"}`; }
     for(const [c,p] of tags){ const q=M4.xf(VP,p); if(!c.tag){ c.tag=document.createElement("div"); c.tag.className="room-tag"; this.tags.appendChild(c.tag); }
       const lb=c.disp||shortTag(c.label,c.me); if(c.tag.textContent!==lb) c.tag.textContent=lb; c.tag.classList.toggle("me",!!c.me);
       c.tag.style.transform=`translate(${((q[0]*.5+.5)*cv.clientWidth).toFixed(1)}px,${((.5-q[1]*.5)*cv.clientHeight).toFixed(1)}px) translate(-50%,${alt.get(c)?"calc(100% + 4px)":"0"})`; }
@@ -8790,7 +8811,7 @@ function renderLobbyStage(){
     let ps=players();
     if(S.phase==="final"){ const sc=S.scores||{}, sorted=ps.slice().sort((a,b)=>(sc[b.pid]||0)-(sc[a.pid]||0)), arr=[]; sorted.forEach((p,i)=>{ if(i%2) arr.unshift(p); else arr.push(p); }); ps=arr; }
     Room.sync(ps.map(p=>({pid:p.pid, av:p.av||avOf(p.pid), label:p.nick+(p.isMe?" (you)":""), me:!!p.isMe, color:pcol(p.pid), ph:photoOf(p.pid,p.av||avOf(p.pid))})));
-    if(S.phase==="final"){ awardsStart(); const sc={}; ps.forEach(p=>sc[p.pid]=(S.scores||{})[p.pid]||0); Room.setPodium(sc); if(Room.pod) Room.pod.hold=!awardsDone() && !!S.gx; } else { Room.setPodium(null); Room.awFocus=null; const e=document.getElementById("awsplash"); if(e) e.remove(); }
+    if(S.phase==="final"){ const sc={}; ps.forEach(p=>sc[p.pid]=(S.scores||{})[p.pid]||0); Room.setPodium(sc); if(Room.pod && !Room.pod.aw && S.gx){ try{ Room.pod.aw=RM?{}:awardList(); }catch(e){ Room.pod.aw={}; } } } else { Room.setPodium(null); Room.awFocus=null; const e=document.getElementById("awsplash"); if(e) e.remove(); }
     const cap=($("#lcap")||{}).textContent||"";
     if(S.phase==="lobby") Room.setBoard(S.code, cap); else if(S.phase==="final") finalBoard(); else Room.setBoard("", cap, "Get ready");
     ps.forEach(p=>{ const em = p.isMe ? myPres.emo : p.emo; if(em && em.t && figEmo[p.pid]!==em.t){ figEmo[p.pid]=em.t; if(Date.now()-em.t<5000 || p.isMe) Room.emote(p.pid, em.e); } });
@@ -9212,65 +9233,43 @@ function gameSummaryHTML(ps, wait, D){
 }
 /* ---------- The Dougle Awards: a run of accolades splashed over the stage before the podium, a mix of proper ones and cheeky
    ones. Worked out from the shared end-of-game summary, so every phone shows the same awards in the same order. ---------- */
-function awardList(){ const g=S.gx, sc=S.scores||{}; if(!g) return [];
-  const ids=Object.keys(sc), n=ids.length, rank=ids.slice().sort((a,b)=>(sc[b]||0)-(sc[a]||0)); if(n<2) return [];
+function awardList(){ const g=S.gx, sc=S.scores||{}; if(!g) return {};
+  const ids=Object.keys(sc), n=ids.length, rank=ids.slice().sort((a,b)=>(sc[b]||0)-(sc[a]||0)); if(n<2) return {};
   const top=o=>{ let b=null; for(const p in o||{}) if(o[p]>0 && (!b || o[p]>o[b])) b=p; return b; }, km=v=>Math.round(v).toLocaleString("en-GB"), sec=ms=>(ms/1000).toFixed(1);
   const C=[], add=(k,joke,icon,title,p,line)=>{ if(p && ids.includes(p)) C.push({k,joke,icon,title,p,line}); };
-  if(g.fast) add("fast",0,"⚡","Fastest Fingers",g.fast.p,`Right in ${sec(g.fast.ms)} seconds`);
-  if(g.pinW && g.pinW.km>=300) add("far",1,"🧭","Furthest Away",g.pinW.p,`Pinned it ${km(g.pinW.km)} km off. Wrong continent?`);
-  if(g.pin) add("pin",0,"📍","Human Satnav",g.pin.p,g.pin.km<1?"Bang on the spot":`Just ${km(g.pin.km)} km away`);
+  if(g.pinW && g.pinW.km>=300) add("far",1,"🧭","Furthest Away",g.pinW.p,`${km(g.pinW.km)} km off`);
+  if(g.fast) add("fast",0,"⚡","Fastest Fingers",g.fast.p,`Right in ${sec(g.fast.ms)}s`);
   const wrong={}; for(const p of ids){ const w=(g.asked&&g.asked[p]||0)-(g.right&&g.right[p]||0); if(w>0) wrong[p]=w; } const mw=top(wrong); if(mw && wrong[mw]>=3) add("wrong",1,"🙈","Most Wrong Answers",mw,`${wrong[mw]} wrong. Confidently.`);
+  if(g.pin) add("pin",0,"📍","Human Satnav",g.pin.p,g.pin.km<1?"Bang on the spot":`Just ${km(g.pin.km)} km away`);
+  if(g.fastW && g.fastW.ms<2500) add("rash",1,"🤠","Shoot First, Think Later",g.fastW.p,`Wrong in ${sec(g.fastW.ms)}s`);
   const b=top(g.best); if(b && g.best[b]>=3) add("streak",0,"🔥","On Fire",b,`${g.best[b]} right in a row`);
-  if(g.fastW && g.fastW.ms<2500) add("rash",1,"🤠","Shoot First, Think Later",g.fastW.p,`Wrong in ${sec(g.fastW.ms)} seconds`);
-  if(g.slow && g.avg && g.slow.p!==g.avg.p) add("slow",1,"🐢","Took the Scenic Route",g.slow.p,`${sec(g.slow.ms)} seconds an answer`);
   if(g.estW && g.estW.rel>=.5) add("guess",1,"🌍","Wildest Guess",g.estW.p,`Off by ${fmtNum(g.estW.d, g.estW.unit==="year"?"":g.estW.unit)}${g.estW.unit==="year"?" years":unitTxt(g.estW.unit)}`);
+  if(g.slow && g.avg && g.slow.p!==g.avg.p) add("slow",1,"🐢","Took the Scenic Route",g.slow.p,`${sec(g.slow.ms)}s an answer`);
   if(g.word) add("word",0,"🔤","Wordsmith",g.word.p,g.word.w.toUpperCase());
-  /* comeback and collapse, from each player's place after every round */
   if(g.h && g.h.length>=3 && g.hp){ const place=row=>{ const pts=g.hp.map((p,i)=>[p,row[i+1]||0]).sort((x,y)=>y[1]-x[1]); const o={}; pts.forEach(([p],i)=>o[p]=i); return o; };
     const fin={}; rank.forEach((p,i)=>fin[p]=i); let best=null, worst=null;
     for(const row of g.h.slice(0,-1)){ const pl=place(row); for(const p of g.hp){ if(!(p in fin)) continue; const up=pl[p]-fin[p]; if(up>=2 && (!best || up>best.d)) best={p,d:up,from:pl[p]}; if(pl[p]===0 && fin[p]>=2 && (!worst || fin[p]>worst.d)) worst={p,d:fin[p]}; } }
-    if(best) add("back",0,"🚀","Comeback Kid",best.p,`Climbed from ${ordinal(best.from+1)} place`);
-    if(worst) add("peak",1,"📉","Peaked Too Early",worst.p,`Was top of the pile. Then wasn't.`); }
-  if(n>=2){ const a=sc[rank[0]]||0, s2=sc[rank[1]]||0; if(a>0 && a-s2>0 && (a-s2)<=a*.08) add("close",1,"😬","So Close",rank[1],`Just ${(a-s2).toLocaleString("en-GB")} points off the crown`); }
-  if(n>=3){ const last=rank[n-1]; add("spoon",1,"🥄","Wooden Spoon",last,"Someone had to. Thanks for taking one for the team."); }
-  /* pick up to five: give as many different people a moment as possible, keep a couple of cheeky ones, Wooden Spoon last */
-  const spoon=C.find(c=>c.k==="spoon"), rest=C.filter(c=>c!==spoon), out=[], used=new Set(), max=Math.min(5, Math.max(3,n+1));
-  const take=c=>{ out.push(c); used.add(c.p); };
-  for(const want of [1,0,1,0,1,0]){ if(out.length>=max-(spoon?1:0)) break; const c=rest.find(x=>!out.includes(x) && x.joke===want && !used.has(x.p) && x.p!==rank[0]) || rest.find(x=>!out.includes(x) && x.joke===want && !used.has(x.p)); if(c) take(c); }
-  for(const c of rest){ if(out.length>=max-(spoon?1:0)) break; if(!out.includes(c)) take(c); }
-  if(spoon) out.push(spoon);
-  return out.slice(0,max); }
+    if(best) add("back",0,"🚀","Comeback Kid",best.p,`Up from ${ordinal(best.from+1)}`);
+    if(worst) add("peak",1,"📉","Peaked Too Early",worst.p,"Led. Then didn't."); }
+  if(n>=2){ const a=sc[rank[0]]||0, s2=sc[rank[1]]||0; if(a>0 && a-s2>0 && (a-s2)<=a*.08) add("close",1,"😬","So Close",rank[1],`${(a-s2).toLocaleString("en-GB")} points off`); }
+  /* one each: the last-placed player gets the Wooden Spoon unless they earned something funnier; everyone else takes the
+     first award that's theirs; anyone left over gets a light-hearted fallback for their place */
+  const out={}, last=rank[n-1];
+  for(const c of C){ if(!out[c.p] && !(c.p===last && n>=3 && !c.joke)) out[c.p]=c; }
+  if(n>=3 && !out[last]) out[last]={icon:"🥄",title:"Wooden Spoon",line:"Someone had to",joke:1};
+  const fb=[{icon:"👑",title:"Quiz Champion",line:"Bow down"},{icon:"🥈",title:"Silver Lining",line:"Nearly had it"},{icon:"🥉",title:"Bronze Bomber",line:"Made the podium"}];
+  rank.forEach((p,i)=>{ if(!out[p]) out[p]=fb[i]||{icon:"🎉",title:"Here for the Vibes",line:"And that's what counts",joke:1}; });
+  return out; }
 function ordinal(n){ const s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
-let AW=null; /* {key, list, i, timer, done} */
-function awardsActive(){ return !!(S && S.phase==="final" && AW && AW.key===String(S.gid) && !AW.done); }
-function awardsDone(){ return !!(S && AW && AW.key===String(S.gid) && AW.done); }
-function awardsStart(){ const key=String(S.gid); if(AW && AW.key===key) return; if(!S.gx && Room.ok && !RM) return; /* wait for the end-of-game summary to arrive */ if(AW && AW.timer) clearTimeout(AW.timer); const list=(RM||!Room.ok)?[]:awardList();
-  AW={key, list, i:-1, done:!list.length}; if(AW.done) return; Room.setBoard("", "", "The Dougle Awards"); finalBoard(); const tok=AW; AW.timer=setTimeout(()=>awardsNext(tok), 1700); }
-function awardsNext(tok){ if(!AW || AW!==tok || AW.done || !S || S.phase!=="final") return; clearTimeout(AW.timer);
-  /* wait until everyone has walked onto the stage before the first award (up to 8 seconds) */
-  if(AW.i<0){ const ready=Room.order && Room.order.length && Room.order.every(p=>Room.chars[p] && (Room.chars[p].enter==null || Room.chars[p].enter>=1)); AW.w=(AW.w||0)+1; if(!ready && AW.w<20){ AW.timer=setTimeout(()=>awardsNext(tok),400); return; } }
-  AW.i++; const el0=document.getElementById("awsplash"); if(el0) el0.classList.add("out");
-  if(AW.i>=AW.list.length){ Room.awFocus=null; setTimeout(()=>{ const e=document.getElementById("awsplash"); if(e) e.remove(); },450); AW.done=true; finalBoard(); renderLobbyStage(); return; }
-  const a=AW.list[AW.i];
-  setTimeout(()=>{ const o=document.getElementById("awsplash"); if(o) o.remove();
-    /* sits over the big screen at the top of the stage, so the players below stay in view */
-    const st=document.querySelector(".fin-stage .room3d"), r=st?st.getBoundingClientRect():null;
-    const el=document.createElement("div"); el.id="awsplash"; el.className="aw-splash"+(a.joke?" joke":""); el.setAttribute("role","status");
-    if(r && r.width>0){ el.style.left=(r.left+r.width/2+scrollX)+"px"; el.style.top=(r.top+scrollY+Math.max(10,r.height*.04))+"px"; el.style.width=Math.min(r.width-24, 400)+"px"; }
-    el.innerHTML=`<div class="aws-kicker">The Dougle Awards · ${AW.i+1} of ${AW.list.length}</div><div class="aws-head"><span class="aws-icon" aria-hidden="true">${a.icon}</span><span class="aws-title">${esc(a.title)}</span></div><div class="aws-who">${avatar(a.p)}<b>${esc(a.p===me.pid?"You":nameOf(a.p))}</b></div><div class="aws-line">${esc(a.line)}</div>`;
-    document.body.appendChild(el); },AW.i?260:0);
-  Room.awFocus=a.p; Room.flash=1; Room.emote(a.p, a.joke?(["shrug","lol","bow"][AW.i%3]):(["cheer","flex","hype"][AW.i%3]));
-  try{ MUSIC.sting(a.joke?"wrong":"right"); }catch(e){}
-  AW.timer=setTimeout(()=>awardsNext(tok), 3000); }
+/* accolades ride along with the podium: each one pops up above its player's head as their pillar finishes rising */
+function awardsActive(){ return false; }
 /* the big screen behind the podium: "And the winner is…" until the winner rises, then their name */
 /* big text over the top of the stage: the drumroll line, then the winner's name */
 function finBoardHTML(){ const ps=Object.keys(S.scores||{}).sort((a,b)=>(S.scores[b]||0)-(S.scores[a]||0)), w=ps[0]; if(!w) return "";
-  if(awardsActive()) return "";
   if(!(Room.pod && Room.pod.fired) && !RM) return `<div class="fb-wait">And the winner is…</div>`;
-  const co=ps.filter(p=>(S.scores[p]||0)===(S.scores[w]||0)); return `<div class="fb-win"><span class="fb-crown">👑</span>${co.map(p=>esc(p===me.pid?"You":nameOf(p))).join(" &amp; ")}${co.length>1?"":"!"}</div><div class="fb-sub num">${(S.scores[w]||0).toLocaleString("en-GB")} points</div>`; }
+  const co=ps.filter(p=>(S.scores[p]||0)===(S.scores[w]||0)); const wa=Room.pod && Room.pod.aw && Room.pod.aw[w]; return `<div class="fb-win"><span class="fb-crown">👑</span>${co.map(p=>esc(p===me.pid?"You":nameOf(p))).join(" &amp; ")}${co.length>1?"":"!"}</div><div class="fb-row"><div class="fb-sub num">${(S.scores[w]||0).toLocaleString("en-GB")} points</div>${wa&&wa.title!=="Quiz Champion"?`<div class="fb-aw">${wa.icon} ${esc(wa.title)}</div>`:""}</div>`; }
 function finalBoard(){ const fb=$("#finboard"); if(fb){ const h=finBoardHTML(); if(fb._h!==h){ fb._h=h; fb.innerHTML=h; } } if(!S || S.phase!=="final") return; const ps=Object.keys(S.scores||{}).sort((a,b)=>(S.scores[b]||0)-(S.scores[a]||0)), w=ps[0];
   if(!w) return Room.setBoard("", "Thanks for playing", "Well played!"); const co=ps.filter(p=>(S.scores[p]||0)===(S.scores[w]||0));
-  if(awardsActive()) return Room.setBoard("", "", "The Dougle Awards");
   if(!(Room.pod && Room.pod.fired)) return Room.setBoard("", "", "And the winner is…");
   Room.setBoard("", `${(S.scores[w]||0).toLocaleString("en-GB")} points · quiz champion${co.length>1?"s":""}`, "👑 "+(co.length>1?co.map(p=>nameOf(p)).join(" & "):nameOf(w))+"!"); }
 function finalHTML(){
