@@ -353,6 +353,12 @@ button.tile:hover:not(:disabled){border-color:var(--accent)}
 .av.xl{width:72px;height:72px;font-size:42px;border-width:3px}
 .av:hover{animation:wiggle .5s}
 .avpick{display:flex;flex-wrap:wrap;gap:6px}
+.avchoose{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:2px 0}
+.avc{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;font:inherit;color:var(--ink);background:var(--panel-2);border:1.5px solid var(--line);border-radius:18px;padding:16px 14px;cursor:pointer;min-height:132px;transition:border-color .15s,transform .15s}
+.avc:hover{border-color:var(--acc,#ff8f6b)}.avc:active{transform:scale(.98)}.avc:focus-within,.avc:focus-visible{outline:2px solid var(--acc,#ff8f6b);outline-offset:2px}
+.avc .avc-ic{font-size:28px;line-height:1}.avc b{display:block;font-size:16px;line-height:1.2}.avc small{display:block;color:var(--muted);font-size:13px;line-height:1.35;margin-top:3px}
+.avc.cur{border-color:var(--acc,#ff8f6b)}
+@media(max-width:340px){.avchoose{grid-template-columns:1fr}.avc{min-height:0}}
 .avopt{width:52px;height:52px;line-height:1;border-radius:14px;border:1.5px solid var(--line);background:var(--panel-2);display:grid;place-items:center;padding:0;transition:transform .15s}
 .avopt:hover{transform:translateY(-3px) rotate(-8deg)}
 .avopt svg{width:46px;height:46px;display:block}
@@ -3294,6 +3300,8 @@ function toonSVGLite(t, opts){ opts=opts||{}; if(t && t.gender==="f" && t.facial
   else if(t.top==="jumper"){ push(`<path d="M${100-28} 186 Q100 204 ${100+28} 186" stroke="${shade(tc,.75)}" stroke-width="7" fill="none"/><path d="M${100-28} 186 Q100 204 ${100+28} 186" stroke="${shade(tc,1.2)}" stroke-width="1.5" fill="none" opacity=".6"/>`); }
   else push(`<path d="M${100-26} 186 Q100 200 ${100+26} 186" stroke="${shade(tc,.7)}" stroke-width="3.5" fill="none"/>`);
   }
+  /* body only (photo bobbleheads put a real head on top) */
+  if(opts.bodyOnly){ push(`</g>`); return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${opts.vb||"6 -6 188 204"}">${out.join("")}</svg>`; }
   // ---------- ears ----------
   if(!FO) for(const s of [-1,1]){ const ex=100+s*(ck+1); push(`<path d="M${ex} 96 C${ex+s*12} 92 ${ex+s*14} 110 ${ex+s*10} 122 C${ex+s*7} 130 ${ex} 128 ${ex-s*2} 124 Z" fill="${U("g")}" stroke="${OLc}" stroke-width="1" stroke-opacity=".6"/><path d="M${ex+s*3} 102 C${ex+s*9} 102 ${ex+s*9} 114 ${ex+s*5} 118" stroke="${shade(sk,.62)}" stroke-width="2" fill="none" opacity=".55"/>`);
     if(t.earrings) push(`<circle cx="${ex+s*6}" cy="128" r="3.4" fill="#E7B53C" stroke="#A47A1C" stroke-width=".8"/><circle cx="${ex+s*5}" cy="127" r="1.1" fill="#FFF6C8"/>`); }
@@ -3426,13 +3434,24 @@ function avKey(t,o,px){ return encodeToon(t)+"|"+((o&&o.vb)||"")+"|"+((o&&o.head
 function avHashK(k){ let h=2166136261>>>0; for(let i=0;i<k.length;i++){ h^=k.charCodeAt(i); h=Math.imul(h,16777619)>>>0; } return h.toString(36)+k.length.toString(36); }
 function avSrc(t,o,px){ px=Math.round((px||360)*(AV_MOBILE?.66:1));
   /* a photo face only ever comes from the player it belongs to: passed in by the caller, or your own selfie for your own avatar / the maker preview */
-  if(t && t.eyes==="photo" && !(o&&(o.photo||o.noPhoto))){ let ph=null; try{ const k0=encodeToon(t); if(typeof mySelfie==="function" && (k0===me.av || (app && app.mk && encodeToon(app.mk)===k0))) ph=mySelfie(); }catch(e){} if(ph) o=Object.assign({},o||{},{photo:ph}); }
+  if(t && isPhotoT(t) && !(o&&(o.photo||o.noPhoto))){ let ph=null; try{ const k0=encodeToon(t); if(typeof mySelfie==="function" && (k0===me.av || (app && app.mk && encodeToon(app.mk)===k0) || (t.eyes==="photohead" && app && app.mkMode==="photo" && document.getElementById("mkmodal")))) ph=mySelfie(); }catch(e){} if(ph) o=Object.assign({},o||{},{photo:ph}); }
   if(o && o.noPhoto){ o=Object.assign({},o); delete o.noPhoto; }
+  if(t && t.eyes==="photohead") return phdSrc(t,o||{},px);
   const k=avKey(t,o,px)+((o&&o.photo)?"|ph"+o.photo.length+o.photo.slice(-24):""); const p=AVR.png.get(k); if(p) return p;
   let l=AVR.lite.get(k); if(!l){ try{ l="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(toonSVGLite(t,Object.assign({},o||{}))+"<!--"+avHashK(k)+"-->"); /* unique per avatar+photo, so a finished picture only replaces its own placeholders */ }catch(e){ l=""; } if(AVR.lite.size>400) AVR.lite.clear(); AVR.lite.set(k,l); }
   if(px<130 && AV_MOBILE) return l; /* small tiles on phones stay in the lighter style */
   if(AVR.bad<3 && !AVR.q.some(j=>j.k===k)){ AVR.q.push({k,t,o,l,px}); setTimeout(avPump,0); }
   return l; }
+function phdSrc(t,o,px){ const ph=o.photo; if(!ph || !/^data:image\/jpeg;base64,/.test(ph)) return avSrc(Object.assign({},t,{eyes:"almond"}),Object.assign({},o,{noPhoto:1}),px);
+  const k="phd|"+encodeToon(t)+"|"+(o.vb||"")+"|"+ph.length+ph.slice(-32); const c=AVR.lite.get(k); if(c) return c;
+  const body=Object.assign({},t,{eyes:"almond",hair:"bald",hat:"none",glasses:"none",facial:"none",earrings:false});
+  let svg=""; try{ svg=toonSVGLite(body,{vb:o.vb, bodyOnly:true}); }catch(e){ return ""; }
+  const id="h"+Math.random().toString(36).slice(2,7);
+  const head=`<mask id="${id}m" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200"><image href="${ph}" x="-200" y="0" width="400" height="200" preserveAspectRatio="none"/></mask><filter id="${id}s" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3"/></filter>`
+    +`<g mask="url(#${id}m)" transform="translate(0 4)" opacity=".35" filter="url(#${id}s)"><rect x="0" y="0" width="200" height="200" fill="#000"/></g>`
+    +`<image href="${ph}" x="0" y="0" width="400" height="200" preserveAspectRatio="none" mask="url(#${id}m)"/>`;
+  const i=svg.lastIndexOf("</svg>"); const out="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg.slice(0,i)+head+"</svg>");
+  if(AVR.lite.size>400) AVR.lite.clear(); AVR.lite.set(k,out); return out; }
 /* finished face pictures are kept on the device (IndexedDB), so the next visit shows them straight away */
 const AVDB={p:null, v:"r"+(typeof toonSVG==="function"?toonSVG.toString().length.toString(36):"0"),
   open(){ if(this.p) return this.p; this.p=new Promise(res=>{ try{ const r=indexedDB.open("sq-av",1); r.onupgradeneeded=()=>{ try{ r.result.createObjectStore("png"); }catch(e){} }; r.onsuccess=()=>res(r.result); r.onerror=()=>res(null); r.onblocked=()=>res(null); }catch(e){ res(null); } }); return this.p; },
@@ -4830,12 +4849,28 @@ const Room={
     list.forEach((p,i)=>{ keep.add(p.pid); const w=this.want[p.pid]||(this.want[p.pid]={}); Object.assign(w,{label:p.label,me:p.me,color:p.color,slot:i,ph:p.ph||null});
       const c=this.chars[p.pid];
       if((!c || c.av!==p.av) && w.av!==p.av){ w.av=p.av; const av=p.av;
-        CF.get(av,true).then(g=>{ if(!this.want[p.pid] || this.want[p.pid].av!==av) return; const old=this.chars[p.pid]; const ch=makeChar(this.gx,av,g); ch.av=av; ch.photo=(this.want[p.pid]&&this.want[p.pid].ph)||null; if(old){ ch.enter=1; ch.x=old.x; ch.z=old.z; if(old.tag) old.tag.remove(); freeChar(this.gx,old); } this.chars[p.pid]=ch; Object.assign(ch,{label:w.label,me:w.me,color:w.color}); if(w.emote){ ch.emote={e:w.emote,t0:this.time||0}; w.emote=null; } this.layout(); }).catch(e=>console.warn(e)); }
-      if(c){ c.label=w.label; c.me=w.me; c.color=w.color; if((c.photo||null)!==(w.ph||null)){ c.photo=w.ph; c.tbImg=null; c.faceKey="?"; } } });
+        CF.get(av,true).then(g=>{ if(!this.want[p.pid] || this.want[p.pid].av!==av) return; const old=this.chars[p.pid]; const ch=makeChar(this.gx,av,g); ch.av=av; ch.photo=(this.want[p.pid]&&this.want[p.pid].ph)||null; this.photoSprite(ch); if(old){ ch.enter=1; ch.x=old.x; ch.z=old.z; if(old.tag) old.tag.remove(); freeChar(this.gx,old); } this.chars[p.pid]=ch; Object.assign(ch,{label:w.label,me:w.me,color:w.color}); if(w.emote){ ch.emote={e:w.emote,t0:this.time||0}; w.emote=null; } this.layout(); }).catch(e=>console.warn(e)); }
+      if(c){ c.label=w.label; c.me=w.me; c.color=w.color; if((c.photo||null)!==(w.ph||null)){ c.photo=w.ph; c.tbImg=null; c.faceKey="?"; this.photoSprite(c); } } });
     for(const pid in this.want) if(!keep.has(pid)) delete this.want[pid];
     for(const pid in this.chars) if(!keep.has(pid)){ const c=this.chars[pid]; if(c.tag) c.tag.remove(); freeChar(this.gx,c); delete this.chars[pid]; }
     this.order=list.map(p=>p.pid); this.layout();
   },
+  /* photo bobblehead: the cut-out photo head is drawn as a big, wobbling, camera-facing head on the 3D body (the drawn head is hidden).
+     Until the photo arrives the player shows with a drawn head. */
+  photoSprite(ch){ const t=avToon(ch.av); ch.spriteTex=null; ch.spriteBack=null; ch.relief=null; if(!(t && t.eyes==="photohead") || !ch.photo) return; const ph=ch.photo, im=new Image();
+    im.onload=()=>{ try{ if(ch.photo!==ph) return; const W=Math.round(im.width/2), H=im.height;
+      const col=document.createElement("canvas"); col.width=W; col.height=H; const cx=col.getContext("2d"); cx.drawImage(im,0,0); const cd=cx.getImageData(0,0,W,H);
+      const mk=document.createElement("canvas"); mk.width=W; mk.height=H; const mx=mk.getContext("2d"); mx.drawImage(im,-W,0); const md=mx.getImageData(0,0,W,H).data;
+      let r=0,g=0,b=0,n=0; for(let i=0;i<cd.data.length;i+=4){ const a=md[i]; cd.data[i+3]=a; const y=(i/4/W)|0; if(a>240 && y<H*.22){ r+=cd.data[i]; g+=cd.data[i+1]; b+=cd.data[i+2]; n++; } } cx.putImageData(cd,0,0);
+      /* same framing as the drawn heads: the avatar's 200-unit frame inside a 220-unit square starting at (-10,-20) */
+      const S=512, k=S/220, cv=document.createElement("canvas"); cv.width=cv.height=S; const x=cv.getContext("2d"); x.drawImage(col,10*k,20*k,200*k,200*k);
+      const hc=n?`rgb(${r/n|0},${g/n|0},${b/n|0})`:"#3a2a20";
+      const bc=document.createElement("canvas"); bc.width=bc.height=S; const y=bc.getContext("2d"); y.translate(S,0); y.scale(-1,1); y.drawImage(cv,0,0); y.setTransform(1,0,0,1,0,0);
+      y.globalCompositeOperation="source-in"; y.fillStyle=hc; y.fillRect(0,0,S,S); y.globalCompositeOperation="source-atop";
+      const gr=y.createRadialGradient(S*.45,S*.3,20,S/2,S*.5,S*.5); gr.addColorStop(0,"rgba(255,255,255,.2)"); gr.addColorStop(.6,"rgba(0,0,0,0)"); gr.addColorStop(1,"rgba(0,0,0,.35)"); y.fillStyle=gr; y.fillRect(0,0,S,S);
+      const id=Math.random().toString(36).slice(2); ch.spriteTex=this.gx.texCanvas("phs_"+id,cv); ch.spriteBack=this.gx.texCanvas("phb_"+id,bc); ch.relief=null;
+    }catch(e){ console.warn("photo head",e); ch.spriteTex=null; } };
+    im.src=ph; },
   loadSprite(ch,av){ try{ const tt=(typeof avToon==="function")&&avToon(av); if(!tt) return; const SV="-10 -20 220 220", img=new Image(); ch.sprPending=true;
       img.onload=()=>{ try{ const cv=document.createElement("canvas"); cv.width=cv.height=512; const x=cv.getContext("2d"); x.drawImage(img,0,0,512,512); ch.spriteTex=this.gx.texCanvas("spr_"+Math.random().toString(36).slice(2),cv); ch.sprPending=false;
         try{ const fc=document.createElement("canvas"); fc.width=fc.height=512; const f=fc.getContext("2d"); for(const r of [10,6,3]) for(let k=0;k<8;k++){ const an=k*Math.PI/4; f.drawImage(img,Math.cos(an)*r,Math.sin(an)*r,512,512); } f.drawImage(img,0,0,512,512);
@@ -4958,7 +4993,7 @@ const Portrait={ gx:null, ok:null, cache:{}, cv:null, busy:false, q:[], wait:new
 const TOON_URI={}; /* v2 */
 /* small avatars: a render of the player's actual 3D head (so it matches the character on stage); the flat drawing shows until the render is ready.
    Selfie avatars keep the photo face. */
-function avSVG(id, bg, pid){ const tt=avToon(id); if(tt){ const ph=(tt.eyes==="photo")?(pid?photoOf(pid,id):(id===me.av?mySelfie():null)):null; const flat=avSrc(tt,ph?{photo:ph}:{noPhoto:1},360);
+function avSVG(id, bg, pid){ const tt=avToon(id); if(tt){ const ph=isPhotoT(tt)?(pid?photoOf(pid,id):(id===me.av?mySelfie():null)):null; const flat=avSrc(tt,ph?{photo:ph}:{noPhoto:1},360);
     if(ph || Room.ok===false || typeof Worker==="undefined") return `<img class="avimg toon" src="${flat}" alt="" draggable="false">`;
     const u=Portrait.get(id); return `<img class="avimg toon${u?" r3":""}" data-pav="${esc(id)}" data-flat="1" src="${u||flat}" alt="" draggable="false">`; } if(Room.ok===false || typeof Worker==="undefined") return avSVG2D(id, bg); const u=Portrait.get(id); return `<img class="avimg${u?" r3":""}" data-pav="${id}" src="${u||avURI(id)}" alt="" draggable="false">`; }
 
@@ -6789,20 +6824,28 @@ function mkTabBody(tab){ const m=mkState(), sec=(h,b)=>`<div class="mk-sec"><div
     case "skin": return mkSw("skin",MK.skins,"Skin tone");
     case "hair": return (m.hair==="hijab"?mkSw("hijabColour",MK.tops,"Hijab colour"):mkSw("hairColour",MK.hcols,"Hair colour"))+sec("Style",mkTiles("hair",TOON.hair));
     case "face": return sec("Face shape",mkTiles("face",TOON.face));
-    case "eyes": return (m.eyes==="photo"?`<p class="muted">Using your photo for your face. Pick an eye shape to go back to a drawn face.</p>`:"")+mkSw("eyeColour",MK.eyes,"Eye colour")+sec("Eye shape",mkTiles("eyes",Object.fromEntries(Object.entries(TOON.eyes).filter(([k])=>k!=="photo"))));
+    case "eyes": return mkSw("eyeColour",MK.eyes,"Eye colour")+sec("Eye shape",mkTiles("eyes",Object.fromEntries(Object.entries(TOON.eyes).filter(([k])=>!isPhotoT({eyes:k})))));
     case "brows": return sec("Eyebrows",mkTiles("brows",TOON.brows));
     case "nose": return sec("Nose",mkTiles("nose",TOON.nose))+sec("Lips",mkTiles("lips",TOON.lips));
     case "beard": return m.hair==="hijab"?`<p class="muted">Not available with a hijab.</p>`:sec("Facial hair",mkTiles("facial",TOON.facial));
     case "glasses": return sec("Glasses",mkTiles("glasses",TOON.glasses));
-    case "outfit": return mkSw("topColour",MK.tops,"Colour")+sec("Top",mkTiles("top",TOON.top,"10 40 180 180"))+(m.hair==="hijab"?"":sec("Hat",mkTiles("hat",TOON.hat)));
+    case "outfit": return mkSw("topColour",MK.tops,"Colour")+sec("Top",mkTiles("top",TOON.top,"10 40 180 180"))+((m.hair==="hijab"||m.eyes==="photohead")?"":sec("Hat",mkTiles("hat",TOON.hat)));
     case "extras": return sec("Extras",`<div class="mk-tiles">${mkToggle("freckles","Freckles")}${mkToggle("earrings","Earrings")}</div>`);
   } return ""; }
 /* ---------- real-face photos ---------- */
 const PHOTOS={}, AVPH={};
+/* "photo" is the older look (your face painted onto a drawn head); "photohead" is the bobblehead: your real head, cut out like a sticker, on your drawn body */
+function isPhotoT(t){ return !!t && (t.eyes==="photo"||t.eyes==="photohead"); }
+/* the head outline, in the line-up editor's 300-unit square: a face oval for the chin plus a wider dome for the hair.
+   k/ox/oy place it in the avatar's 200-unit frame (chin just above the shoulders); ring is the white sticker edge */
+const PHD={face:[150,182,66,85], dome:[150,138,82,100], ring:4, k:.664, ox:.4, oy:-5.3};
+function phdShape(x,k,g){ x.beginPath(); for(const [cx,cy,rx,ry] of [PHD.face,PHD.dome]){ x.moveTo((cx+rx+g)*k,cy*k); x.ellipse(cx*k,cy*k,(rx+g)*k,(ry+g)*k,0,0,Math.PI*2); } }
+/* the body you build, without anything a real head replaces */
+function buildBase(){ const t=Object.assign({}, avToon(me.av)||(isToonAv(LS.get("sq-av-custom"))&&decodeToon(LS.get("sq-av-custom")))||TOON.def()); if(isPhotoT(t)) t.eyes="almond"; return t; }
 function mySelfie(){ const v=LS.get("sq-selfie"); return (typeof v==="string" && v.startsWith("data:image/jpeg;base64,"))?v:null; }
-function photoOf(pid, av){ const t=av&&avToon(av); if(!t || t.eyes!=="photo") return null; if(pid===me.pid) return mySelfie(); return PHOTOS[pid]||null; }
+function photoOf(pid, av){ const t=av&&avToon(av); if(!isPhotoT(t)) return null; if(pid===me.pid) return mySelfie(); return PHOTOS[pid]||null; }
 /* photos travel in presence as 1000-character pieces; Claude rooms cap presence at 4 KiB, so there a small copy is sent */
-function sharePhoto(){ if(!app.phRoom) return; const t=avToon(me.av), on=t&&t.eyes==="photo"; let ph=on?(window.SQ_STANDALONE?mySelfie():(LS.get("sq-selfie-s")||null)):null;
+function sharePhoto(){ if(!app.phRoom) return; const t=avToon(me.av), on=isPhotoT(t); let ph=on?(window.SQ_STANDALONE?mySelfie():(LS.get("sq-selfie-s")||null)):null;
   const patch={pid:me.pid, av:me.av, pn:0}; for(let i=0;i<40;i++) patch["p"+i]=null; if(ph){ const n=Math.ceil(ph.length/1000); patch.pn=n; for(let i=0;i<n;i++) patch["p"+i]=ph.slice(i*1000,(i+1)*1000); }
   app.phRoom.presence(patch).catch(e=>console.warn("photo share",e)); }
 function photoFromPres(q){ const n=q.pn|0; if(!n || n>40) return null; let s=""; for(let i=0;i<n;i++){ if(typeof q["p"+i]!=="string") return null; s+=q["p"+i]; } return (s.startsWith("data:image/jpeg;base64,") && s.length<70000)?s:null; }
@@ -6810,7 +6853,7 @@ function photoFromPres(q){ const n=q.pn|0; if(!n || n>40) return null; let s="";
 const FE={img:null, x:0, y:0, s:1, r:0};
 function faceEditorOpen(file){ const u=URL.createObjectURL(file), im=new Image(); im.onload=()=>{ FE.img=im; const S=300, k=Math.min(S/im.width,S/im.height); FE.s=k; FE.r=0; FE.x=S/2; FE.y=S*.56; faceEditorShow(); }; im.onerror=()=>toast("Couldn't open that photo"); im.src=u; }
 function faceEditorShow(){ let el=document.getElementById("femodal"); if(!el){ el=document.createElement("div"); el.id="femodal"; el.className="fe-modal"; document.body.appendChild(el); }
-  el.innerHTML=`<div class="fe-sheet" role="dialog" aria-modal="true" aria-label="Line up your face"><b>Line up your face</b><p class="muted">Drag and zoom so your eyes sit on the two dots and your mouth on the line. Face the camera, in good light.</p>
+  el.innerHTML=`<div class="fe-sheet" role="dialog" aria-modal="true" aria-label="Line up your face"><b>Line up your head</b><p class="muted">Drag and zoom so your whole head, hair too, fits the outline: eyes on the two dots, mouth on the line. Anything outside the outline is cut away.</p>
     <div class="fe-stage"><canvas id="fecv" width="600" height="600"></canvas></div>
     <label class="fe-row">Zoom<input type="range" id="fezoom" min="20" max="400" value="100"></label><label class="fe-row">Tilt<input type="range" id="ferot" min="-30" max="30" value="0"></label>
     <div class="fe-foot"><button type="button" class="btn" data-act="fe-cancel">Cancel</button><button type="button" class="btn primary" data-act="fe-use">Use this</button></div></div>`;
@@ -6823,35 +6866,41 @@ function faceEditorShow(){ let el=document.getElementById("femodal"); if(!el){ e
   faceEditorDraw(); }
 function faceEditorPaint(x,S){ const k=S/300; x.save(); x.translate(FE.x*k,FE.y*k); x.rotate(FE.r); x.scale(FE.s*k,FE.s*k); x.drawImage(FE.img,-FE.img.width/2,-FE.img.height/2); x.restore(); }
 function faceEditorDraw(){ const cv=document.getElementById("fecv"); if(!cv||!FE.img) return; const x=cv.getContext("2d"), S=600; x.fillStyle="#222"; x.fillRect(0,0,S,S); faceEditorPaint(x,S);
-  /* guide, in the same frame the 3D head uses: eyes at (.399,.506) and (.601,.506), mouth at .683, face oval */
-  x.save(); x.fillStyle="rgba(0,0,0,.45)"; x.beginPath(); x.rect(0,0,S,S); x.ellipse(S*.5,S*.6,S*.215,S*.29,0,0,Math.PI*2); x.fill("evenodd");
-  x.strokeStyle="rgba(255,255,255,.85)"; x.lineWidth=3; x.setLineDash([10,8]); x.beginPath(); x.ellipse(S*.5,S*.6,S*.215,S*.29,0,0,Math.PI*2); x.stroke(); x.setLineDash([]);
+  /* guide: the head outline that gets cut out, eyes at (.399,.506) and (.601,.506), mouth at .683 */
+  const g=S/300; x.save(); const sh=document.createElement("canvas"); sh.width=sh.height=S; const sx=sh.getContext("2d"); sx.fillStyle="rgba(0,0,0,.6)"; sx.fillRect(0,0,S,S); sx.globalCompositeOperation="destination-out"; phdShape(sx,g,0); sx.fill(); x.drawImage(sh,0,0);
+  x.strokeStyle="rgba(255,255,255,.9)"; x.lineWidth=3; x.setLineDash([10,8]);
+  /* one outline around both shapes: each ellipse is stroked only where it lies outside the other */
+  const E=[PHD.face,PHD.dome]; for(let i=0;i<2;i++){ const [cx,cy,rx,ry]=E[i], [ox,oy,orx,ory]=E[1-i]; x.save(); x.beginPath(); x.rect(0,0,S,S); x.ellipse(ox*g,oy*g,orx*g,ory*g,0,0,Math.PI*2); x.clip("evenodd"); x.beginPath(); x.ellipse(cx*g,cy*g,rx*g,ry*g,0,0,Math.PI*2); x.stroke(); x.restore(); }
+  x.setLineDash([]);
   x.fillStyle="#FFD43B"; for(const u of [.399,.601]){ x.beginPath(); x.arc(S*u,S*.506,8,0,7); x.fill(); } x.strokeStyle="#FFD43B"; x.lineWidth=5; x.beginPath(); x.moveTo(S*.44,S*.683); x.lineTo(S*.56,S*.683); x.stroke(); x.restore(); }
 function faceEditorClose(){ const el=document.getElementById("femodal"); if(el) el.remove(); }
 function faceEditorUse(){ if(!FE.img) return; const S=256, c=document.createElement("canvas"); c.width=c.height=S; const x=c.getContext("2d"); faceEditorPaint(x,S);
   /* skin colour from the cheeks, so the rest of the head matches the photo */
   let r=0,g=0,b=0,n=0; for(const [u,v] of [[.36,.62],[.64,.62],[.5,.45]]){ const d=x.getImageData(Math.round(S*u)-6,Math.round(S*v)-6,12,12).data; for(let i=0;i<d.length;i+=4){ r+=d[i]; g+=d[i+1]; b+=d[i+2]; n++; } }
   const hx=v=>Math.round(Math.max(0,Math.min(255,v/n))).toString(16).padStart(2,"0"), skin="#"+hx(r)+hx(g)+hx(b);
-  x.fillStyle=skin; x.fillRect(0,0,S,S); faceEditorPaint(x,S); /* anything the photo doesn't reach is skin, not black */
-  let q=.78, url=c.toDataURL("image/jpeg",q); while(url.length>42000 && q>.4){ q-=.08; url=c.toDataURL("image/jpeg",q); }
-  { const c2=document.createElement("canvas"); c2.width=c2.height=88; c2.getContext("2d").drawImage(c,0,0,88,88); let q2=.6, sm=c2.toDataURL("image/jpeg",q2); while(sm.length>2900 && q2>.2){ q2-=.08; sm=c2.toDataURL("image/jpeg",q2); } LS.set("sq-selfie-s",sm); }
-  app.feDraft=url; LS.set("sq-selfie",url); AVR.png.clear(); app.mk=Object.assign({},mkState(),{eyes:"photo", skin}); faceEditorClose(); renderMaker(); }
-function makerHTML(){ const m=mkState(), tab=app.mkTab||"body", canPhoto=!!app.sample;
-  return `<div class="mk-sheet" role="dialog" aria-modal="true" aria-label="Avatar maker">
-    <div class="mk-top"><b>Make your avatar</b><button type="button" class="mk-x" data-act="maker" aria-label="Close">✕</button></div>
+  /* the bobblehead: your head cut to the outline with a white sticker edge, placed in the avatar's 200-unit frame */
+  const W=256, out=document.createElement("canvas"); out.width=W*2; out.height=W; const o=out.getContext("2d"), u=W/200, T=[u*PHD.k,0,0,u*PHD.k,u*PHD.ox,u*PHD.oy];
+  o.fillStyle=skin; o.fillRect(0,0,W,W); o.save(); o.transform(...T); phdShape(o,1,PHD.ring); o.fillStyle="#fff"; o.fill(); phdShape(o,1,0); o.clip(); o.fillStyle=skin; o.fillRect(-60,-60,420,420); faceEditorPaint(o,300); o.restore();
+  o.save(); o.translate(W,0); o.fillStyle="#000"; o.fillRect(0,0,W,W); o.transform(...T); o.filter="blur(0.5px)"; phdShape(o,1,PHD.ring+.6); o.fillStyle="#fff"; o.fill(); o.restore();
+  let q=.84, url=out.toDataURL("image/jpeg",q); while(url.length>38000 && q>.4){ q-=.06; url=out.toDataURL("image/jpeg",q); }
+  { const c2=document.createElement("canvas"); c2.width=128; c2.height=64; c2.getContext("2d").drawImage(out,0,0,128,64); let q2=.6, sm=c2.toDataURL("image/jpeg",q2); while(sm.length>2900 && q2>.2){ q2-=.08; sm=c2.toDataURL("image/jpeg",q2); } LS.set("sq-selfie-s",sm); }
+  app.feDraft=url; LS.set("sq-selfie",url); AVR.png.clear(); AVR.lite.clear();
+  const base=(app.mkMode==="photo" && app.mk)?app.mk:buildBase(); app.mk=Object.assign({},base,{eyes:"photohead", skin}); app.mkMode="photo"; app.mkTab="outfit"; faceEditorClose();
+  if(document.getElementById("mkmodal")) renderMaker(); else { app.mkOpen=true; openMaker(); } }
+function makerHTML(){ const m=mkState(), photo=app.mkMode==="photo";
+  const tabs=photo?[["outfit","Outfit"]]:MK.tabs.filter(([k])=>!(k==="beard" && m.gender==="f")), tab=tabs.some(([k])=>k===app.mkTab)?app.mkTab:tabs[0][0];
+  return `<div class="mk-sheet" role="dialog" aria-modal="true" aria-label="${photo?"Your bobblehead":"Build your avatar"}">
+    <div class="mk-top"><b>${photo?"Your bobblehead":"Build your avatar"}</b><button type="button" class="mk-x" data-act="maker" aria-label="Close">✕</button></div>
     <div class="mk-main">
       <div class="mk-stage"><div class="mk-pv" id="mkpv"><img src="${avSrc(m,{},480)}" alt="Your avatar" draggable="false">${app.mkBusy?`<div class="busy"><span class="spin"></span>${esc(app.mkBusy)}</div>`:""}</div>
-        <label class="btn mk-selfie ${canPhoto?"":"disabled"}" ${canPhoto?"":'aria-disabled="true"'}><input type="file" accept="image/*" capture="user" id="mkphoto" hidden ${canPhoto?"":"disabled"}>📷 Match a selfie</label>
-        <p class="mk-note">${canPhoto?"Your selfie is read to fill everything in. The photo isn't saved or shared.":"Selfie matching isn't available here."}</p>
-        <label class="btn primary mk-selfie"><input type="file" accept="image/*" capture="user" id="mkface" hidden>${m.eyes==="photo"?"🙂 Change my real face":"🙂 Use my real face"}</label>
-        ${m.eyes==="photo"?`<button type="button" class="btn ghost mk-selfie" data-act="mkfacedel">Remove my photo</button>`:""}
-        <p class="mk-note">Your face photo goes on your 3D character. Only players in your party see it.</p></div>
+        ${photo?`<label class="btn mk-selfie"><input type="file" accept="image/*" capture="user" id="mkface" hidden>📸 Retake photo</label>
+        <p class="mk-note">Your photo is only shown to players in your party.</p>`:""}</div>
       <div class="mk-edit">
-        <div class="mk-tabs" role="tablist">${MK.tabs.filter(([k])=>!(k==="beard" && mkState().gender==="f")).map(([k,l])=>`<button type="button" role="tab" class="${k===tab?"on":""}" aria-selected="${k===tab}" data-act="mktab" data-tab="${k}">${l}</button>`).join("")}</div>
+        <div class="mk-tabs" role="tablist">${tabs.map(([k,l])=>`<button type="button" role="tab" class="${k===tab?"on":""}" aria-selected="${k===tab}" data-act="mktab" data-tab="${k}">${l}</button>`).join("")}</div>
         <div class="mk-body" id="mkbody">${mkTabBody(tab)}</div>
       </div>
     </div>
-    <div class="mk-foot"><button type="button" class="btn ghost" data-act="mkrandom">Shuffle</button><span class="grow"></span><button type="button" class="btn" data-act="maker">Cancel</button><button type="button" class="btn primary" data-act="mksave">Save avatar</button></div>
+    <div class="mk-foot">${photo?"":`<button type="button" class="btn ghost" data-act="mkrandom">Shuffle</button>`}<span class="grow"></span><button type="button" class="btn" data-act="maker">Cancel</button><button type="button" class="btn primary" data-act="mksave">Save avatar</button></div>
   </div>`; }
 function openMaker(){ let el=document.getElementById("mkmodal"); if(!el){ el=document.createElement("div"); el.id="mkmodal"; el.className="mk-modal"; document.body.appendChild(el); el.addEventListener("mousedown",e=>{ if(e.target===el) closeMaker(); }); } el.innerHTML=makerHTML(); document.body.classList.add("mk-lock"); }
 function closeMaker(){ const el=document.getElementById("mkmodal"); if(el) el.remove(); document.body.classList.remove("mk-lock"); app.mkOpen=false; }
@@ -6938,7 +6987,11 @@ Choose the closest option for each, and make "hair" agree with "hairNotes".`;
   renderMaker();
 }
 
-function avPickerHTML(){ const cu=LS.get("sq-av-custom"); const list=(isToonAv(cu)?[cu]:[]).concat(AVATARS); return `<div class="avpick" id="avpick" role="group" aria-label="Choose your avatar"><button type="button" class="avopt mk-add" data-act="maker" aria-label="Create your own avatar" title="Create your own"><span>+</span></button>${list.map(a=>{ const nm=(isCustomAv(a)||isToonAv(a))?"Your avatar":AV_DEF[a].n; return `<button type="button" class="avopt ${a===me.av?"sel":""} ${(isCustomAv(a)||isToonAv(a))?"custom":""}" data-act="pickav" data-av="${a}" aria-pressed="${a===me.av}" aria-label="${nm}" title="${nm}">${avSVG(a)}</button>`; }).join("")}</div>`; }
+function avPickerHTML(){ const t=avToon(me.av), ph=!!(t && t.eyes==="photohead" && mySelfie()), built=!!(t && !isPhotoT(t) && isToonAv(me.av));
+  return `<div class="avpick avchoose" id="avpick" role="group" aria-label="Your avatar">
+    ${ph?`<button type="button" class="avc cur" data-act="mkphotoedit">`:`<label class="avc">`}<span class="avc-ic" aria-hidden="true">📸</span><span><b>${ph?"Your bobblehead":"Use my face"}</b><small>${ph?"Change your outfit or retake your photo":"Take a selfie and your real face becomes a bobblehead"}</small></span>${ph?`</button>`:`<input type="file" accept="image/*" capture="user" id="mkface" hidden></label>`}
+    <button type="button" class="avc${built?" cur":""}" data-act="mkbuild"><span class="avc-ic" aria-hidden="true">🎨</span><span><b>${built?"Edit my avatar":"Build an avatar"}</b><small>Pick your hair, face, outfit and more</small></span></button>
+  </div>`; }
 (function accentTick(){ let last=0; const root=document.documentElement; const t0=performance.now();
   const step=()=>{ const t=(performance.now()-t0)/1000; const h=(30+t*1.5)%360; if(Math.abs(h-last)>.6){ last=h; root.style.setProperty("--hue",h.toFixed(1)); if(typeof ACC!=="undefined") ACC.set(h); } };
   step(); setInterval(()=>{ if(!document.hidden) step(); },120); })();
@@ -10108,7 +10161,9 @@ document.addEventListener("click", async e=>{
   if(a==="mkfacedel"){ app.mk=Object.assign({},mkState(),{eyes:"almond"}); renderMaker(); return; }
   if(a==="fe-cancel"){ faceEditorClose(); return; }
   if(a==="fe-use"){ faceEditorUse(); return; }
-  if(a==="mksave"){ const id=encodeToon(app.mk); if(app.mk.eyes==="photo" && app.feDraft){ LS.set("sq-selfie",app.feDraft); app.feDraft=null; } closeMaker(); setMyAv(id); toast("Avatar saved. You're using it now."); return; }
+  if(a==="mkbuild"){ closeMaker(); app.mkMode="build"; app.mk=buildBase(); app.mkTab="body"; app.mkOpen=true; openMaker(); return; }
+  if(a==="mkphotoedit"){ closeMaker(); const t=avToon(me.av); if(!(t && t.eyes==="photohead")) return; app.mkMode="photo"; app.mk=Object.assign({},t); app.mkTab="outfit"; app.mkOpen=true; openMaker(); return; }
+  if(a==="mksave"){ const id=encodeToon(app.mk); if(isPhotoT(app.mk) && app.feDraft){ LS.set("sq-selfie",app.feDraft); app.feDraft=null; } closeMaker(); setMyAv(id); toast("Avatar saved. You're using it now."); return; }
   if(a==="pickav"){ const v=b.dataset.av; if(!validAv(v)) return; setMyAv(v); return; }
   if(a==="daily"||a==="dailyresult"){ startDaily(); return; }
   if(a==="dgrid"){ startDGrid(); return; }
