@@ -454,6 +454,15 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/report" && req.method === "POST") { await ready; return reportRoute(req, res); }
     if (url.pathname === "/api/log" && req.method === "POST") { await ready; return logRoute(req, res); }
     if (url.pathname === "/admin" && req.method === "GET") { await ready; return adminRoute(req, res, url); }
+    /* face finding and head cut-out models, loaded only when someone uses "Use my face" */
+    if (req.method === "GET" && url.pathname.startsWith("/face/")) {
+      const rel = url.pathname.slice(6), fp = path.join(__dirname, "face", rel);
+      if (!/^[a-z0-9_\-]+(\/[a-z0-9_\-]+)?\.(js|json|bin|wasm|tflite|binarypb|data)$/i.test(rel) || !fp.startsWith(path.join(__dirname, "face"))) { res.writeHead(404); return res.end(); }
+      fs.readFile(fp, (err, body) => { if (err) { res.writeHead(404); return res.end(); }
+        const ext = rel.split(".").pop(), type = { js: "text/javascript; charset=utf-8", json: "application/json", wasm: "application/wasm" }[ext] || "application/octet-stream";
+        res.writeHead(200, { "content-type": type, "cache-control": "public, max-age=2592000", "access-control-allow-origin": "*" }); res.end(body); });
+      return;
+    }
     if (req.method === "GET" && url.pathname === "/dict.gz") { try { const body = dictC(); res.writeHead(200, { "content-type": "application/octet-stream", "cache-control": "public, max-age=31536000, immutable" }); return res.end(body); } catch (e) { return json(res, 404, { error: "no dictionary" }); } }
     if (req.method === "GET" && STATIC[url.pathname]) { const f = STATIC[url.pathname]; try { const body = fs.readFileSync(path.join(__dirname, f[0])); res.writeHead(200, { "content-type": f[1], "cache-control": "public, max-age=86400" }); return res.end(body); } catch (e) {} }
     if (url.pathname === "/api/db" && req.method === "POST") {

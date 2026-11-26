@@ -4723,7 +4723,7 @@ function rng(seed){ let s=seed>>>0||1; return ()=>((s=(s*1664525+1013904223)>>>0
 const DISPLAY_FONT="'Bricolage Grotesque','Inter Display','Inter',system-ui,sans-serif", MONO_FONT="'JetBrains Mono',ui-monospace,Menlo,monospace";
 /* a real 3D head moulded from the avatar picture: the picture's outline is inflated into a rounded head
    (front painted with the avatar, back with the hair), with a nose that sticks out, so it lights and turns like 3D */
-function buildRelief(img, tt){ const N=84, S=document.createElement("canvas"); S.width=S.height=N; const sx=S.getContext("2d"); sx.drawImage(img,0,0,N,N);
+function buildRelief(img, tt, ro){ ro=ro||{}; const N=84, S=document.createElement("canvas"); S.width=S.height=N; const sx=S.getContext("2d"); sx.drawImage(img,0,0,N,N);
   const A=sx.getImageData(0,0,N,N).data, IN=new Uint8Array(N*N); for(let i=0;i<N*N;i++) IN[i]=A[i*4+3]>140?1:0;
   // keep only the largest blob (drops stray hairs)
   const lab=new Int32Array(N*N).fill(-1); let best=-1,bestN=0; for(let i=0;i<N*N;i++){ if(!IN[i]||lab[i]>=0) continue; const st=[i]; lab[i]=i; let n=0; while(st.length){ const q=st.pop(); n++; const x=q%N,y=(q/N)|0; for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const X=x+dx,Y=y+dy; if(X<0||Y<0||X>=N||Y>=N) continue; const r=Y*N+X; if(IN[r]&&lab[r]<0){ lab[r]=i; st.push(r); } } } if(n>bestN){ bestN=n; best=i; } }
@@ -4748,7 +4748,7 @@ function buildRelief(img, tt){ const N=84, S=document.createElement("canvas"); S
   for(let it=0;it<10;it++){ const T=H.slice(); for(let i=0;i<N*N;i++){ if(!IN[i]||bnd(i)) continue; const v=(H[i-1]+H[i+1]+H[i-N]+H[i+N]+(H[i-N-1]+H[i-N+1]+H[i+N-1]+H[i+N+1])*.7)/6.8; T[i]=Math.max(v, H[i]*.0)+(0); T[i]=.35*H[i]+.65*T[i]; } H=T; }
   const prof=(d,i)=>H[i];
   // nose sits at drawing (100,125) in the "-10 -20 220 220" frame; small cheek / chin rounding by the face centre
-  const nu=(110/220)-.5, nv=.5-(145/220), eu=0, ev=.5-(128/220);
+  const nu=(110/220)-.5, nv=.5-(((ro.noseY||125)+20)/220), eu=0, ev=.5-(((ro.faceY||108)+20)/220);
   const out=[]; for(const back of [0,1]){ const idx=new Int32Array(N*N).fill(-1), P=[],Nn=[],U=[],I=[],C=[],M=[];
     for(let i=0;i<N*N;i++){ if(!IN[i]) continue; const x=X[i], y=Y[i]; let z=0;
       const low=y<-.27?Math.max(.4,1-(-.27-y)*4.5):1; /* hair hanging below the chin is thinner than the head */
@@ -4869,6 +4869,10 @@ const Room={
       y.globalCompositeOperation="source-in"; y.fillStyle=hc; y.fillRect(0,0,S,S); y.globalCompositeOperation="source-atop";
       const gr=y.createRadialGradient(S*.45,S*.3,20,S/2,S*.5,S*.5); gr.addColorStop(0,"rgba(255,255,255,.2)"); gr.addColorStop(.6,"rgba(0,0,0,0)"); gr.addColorStop(1,"rgba(0,0,0,.35)"); y.fillStyle=gr; y.fillRect(0,0,S,S);
       const id=Math.random().toString(36).slice(2); ch.spriteTex=this.gx.texCanvas("phs_"+id,cv); ch.spriteBack=this.gx.texCanvas("phb_"+id,bc); ch.relief=null;
+      /* real depth: a rounded head (nose, cheeks, back of the head in your hair colour) built from the cut-out, so it turns in 3D */
+      try{ const fc=document.createElement("canvas"); fc.width=fc.height=S; const f=fc.getContext("2d"); for(const rr of [10,6,3]) for(let q=0;q<8;q++){ const an=q*Math.PI/4; f.drawImage(cv,Math.cos(an)*rr,Math.sin(an)*rr,S,S); } f.drawImage(cv,0,0,S,S);
+        const tt2={hair:"crop", hairColour:(t.hairColour||"#3a2a20"), skin:t.skin||"#D49C78"}, eyeY=PHD.oy+151.8*PHD.k, mY=PHD.oy+205*PHD.k;
+        const g2=buildRelief(cv,tt2,{noseY:eyeY+(mY-eyeY)*.62, faceY:eyeY+8}); ch.relief={mesh:this.gx.upload(g2[0]), meshB:this.gx.upload(g2[1]), front:this.gx.texCanvas("phr_"+id,fc)}; }catch(e){ console.warn("photo relief",e); ch.relief=null; }
     }catch(e){ console.warn("photo head",e); ch.spriteTex=null; } };
     im.src=ph; },
   loadSprite(ch,av){ try{ const tt=(typeof avToon==="function")&&avToon(av); if(!tt) return; const SV="-10 -20 220 220", img=new Image(); ch.sprPending=true;
@@ -6849,9 +6853,76 @@ function sharePhoto(){ if(!app.phRoom) return; const t=avToon(me.av), on=isPhoto
   const patch={pid:me.pid, av:me.av, pn:0}; for(let i=0;i<40;i++) patch["p"+i]=null; if(ph){ const n=Math.ceil(ph.length/1000); patch.pn=n; for(let i=0;i<n;i++) patch["p"+i]=ph.slice(i*1000,(i+1)*1000); }
   app.phRoom.presence(patch).catch(e=>console.warn("photo share",e)); }
 function photoFromPres(q){ const n=q.pn|0; if(!n || n>40) return null; let s=""; for(let i=0;i<n;i++){ if(typeof q["p"+i]!=="string") return null; s+=q["p"+i]; } return (s.startsWith("data:image/jpeg;base64,") && s.length<70000)?s:null; }
+/* ---------- "Use my face", done for you: find the face, line it up, cut the head (hair and all) out of the background ---------- */
+const FACE_BASE_=()=>(window.SQ_STANDALONE?"/face/":"face/");
+let FACEAPI=null, SEGP=null;
+function faceScript(src){ return new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src=src; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); }); }
+function faceApiLoad(){ if(FACEAPI) return FACEAPI; FACEAPI=(async()=>{ if(!window.faceapi) await faceScript(FACE_BASE_()+"face-api.js");
+    /* where .bin files can't be served (a test page), the weights come bundled in a script instead */
+    if(!window.SQ_STANDALONE && !window.SQ_FACE_BIN){ try{ await faceScript(FACE_BASE_()+"models.js"); }catch(e){} }
+    if(window.SQ_FACE_BIN && !window.SQ_FACE_PATCHED){ window.SQ_FACE_PATCHED=1; const B=window.SQ_FACE_BIN, nf=window.fetch.bind(window); window.fetch=(u,o)=>{ const n=String(u&&u.url||u).split("?")[0].split("/").pop(); if(B[n]){ const bin=atob(B[n]), a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return Promise.resolve(new Response(a,{status:200,headers:{"content-type":"application/octet-stream"}})); } return nf(u,o); }; }
+    const fa=window.faceapi; await fa.nets.tinyFaceDetector.loadFromUri(FACE_BASE_()); await fa.nets.faceLandmark68Net.loadFromUri(FACE_BASE_()); return fa; })().catch(e=>{ FACEAPI=null; throw e; }); return FACEAPI; }
+/* the biggest face in the photo, as 68 points; a tilted head is retried with the photo turned a little each way */
+async function faceFind(im){ const fa=await faceApiLoad(); let best=null;
+  for(const size of [416,608,320]){ const r=await fa.detectAllFaces(im,new fa.TinyFaceDetectorOptions({inputSize:size,scoreThreshold:.35})).withFaceLandmarks();
+    for(const f of r){ const b=f.detection.box, a=b.width*b.height; if(!best || a>best.a) best={a, pts:f.landmarks.positions.map(p=>[p.x,p.y])}; } if(best) break; }
+  if(!best){ const W=im.naturalWidth||im.width, H=im.naturalHeight||im.height, D=Math.ceil(Math.hypot(W,H));
+    for(const deg of [25,-25,40,-40]){ const a=deg*Math.PI/180, c=document.createElement("canvas"); c.width=c.height=Math.min(D,1400); const k=c.width/D, x=c.getContext("2d"); x.translate(c.width/2,c.height/2); x.rotate(a); x.scale(k,k); x.drawImage(im,-W/2,-H/2);
+      const r=await fa.detectAllFaces(c,new fa.TinyFaceDetectorOptions({inputSize:416,scoreThreshold:.35})).withFaceLandmarks();
+      for(const f of r){ const b=f.detection.box, ar=b.width*b.height; if(!best || ar>best.a){ const cs=Math.cos(-a), sn=Math.sin(-a); best={a:ar, pts:f.landmarks.positions.map(p=>{ const dx=(p.x-c.width/2)/k, dy=(p.y-c.height/2)/k; return [cs*dx-sn*dy+W/2, sn*dx+cs*dy+H/2]; })}; } }
+      if(best) break; } }
+  return best?best.pts:null; }
+const avgPts=(P,a,b)=>{ let x=0,y=0; for(let i=a;i<=b;i++){ x+=P[i][0]; y+=P[i][1]; } return [x/(b-a+1), y/(b-a+1)]; };
+/* least-squares scale + turn + shift taking the two eyes and the mouth onto target points */
+function simFit(src,dst,w){ let sw=0, pc=[0,0], qc=[0,0]; src.forEach((p,i)=>{ sw+=w[i]; pc[0]+=p[0]*w[i]; pc[1]+=p[1]*w[i]; qc[0]+=dst[i][0]*w[i]; qc[1]+=dst[i][1]*w[i]; }); pc=pc.map(v=>v/sw); qc=qc.map(v=>v/sw);
+  let a=0,b=0,n=0; src.forEach((p,i)=>{ const px=p[0]-pc[0], py=p[1]-pc[1], qx=dst[i][0]-qc[0], qy=dst[i][1]-qc[1]; a+=w[i]*(px*qx+py*qy); b+=w[i]*(px*qy-py*qx); n+=w[i]*(px*px+py*py); }); a/=n; b/=n;
+  return {a, b, tx:qc[0]-(a*pc[0]-b*pc[1]), ty:qc[1]-(b*pc[0]+a*pc[1])}; }
+const facePts=P=>[avgPts(P,36,41), avgPts(P,42,47), avgPts(P,48,59)];
+function segLoad(){ if(SEGP) return SEGP; SEGP=(async()=>{ if(!window.SelfieSegmentation) await faceScript(FACE_BASE_()+"seg/selfie_segmentation.js");
+    /* a test page can't serve .tflite/.binarypb files, so there they carry a .txt name */
+    const ss=new window.SelfieSegmentation({locateFile:f=>FACE_BASE_()+"seg/"+f+((!window.SQ_STANDALONE && /\.(tflite|binarypb)$/.test(f))?".txt":"")}); ss.setOptions({modelSelection:0}); await ss.initialize(); return ss; })().catch(e=>{ SEGP=null; throw e; }); return SEGP; }
+async function segRun(im){ const ss=await segLoad(); const W=im.naturalWidth||im.width, H=im.naturalHeight||im.height, k=Math.min(1,1024/Math.max(W,H));
+  const src=document.createElement("canvas"); src.width=Math.round(W*k); src.height=Math.round(H*k); src.getContext("2d").drawImage(im,0,0,src.width,src.height);
+  return new Promise((res,rej)=>{ const to=setTimeout(()=>rej(new Error("timeout")),25000); ss.onResults(r=>{ clearTimeout(to); const c=document.createElement("canvas"); c.width=W; c.height=H; c.getContext("2d").drawImage(r.segmentationMask,0,0,W,H); res(c); }); ss.send({image:src}).catch(e=>{ clearTimeout(to); rej(e); }); }); }
+function faceBusy(msg){ let el=document.getElementById("febusy"); if(!msg){ if(el) el.remove(); return; } if(!el){ el=document.createElement("div"); el.id="febusy"; el.className="fe-modal"; document.body.appendChild(el); }
+  el.innerHTML=`<div class="fe-sheet" role="status" aria-live="polite" style="align-items:center;text-align:center;gap:14px"><span class="spin"></span><b>${esc(msg)}</b><p class="muted">This takes a few seconds the first time.</p></div>`; }
+const hex2=c=>"#"+c.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,"0")).join("");
+/* the photo, lined up and cut out: colour on the left, mask on the right, in the avatar's 200-unit frame (256px) */
+function autoHeadBuild(im, P, mask){ const W=256, u=W/200, out=document.createElement("canvas"); out.width=W*2; out.height=W; const o=out.getContext("2d");
+  const eyeY=PHD.oy+151.8*PHD.k, eyeX=PHD.ox+119.7*PHD.k, mouthY=PHD.oy+205*PHD.k, dst=[[eyeX*u,eyeY*u],[(200-eyeX)*u,eyeY*u],[100*u,mouthY*u]];
+  const F=simFit(facePts(P),dst,[1,1,.6]), map=([x,y])=>[F.a*x-F.b*y+F.tx, F.b*x+F.a*y+F.ty];
+  const tmp=document.createElement("canvas"); tmp.width=tmp.height=W; const t=tmp.getContext("2d"); t.setTransform(F.a,F.b,-F.b,F.a,F.tx,F.ty); t.drawImage(im,0,0); const C=t.getImageData(0,0,W,W).data;
+  const Q=P.map(map), med=a=>{ a=a.slice().sort((p,q)=>p-q); return a[a.length>>1]||0; }, patch=pts=>{ const R=[],G=[],B=[]; for(const [x0,y0] of pts) for(let dy=-3;dy<=3;dy++) for(let dx=-3;dx<=3;dx++){ const x=Math.round(x0+dx), y=Math.round(y0+dy); if(x<0||y<0||x>=W||y>=W) continue; const i=(y*W+x)*4; R.push(C[i]); G.push(C[i+1]); B.push(C[i+2]); } return [med(R),med(G),med(B)]; };
+  const skin=patch([[(Q[2][0]+Q[31][0])/2,(Q[2][1]+Q[31][1])/2],[(Q[14][0]+Q[35][0])/2,(Q[14][1]+Q[35][1])/2]]);
+  const ed=Math.hypot(Q[45][0]-Q[36][0],Q[45][1]-Q[36][1])*.75||30, cx=Q[30][0], chinY=Q[8][1], browY=Math.min(...Q.slice(17,27).map(p=>p[1]));
+  let M=null; if(mask){ const mc=document.createElement("canvas"); mc.width=mc.height=W; const m=mc.getContext("2d"); m.setTransform(F.a,F.b,-F.b,F.a,F.tx,F.ty); m.drawImage(mask,0,0); M=m.getImageData(0,0,W,W).data; }
+  /* keep only the head: under the face cut along the jawline (no neck or collar), beside it stop just above chin height, and nothing far out to the sides */
+  const J=Q.slice(2,15).sort((p,q)=>p[0]-q[0]), jawY=X=>{ if(X<=J[0][0]||X>=J[J.length-1][0]) return null; for(let i=1;i<J.length;i++) if(X<=J[i][0]){ const f=(X-J[i-1][0])/((J[i][0]-J[i-1][0])||1); return J[i-1][1]+(J[i][1]-J[i-1][1])*f; } return null; };
+  const A=new Uint8ClampedArray(W*W), fe=ed*.12; let hr=0,hg=0,hb=0,hn=0;
+  for(let x=0;x<W;x++){ const jy=jawY(x), lim=jy==null?chinY-ed*.35:jy+ed*.05, fx=Math.max(0,Math.min(1,1-(Math.abs(x-cx)-ed*2.4)/(ed*.35)));
+    for(let y=0;y<W;y++){ const i=y*W+x, fy=Math.max(0,Math.min(1,1-(y-lim)/fe)); let a=M?M[i*4+3]/255:0;
+      if(!M){ /* no cut-out available: fall back to the head outline */ const e=[(x/u-PHD.ox)/PHD.k,(y/u-PHD.oy)/PHD.k], inE=([cx2,cy2,rx,ry])=>((e[0]-cx2)/rx)**2+((e[1]-cy2)/ry)**2<=1; a=(inE(PHD.face)||inE(PHD.dome))?1:0; }
+      a=a*fy*fx; A[i]=Math.round(a*255); if(a>.9 && y<browY-ed*.25){ hr+=C[i*4]; hg+=C[i*4+1]; hb+=C[i*4+2]; hn++; } } }
+  const hair=hn>40?[hr/hn,hg/hn,hb/hn]:[58,42,32];
+  o.fillStyle=hex2(hair); o.fillRect(0,0,W,W); o.drawImage(tmp,0,0); /* soft edges fade into hair colour, not a dark halo */
+  const md=o.createImageData(W,W); for(let i=0;i<W*W;i++){ md.data[i*4]=md.data[i*4+1]=md.data[i*4+2]=A[i]; md.data[i*4+3]=255; } o.putImageData(md,W,0);
+  return {out, skin:hex2(skin), hair:hex2(hair), F}; }
+function photoHeadSave(out, skin, hair){ let q=.84, url=out.toDataURL("image/jpeg",q); while(url.length>38000 && q>.4){ q-=.06; url=out.toDataURL("image/jpeg",q); }
+  { const c2=document.createElement("canvas"); c2.width=128; c2.height=64; c2.getContext("2d").drawImage(out,0,0,128,64); let q2=.6, sm=c2.toDataURL("image/jpeg",q2); while(sm.length>2900 && q2>.2){ q2-=.08; sm=c2.toDataURL("image/jpeg",q2); } LS.set("sq-selfie-s",sm); }
+  app.feDraft=url; LS.set("sq-selfie",url); AVR.png.clear(); AVR.lite.clear();
+  const base=(app.mkMode==="photo" && app.mk)?app.mk:buildBase(); app.mk=Object.assign({},base,{eyes:"photohead", skin}, hair?{hairColour:hair}:{}); app.mkMode="photo"; app.mkTab="outfit";
+  if(document.getElementById("mkmodal")) renderMaker(); else { app.mkOpen=true; openMaker(); } }
+async function faceAuto(file){ const u=URL.createObjectURL(file), im=new Image(); try{ await new Promise((res,rej)=>{ im.onload=res; im.onerror=rej; im.src=u; }); }catch(e){ toast("Couldn't open that photo"); return; }
+  FE.img=im; FE.auto=null; faceBusy("Finding your face…"); let P=null; try{ P=await faceFind(im); }catch(e){ console.warn("face find",e); }
+  if(FE.img!==im) return;
+  if(!P){ faceBusy(); toast("Couldn't spot a face, so line it up yourself."); faceEditorStart(im); return; }
+  faceBusy("Cutting out your head…"); let mask=null; try{ mask=await segRun(im); }catch(e){ console.warn("cut-out",e); }
+  if(FE.img!==im) return; faceBusy();
+  FE.auto={P, F:null}; const r=autoHeadBuild(im,P,mask); photoHeadSave(r.out, r.skin, r.hair); toast("Done! That's your bobblehead. Pick an outfit, then save."); }
 /* the editor: line your face up with the guide (eyes on the dots, mouth on the line), then it's cropped to exactly where the 3D head expects it */
 const FE={img:null, x:0, y:0, s:1, r:0};
-function faceEditorOpen(file){ const u=URL.createObjectURL(file), im=new Image(); im.onload=()=>{ FE.img=im; const S=300, k=Math.min(S/im.width,S/im.height); FE.s=k; FE.r=0; FE.x=S/2; FE.y=S*.56; faceEditorShow(); }; im.onerror=()=>toast("Couldn't open that photo"); im.src=u; }
+function faceEditorOpen(file){ const u=URL.createObjectURL(file), im=new Image(); im.onload=()=>faceEditorStart(im); im.onerror=()=>toast("Couldn't open that photo"); im.src=u; }
+function faceEditorStart(im){ FE.img=im; const S=300, k=Math.min(S/im.width,S/im.height); FE.s=k; FE.r=0; FE.x=S/2; FE.y=S*.56; faceEditorShow(); }
 function faceEditorShow(){ let el=document.getElementById("femodal"); if(!el){ el=document.createElement("div"); el.id="femodal"; el.className="fe-modal"; document.body.appendChild(el); }
   el.innerHTML=`<div class="fe-sheet" role="dialog" aria-modal="true" aria-label="Line up your face"><b>Line up your head</b><p class="muted">Drag and zoom so your whole head, hair too, fits the outline: eyes on the two dots, mouth on the line. Anything outside the outline is cut away.</p>
     <div class="fe-stage"><canvas id="fecv" width="600" height="600"></canvas></div>
@@ -6882,18 +6953,14 @@ function faceEditorUse(){ if(!FE.img) return; const S=256, c=document.createElem
   const W=256, out=document.createElement("canvas"); out.width=W*2; out.height=W; const o=out.getContext("2d"), u=W/200, T=[u*PHD.k,0,0,u*PHD.k,u*PHD.ox,u*PHD.oy];
   o.fillStyle=skin; o.fillRect(0,0,W,W); o.save(); o.transform(...T); phdShape(o,1,PHD.ring); o.fillStyle="#fff"; o.fill(); phdShape(o,1,0); o.clip(); o.fillStyle=skin; o.fillRect(-60,-60,420,420); faceEditorPaint(o,300); o.restore();
   o.save(); o.translate(W,0); o.fillStyle="#000"; o.fillRect(0,0,W,W); o.transform(...T); o.filter="blur(0.5px)"; phdShape(o,1,PHD.ring+.6); o.fillStyle="#fff"; o.fill(); o.restore();
-  let q=.84, url=out.toDataURL("image/jpeg",q); while(url.length>38000 && q>.4){ q-=.06; url=out.toDataURL("image/jpeg",q); }
-  { const c2=document.createElement("canvas"); c2.width=128; c2.height=64; c2.getContext("2d").drawImage(out,0,0,128,64); let q2=.6, sm=c2.toDataURL("image/jpeg",q2); while(sm.length>2900 && q2>.2){ q2-=.08; sm=c2.toDataURL("image/jpeg",q2); } LS.set("sq-selfie-s",sm); }
-  app.feDraft=url; LS.set("sq-selfie",url); AVR.png.clear(); AVR.lite.clear();
-  const base=(app.mkMode==="photo" && app.mk)?app.mk:buildBase(); app.mk=Object.assign({},base,{eyes:"photohead", skin}); app.mkMode="photo"; app.mkTab="outfit"; faceEditorClose();
-  if(document.getElementById("mkmodal")) renderMaker(); else { app.mkOpen=true; openMaker(); } }
+  faceEditorClose(); photoHeadSave(out, skin, null); }
 function makerHTML(){ const m=mkState(), photo=app.mkMode==="photo";
   const tabs=photo?[["outfit","Outfit"]]:MK.tabs.filter(([k])=>!(k==="beard" && m.gender==="f")), tab=tabs.some(([k])=>k===app.mkTab)?app.mkTab:tabs[0][0];
   return `<div class="mk-sheet" role="dialog" aria-modal="true" aria-label="${photo?"Your bobblehead":"Build your avatar"}">
     <div class="mk-top"><b>${photo?"Your bobblehead":"Build your avatar"}</b><button type="button" class="mk-x" data-act="maker" aria-label="Close">✕</button></div>
     <div class="mk-main">
       <div class="mk-stage"><div class="mk-pv" id="mkpv"><img src="${avSrc(m,{},480)}" alt="Your avatar" draggable="false">${app.mkBusy?`<div class="busy"><span class="spin"></span>${esc(app.mkBusy)}</div>`:""}</div>
-        ${photo?`<label class="btn mk-selfie"><input type="file" accept="image/*" capture="user" id="mkface" hidden>📸 Retake photo</label>
+        ${photo?`<label class="btn mk-selfie"><input type="file" accept="image/*" capture="user" id="mkface" hidden>📸 Retake photo</label>${FE.img?`<button type="button" class="btn ghost mk-selfie" data-act="mkhand">Line it up by hand</button>`:""}
         <p class="mk-note">Your photo is only shown to players in your party.</p>`:""}</div>
       <div class="mk-edit">
         <div class="mk-tabs" role="tablist">${tabs.map(([k,l])=>`<button type="button" role="tab" class="${k===tab?"on":""}" aria-selected="${k===tab}" data-act="mktab" data-tab="${k}">${l}</button>`).join("")}</div>
@@ -10161,6 +10228,7 @@ document.addEventListener("click", async e=>{
   if(a==="mkfacedel"){ app.mk=Object.assign({},mkState(),{eyes:"almond"}); renderMaker(); return; }
   if(a==="fe-cancel"){ faceEditorClose(); return; }
   if(a==="fe-use"){ faceEditorUse(); return; }
+  if(a==="mkhand"){ if(FE.img) faceEditorStart(FE.img); return; }
   if(a==="mkbuild"){ closeMaker(); app.mkMode="build"; app.mk=buildBase(); app.mkTab="body"; app.mkOpen=true; openMaker(); return; }
   if(a==="mkphotoedit"){ closeMaker(); const t=avToon(me.av); if(!(t && t.eyes==="photohead")) return; app.mkMode="photo"; app.mk=Object.assign({},t); app.mkTab="outfit"; app.mkOpen=true; openMaker(); return; }
   if(a==="mksave"){ const id=encodeToon(app.mk); if(isPhotoT(app.mk) && app.feDraft){ LS.set("sq-selfie",app.feDraft); app.feDraft=null; } closeMaker(); setMyAv(id); toast("Avatar saved. You're using it now."); return; }
@@ -10239,7 +10307,7 @@ document.addEventListener("keydown", e=>{
   if(!e.target.closest("input") && S && S.phase==="q" && (S.q.t==="gk"||S.q.t==="sp"||S.q.t==="lead") && !myAns && app.view==="party"){ const i="abcd".indexOf(e.key.toLowerCase()); if(i>=0){ submitAnswer(i); } }
   if(!e.target.closest("input") && S && S.phase==="q" && S.q.t==="hl" && !myAns && app.view==="party"){ if(e.key==="ArrowUp"||e.key.toLowerCase()==="h"){ e.preventDefault(); submitAnswer(0); } if(e.key==="ArrowDown"||e.key.toLowerCase()==="l"){ e.preventDefault(); submitAnswer(1); } }
 });
-document.addEventListener("change", e=>{ const t=e.target; if(t && t.id==="mkface" && t.files && t.files[0]){ faceEditorOpen(t.files[0]); t.value=""; } else if(t && t.id==="mkphoto" && t.files && t.files[0]){ avatarFromPhoto(t.files[0]); t.value=""; } else if(t && t.dataset && t.dataset.mk){ app.mk[t.dataset.mk]= t.type==="checkbox"?t.checked:t.value; renderMaker(); } });
+document.addEventListener("change", e=>{ const t=e.target; if(t && t.id==="mkface" && t.files && t.files[0]){ faceAuto(t.files[0]); t.value=""; } else if(t && t.id==="mkphoto" && t.files && t.files[0]){ avatarFromPhoto(t.files[0]); t.value=""; } else if(t && t.dataset && t.dataset.mk){ app.mk[t.dataset.mk]= t.type==="checkbox"?t.checked:t.value; renderMaker(); } });
 document.addEventListener("toggle", e=>{ const t=e.target; if(t && t.classList && t.classList.contains("lb-look")) app.lookOpen=t.open; if(t && t.classList && t.classList.contains("av-drop")) app.homeLookOpen=t.open; if(t && t.open) setTimeout(()=>{ try{ avPump(); }catch(e){} },30); }, true);
 document.addEventListener("keydown", e=>{ if(e.key==="Escape" && document.getElementById("mkmodal")) closeMaker(); if(e.key==="Escape" && document.getElementById("acctmodal")) closeAcct(); });
 document.addEventListener("input", e=>{
