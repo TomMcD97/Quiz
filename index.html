@@ -1016,14 +1016,19 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 @keyframes awOut{to{opacity:0;transform:translateX(-50%) scale(.75) rotate(6deg)}}
 @keyframes awPop{0%{transform:scale(0) rotate(-30deg)}100%{transform:scale(1) rotate(0)}}
 .fin-board .fb-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 10px}.fin-board .fb-aw{margin-top:6px;padding:3px 10px;border-radius:999px;border:1px solid rgba(255,210,122,.8);background:rgba(10,10,14,.7);font-weight:700;font-size:13px;color:#fff;animation:fhIn .5s ease .7s both}
-.room-aw{position:absolute;left:0;top:0;pointer-events:none;z-index:3;display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 8px 5px;border-radius:10px;text-align:center;color:#fff;
-  background:rgba(10,10,14,.82);border:1px solid rgba(255,210,122,.8);box-shadow:0 0 14px rgba(255,190,80,.35);font-size:11px;line-height:1.15;animation:awBub .45s cubic-bezier(.2,1.7,.4,1) both}
-.room-aw b{font-family:var(--f-display);font-weight:800;font-size:11.5px;letter-spacing:-.005em;text-wrap:balance}
-.room-aw small{font-size:9.5px;color:rgba(255,255,255,.72);text-wrap:balance}
-.room-aw small:empty{display:none}
-.room-aw.tight{padding:3px 5px 4px;border-radius:8px}.room-aw.tight b{font-size:10px}.room-aw.tight small{display:none}
-.room-aw.joke{border-color:rgba(255,130,185,.85);box-shadow:0 0 14px rgba(255,90,170,.35)}
-@media (min-width:700px){ .room-aw{font-size:12.5px;padding:5px 10px 6px}.room-aw b{font-size:13px}.room-aw small{font-size:10.5px} }
+.room-aw{position:absolute;left:0;top:0;pointer-events:none;z-index:3;display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 6px 5px;border-radius:10px;text-align:center;color:#fff;box-sizing:border-box;
+  background:rgba(10,10,14,.84);border:1px solid rgba(255,210,122,.8);box-shadow:0 0 12px rgba(255,190,80,.3);line-height:1.1;animation:awBub .45s cubic-bezier(.2,1.7,.4,1) both}
+.room-aw span{font-size:15px;line-height:1}
+.room-aw b{font-family:var(--f-display);font-weight:800;font-size:10.5px;letter-spacing:-.005em;text-wrap:balance}
+.room-aw.tight{padding:5px 4px;border-radius:12px}.room-aw.tight b{display:none}.room-aw.tight span{font-size:20px}
+.room-aw.joke{border-color:rgba(255,130,185,.85);box-shadow:0 0 12px rgba(255,90,170,.3)}
+@media (min-width:700px){ .room-aw span{font-size:18px}.room-aw b{font-size:12.5px} }
+.aw-card.joke{border-color:color-mix(in srgb,#ff5fa8 45%,var(--line))}
+.fin-board .fb-acc{max-width:min(92%,520px);padding:8px 14px 10px;border-radius:14px;background:rgba(10,10,14,.78);border:1px solid rgba(255,210,122,.8);box-shadow:0 0 22px rgba(255,190,80,.3);animation:fbWin .5s cubic-bezier(.2,1.5,.4,1) both}
+.fin-board .fb-acc.joke{border-color:rgba(255,130,185,.85);box-shadow:0 0 22px rgba(255,90,170,.3)}
+.fin-board .fba-t{font-family:var(--f-display);font-weight:800;font-size:clamp(15px,4.2vw,20px);color:#fff;text-wrap:balance}
+.fin-board .fba-t b{color:var(--spot)}
+.fin-board .fba-w{margin-top:3px;font-size:clamp(12px,3.4vw,14px);line-height:1.35;color:rgba(255,255,255,.82);text-wrap:balance}
 @keyframes awBub{0%{opacity:0;scale:.4}100%{opacity:1;scale:1}}
 .dc-head.dc-mast{flex-direction:column;align-items:center;text-align:center;gap:0}
 .dc-mast .dc-title{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,7.4vw,38px);line-height:1.05;letter-spacing:-.015em;padding-bottom:8px;text-wrap:balance}
@@ -5057,7 +5062,7 @@ const Room={
     for(const pid of this.order){ const c=this.chars[pid]; if(!c){ waiting++; continue; }
       if(pod){ const s=pod.sc[pid]||0, H=.16+1.05*Math.max(0,s)/pod.max, k=pod.started?Math.max(0,Math.min(1,(t-pod.t0-(pod.del[pid]||0))/1.7)):0, e=k<1?1-Math.pow(1-k,3):1;
         c.lift=H*e; c.podH=H; c.podK=k; c.disp=`${shortTag(c.label,c.me)}\n${Math.round(Math.max(0,s)*e)}`;
-        if(k>=1 && !pod.done[pid]){ pod.done[pid]=t; const win=pod.rank[0]===pid; c.emote={e: win?"cheer":(pod.rank.indexOf(pid)<3?"wave":"clap"), t0:t}; if(win){ this.flash=1; if(!pod.fired){ pod.fired=true; pod.ft=t; try{ this.onPodium&&this.onPodium(); }catch(e){} } } }
+        if(k>=1 && !pod.done[pid]){ pod.done[pid]=t; try{ this.onRise&&this.onRise(pid); }catch(e){} const win=pod.rank[0]===pid; c.emote={e: win?"cheer":(pod.rank.indexOf(pid)<3?"wave":"clap"), t0:t}; if(win){ this.flash=1; if(!pod.fired){ pod.fired=true; pod.ft=t; try{ this.onPodium&&this.onPodium(); }catch(e){} } } }
         if(pod.rank[0]===pid) this.winF={x:c.J.root.off[0], z:c.J.root.off[2], lift:c.lift||0};
         else if(pod.fired && this.winF){ const tgt=Math.max(-1.1,Math.min(1.1,Math.atan2(this.winF.x-c.x, .9)))*.85; c.ry+=(tgt-c.ry)*Math.min(1,dt*2.2); }
         if(pod.rank[0]===pid && pod.done[pid] && t-pod.done[pid]>4.5){ pod.done[pid]=t; c.emote={e:["dance","cheer","jump"][Math.floor(t)%3], t0:t}; } }
@@ -5092,20 +5097,6 @@ const Room={
       if(back.length){ const x0=Math.min(...back.map(c=>c.x)), x1=Math.max(...back.map(c=>c.x)), z=back[0].z, hgt=back[0].baseLift, w=x1-x0+1.1;
         const rm=M4.ch(M4.T((x0+x1)/2,hgt/2,z),M4.S(w,hgt,.95)); items.push({mesh:this.boxM,m:rm,c:[.07,.07,.09],spec:1.2,gloss:80}); refl.push({mesh:this.boxM,m:M4.mul(M4.S(1,-1,1),rm),c:[.07,.07,.09],noCast:true});
         items.push({mesh:this.boxM,m:M4.ch(M4.T((x0+x1)/2,hgt-.02,z+.48),M4.S(w,.025,.01)),c:acc,emit:2,spec:0,noCast:true,noRecv:true}); } }
-    if(pod){ /* finale light show: six moving heads sweep the stage in colour, swing onto whoever is getting an award, then all
-         lock onto the champion in gold */
-      const at=pid=>{ const c=this.chars[pid]; return c?[c.J.root.off[0], c.J.root.off[2]]:null; };
-      let just=null, jt=-1; for(const p in pod.done){ if(t-pod.done[p]<2.5 && pod.done[p]>jt){ jt=pod.done[p]; just=p; } }
-      const fp=pod.fired?at(pod.rank[0]):(just?at(just):null); this.focusK=(this.focusK||0)+((fp?1:0)-(this.focusK||0))*Math.min(1,dt*2.5); if(fp) this.focusP=fp;
-      /* one moving head per player, each roaming gently around its own player */
-      const who=this.order.filter(p=>this.chars[p]), NB=who.length, COLS=[[1,.25,.75],[.25,.8,1],[1,.72,.25],[.6,.35,1],[.25,1,.7],[1,.45,.3]], gold=[1,.78,.35], fk=this.focusK||0, fq=this.focusP||[0,.6];
-      for(let i=0;i<NB;i++){ const home=at(who[i])||[0,.6], src=[home[0]*1.15,5.3,-1.3], sp=pod.fired?.35:1, sw=[home[0]+Math.sin(t*.7*sp+i*1.7)*.45, home[1]+.15+Math.cos(t*.55*sp+i*1.1)*.3];
-        const tx=sw[0]+(fq[0]+(i-2.5)*.06-sw[0])*fk, tz=sw[1]+(fq[1]-sw[1])*fk, dx=src[0]-tx, dy=src[1], dz=src[2]-tz, L=Math.hypot(dx,dy,dz), up=[dx/L,dy/L,dz/L];
-        let X=[up[1]*1-up[2]*0, up[2]*0-up[0]*1, up[0]*0-up[1]*0]; /* up × z */ X=[up[1], -up[0], 0]; const xl=Math.hypot(...X)||1; X=X.map(v=>v/xl); const Z=[X[1]*up[2]-X[2]*up[1], X[2]*up[0]-X[0]*up[2], X[0]*up[1]-X[1]*up[0]];
-        const w=.42, col0=COLS[(i+Math.floor(t*.25))%6], col=pod.fired?[col0[0]+(gold[0]-col0[0])*fk,col0[1]+(gold[1]-col0[1])*fk,col0[2]+(gold[2]-col0[2])*fk]:col0, al=.05+.05*fk+(this.flash||0)*.05;
-        const m=new Float32Array([X[0]*w,X[1]*w,X[2]*w,0, up[0]*L,up[1]*L,up[2]*L,0, Z[0]*w,Z[1]*w,Z[2]*w,0, tx,0,tz,1]);
-        beams.push({mesh:this.beamM,m,c:col,emit:1.5,spec:0,blend:true,alpha:al,noCast:true,noRecv:true});
-        beams.push({mesh:this.discM,m:M4.ch(M4.T(tx,.006,tz),M4.S(.62,.002,.62)),c:col,emit:1.3,spec:0,blend:true,alpha:al*2.2,noCast:true,noRecv:true}); } }
     if(!pod){ /* lobby: just a pool of light on the floor under each player (no beams, so the stage stays clear) */
       for(const pid of this.order){ const c=this.chars[pid]; if(!c) continue; const bx=c.J.root.off[0], bz=c.J.root.off[2], y=(c.baseLift||0)+.004, bc=c.me?[1,.86,.55]:[.9,.93,1], ba=c.me?.16:.1, pulse=1+Math.sin(t*1.6+bx)*.03;
         beams.push({mesh:this.discM,m:M4.ch(M4.T(bx,y,bz),M4.S(.95*pulse,.002,.95*pulse)),c:bc,emit:1.1,spec:0,blend:true,alpha:ba,noCast:true,noRecv:true});
@@ -5119,14 +5110,16 @@ const Room={
     if(this.tags){ const crowd=this.order.length>4; if(this.tags._crowd!==crowd){ this.tags._crowd=crowd; this.tags.classList.toggle("rt-crowd",crowd); } const pd=!!pod; if(this.tags._pod!==pd){ this.tags._pod=pd; this.tags.classList.toggle("rt-pod",pd); } }
     /* podium with lots of players: alternate the name tags up and down so neighbours don't overlap */
     const alt=new Map(); if(pod && tags.length>5) tags.map(x=>x[0]).sort((a,b)=>a.J.root.off[0]-b.J.root.off[0]).forEach((c,i)=>alt.set(c,i%2));
-    /* accolade bubbles: above each head once their pillar has risen */
-    const nOn=this.order.length||1;
-    for(const pid of this.order){ const c=this.chars[pid]; if(!c) continue; const aw=pod && pod.aw && pod.aw[pid], show=aw && pod.done[pid] && pod.rank[0]!==pid; /* the champion's goes under their name on the big screen */
-      if(!show){ if(c.awTag){ c.awTag.remove(); c.awTag=null; } continue; }
-      if(!c.awTag){ c.awTag=document.createElement("div"); c.awTag.className="room-aw"+(aw.joke?" joke":""); c.awTag.innerHTML=`<b><span aria-hidden="true">${aw.icon}</span> ${esc(aw.title)}</b><small>${esc(aw.line||"")}</small>`; this.tags.appendChild(c.awTag); }
-      const hw=c.J.head.world, champ=false, q=M4.xf(VP,[hw[12],hw[13]+.62,hw[14]]);
-      const slotW=Math.min(170,cv.clientWidth/nOn-4); c.awTag.style.maxWidth=Math.max(56,slotW)+"px"; c.awTag.classList.toggle("tight",slotW<96);
-      c.awTag.style.transform=`translate(${((q[0]*.5+.5)*cv.clientWidth).toFixed(1)}px,${((.5-q[1]*.5)*cv.clientHeight).toFixed(1)}px) ${champ?"translate(0,-50%)":"translate(-50%,-100%)"}`; }
+    /* accolade bubbles: one tidy row just above the tallest head, each centred over its player and no wider than the
+       space to its neighbours, so they never overlap. The champion's goes under their name on the big screen instead. */
+    { const W2=cv.clientWidth, H2=cv.clientHeight, pts=[]; let rowY=1e9;
+      for(const pid of this.order){ const c=this.chars[pid]; if(!c) continue; const hw=c.J.head.world, q=M4.xf(VP,[hw[12],hw[13]+.5,hw[14]]), sx=(q[0]*.5+.5)*W2, sy=(.5-q[1]*.5)*H2; pts.push([pid,c,sx]); if(sy<rowY) rowY=sy; }
+      pts.sort((a,b)=>a[2]-b[2]); rowY=Math.max(64, rowY-6);
+      pts.forEach(([pid,c,sx],i)=>{ const aw=pod && pod.aw && pod.aw[pid], show=aw && pod.done[pid] && pod.rank[0]!==pid;
+        if(!show){ if(c.awTag){ c.awTag.remove(); c.awTag=null; } return; }
+        if(!c.awTag){ c.awTag=document.createElement("div"); c.awTag.className="room-aw"+(aw.joke?" joke":""); c.awTag.innerHTML=`<span aria-hidden="true">${aw.icon}</span><b>${esc(aw.title)}</b>`; this.tags.appendChild(c.awTag); }
+        const gl=i>0?sx-pts[i-1][2]:1e9, gr=i<pts.length-1?pts[i+1][2]-sx:1e9, wMax=Math.max(52,Math.min(150,Math.min(gl,gr)-6, (Math.min(sx,W2-sx)-4)*2));
+        c.awTag.classList.toggle("tight", wMax<84); c.awTag.style.width=(wMax<84?Math.min(wMax,44):wMax)+"px"; c.awTag.style.transform=`translate(${sx.toFixed(1)}px,${rowY.toFixed(1)}px) translate(-50%,-100%)`; }); }
     for(const [c,p] of tags){ const q=M4.xf(VP,p); if(!c.tag){ c.tag=document.createElement("div"); c.tag.className="room-tag"; this.tags.appendChild(c.tag); }
       const lb=c.disp||shortTag(c.label,c.me); if(c.tag.textContent!==lb) c.tag.textContent=lb; c.tag.classList.toggle("me",!!c.me);
       c.tag.style.transform=`translate(${((q[0]*.5+.5)*cv.clientWidth).toFixed(1)}px,${((.5-q[1]*.5)*cv.clientHeight).toFixed(1)}px) translate(-50%,${alt.get(c)?"calc(100% + 4px)":"0"})`; }
@@ -9228,7 +9221,11 @@ function gameSummaryHTML(ps, wait, D){
   h+=roundTableHTML(g, ps);
   h+=`<div class="subj-end">${subjCardHTML()}</div>`;
   h+=scoreGraphSVG(g, ps);
-  if(pick.length) h+=`<div class="eyebrow" style="margin:16px 0 8px">Accolades</div><div class="aw-grid">${pick.map((c,i)=>`<div class="aw-card" style="--i:${i}">${avatar(c.p)}<div><div class="eyebrow">${c.icon} ${esc(c.title)}</div><b>${nm(c.p)}</b><div class="muted">${esc(c.val)}</div></div></div>`).join("")}</div>`;
+  /* everyone's accolade with what it means, in finishing order (the same awards that popped up on stage) */
+  let AWL={}; try{ AWL=awardList(); }catch(e){}
+  const awRows=ps.map(x=>[x.p,AWL[x.p]]).filter(([,a])=>a);
+  if(awRows.length) h+=`<div class="eyebrow" style="margin:16px 0 8px">The Dougle Awards</div><div class="aw-grid">${awRows.map(([p,a],i)=>`<div class="aw-card${a.joke?" joke":""}" style="--i:${i}">${avatar(p)}<div><div class="eyebrow">${a.icon} ${esc(a.title)}</div><b>${nm(p)}</b><div class="muted">${esc(a.why||"")}</div></div></div>`).join("")}</div>`;
+  else if(pick.length) h+=`<div class="eyebrow" style="margin:16px 0 8px">Accolades</div><div class="aw-grid">${pick.map((c,i)=>`<div class="aw-card" style="--i:${i}">${avatar(c.p)}<div><div class="eyebrow">${c.icon} ${esc(c.title)}</div><b>${nm(c.p)}</b><div class="muted">${esc(c.val)}</div></div></div>`).join("")}</div>`;
   return h+`</div>`;
 }
 /* ---------- The Dougle Awards: a run of accolades splashed over the stage before the podium, a mix of proper ones and cheeky
@@ -9236,29 +9233,27 @@ function gameSummaryHTML(ps, wait, D){
 function awardList(){ const g=S.gx, sc=S.scores||{}; if(!g) return {};
   const ids=Object.keys(sc), n=ids.length, rank=ids.slice().sort((a,b)=>(sc[b]||0)-(sc[a]||0)); if(n<2) return {};
   const top=o=>{ let b=null; for(const p in o||{}) if(o[p]>0 && (!b || o[p]>o[b])) b=p; return b; }, km=v=>Math.round(v).toLocaleString("en-GB"), sec=ms=>(ms/1000).toFixed(1);
-  const C=[], add=(k,joke,icon,title,p,line)=>{ if(p && ids.includes(p)) C.push({k,joke,icon,title,p,line}); };
-  if(g.pinW && g.pinW.km>=300) add("far",1,"🧭","Furthest Away",g.pinW.p,`${km(g.pinW.km)} km off`);
-  if(g.fast) add("fast",0,"⚡","Fastest Fingers",g.fast.p,`Right in ${sec(g.fast.ms)}s`);
-  const wrong={}; for(const p of ids){ const w=(g.asked&&g.asked[p]||0)-(g.right&&g.right[p]||0); if(w>0) wrong[p]=w; } const mw=top(wrong); if(mw && wrong[mw]>=3) add("wrong",1,"🙈","Most Wrong Answers",mw,`${wrong[mw]} wrong. Confidently.`);
-  if(g.pin) add("pin",0,"📍","Human Satnav",g.pin.p,g.pin.km<1?"Bang on the spot":`Just ${km(g.pin.km)} km away`);
-  if(g.fastW && g.fastW.ms<2500) add("rash",1,"🤠","Shoot First, Think Later",g.fastW.p,`Wrong in ${sec(g.fastW.ms)}s`);
-  const b=top(g.best); if(b && g.best[b]>=3) add("streak",0,"🔥","On Fire",b,`${g.best[b]} right in a row`);
-  if(g.estW && g.estW.rel>=.5) add("guess",1,"🌍","Wildest Guess",g.estW.p,`Off by ${fmtNum(g.estW.d, g.estW.unit==="year"?"":g.estW.unit)}${g.estW.unit==="year"?" years":unitTxt(g.estW.unit)}`);
-  if(g.slow && g.avg && g.slow.p!==g.avg.p) add("slow",1,"🐢","Took the Scenic Route",g.slow.p,`${sec(g.slow.ms)}s an answer`);
-  if(g.word) add("word",0,"🔤","Wordsmith",g.word.p,g.word.w.toUpperCase());
+  const C=[], add=(k,joke,icon,title,p,why)=>{ if(p && ids.includes(p)) C.push({k,joke,icon,title,p,why}); };
+  if(g.pinW && g.pinW.km>=300) add("far",1,"🧭","Furthest Away",g.pinW.p,`Their map pin landed ${km(g.pinW.km)} km from the right spot. Wrong continent?`);
+  if(g.fast) add("fast",0,"⚡","Fastest Fingers",g.fast.p,`Got a question right in just ${sec(g.fast.ms)} seconds. Blink and you'd miss it.`);
+  const wrong={}; for(const p of ids){ const w=(g.asked&&g.asked[p]||0)-(g.right&&g.right[p]||0); if(w>0) wrong[p]=w; } const mw=top(wrong); if(mw && wrong[mw]>=3) add("wrong",1,"🙈","Most Wrong Answers",mw,`${wrong[mw]} wrong answers, every one given with total confidence.`);
+  if(g.pin) add("pin",0,"📍","Human Satnav",g.pin.p,g.pin.km<1?"Dropped a map pin right on the spot. Who needs Google Maps?":`Dropped a map pin just ${km(g.pin.km)} km from the answer. Who needs Google Maps?`);
+  if(g.fastW && g.fastW.ms<2500) add("rash",1,"🤠","Shoot First, Think Later",g.fastW.p,`Locked in a wrong answer after just ${sec(g.fastW.ms)} seconds. Bold.`);
+  const b=top(g.best); if(b && g.best[b]>=3) add("streak",0,"🔥","On Fire",b,`${g.best[b]} right answers in a row. Unstoppable.`);
+  if(g.estW && g.estW.rel>=.5) add("guess",1,"🌍","Wildest Guess",g.estW.p,`Their guess was off by ${fmtNum(g.estW.d, g.estW.unit==="year"?"":g.estW.unit)}${g.estW.unit==="year"?" years":unitTxt(g.estW.unit)}. Ambitious.`);
+  if(g.slow && g.avg && g.slow.p!==g.avg.p) add("slow",1,"🐢","Took the Scenic Route",g.slow.p,`Took ${sec(g.slow.ms)} seconds an answer on average. Savouring every question.`);
+  if(g.word) add("word",0,"🔤","Wordsmith",g.word.p,`Found ${g.word.w.toUpperCase()}, the longest word in the grid.`);
   if(g.h && g.h.length>=3 && g.hp){ const place=row=>{ const pts=g.hp.map((p,i)=>[p,row[i+1]||0]).sort((x,y)=>y[1]-x[1]); const o={}; pts.forEach(([p],i)=>o[p]=i); return o; };
     const fin={}; rank.forEach((p,i)=>fin[p]=i); let best=null, worst=null;
     for(const row of g.h.slice(0,-1)){ const pl=place(row); for(const p of g.hp){ if(!(p in fin)) continue; const up=pl[p]-fin[p]; if(up>=2 && (!best || up>best.d)) best={p,d:up,from:pl[p]}; if(pl[p]===0 && fin[p]>=2 && (!worst || fin[p]>worst.d)) worst={p,d:fin[p]}; } }
-    if(best) add("back",0,"🚀","Comeback Kid",best.p,`Up from ${ordinal(best.from+1)}`);
-    if(worst) add("peak",1,"📉","Peaked Too Early",worst.p,"Led. Then didn't."); }
-  if(n>=2){ const a=sc[rank[0]]||0, s2=sc[rank[1]]||0; if(a>0 && a-s2>0 && (a-s2)<=a*.08) add("close",1,"😬","So Close",rank[1],`${(a-s2).toLocaleString("en-GB")} points off`); }
-  /* one each: the last-placed player gets the Wooden Spoon unless they earned something funnier; everyone else takes the
-     first award that's theirs; anyone left over gets a light-hearted fallback for their place */
+    if(best) add("back",0,"🚀","Comeback Kid",best.p,`Climbed from ${ordinal(best.from+1)} place to finish ${ordinal(fin[best.p]+1)}.`);
+    if(worst) add("peak",1,"📉","Peaked Too Early",worst.p,`Led the game at one point, then slid down to ${ordinal(worst.d+1)}.`); }
+  if(n>=2){ const a=sc[rank[0]]||0, s2=sc[rank[1]]||0; if(a>0 && a-s2>0 && (a-s2)<=a*.08) add("close",1,"😬","So Close",rank[1],`Missed the crown by just ${(a-s2).toLocaleString("en-GB")} points. Agonising.`); }
   const out={}, last=rank[n-1];
   for(const c of C){ if(!out[c.p] && !(c.p===last && n>=3 && !c.joke)) out[c.p]=c; }
-  if(n>=3 && !out[last]) out[last]={icon:"🥄",title:"Wooden Spoon",line:"Someone had to",joke:1};
-  const fb=[{icon:"👑",title:"Quiz Champion",line:"Bow down"},{icon:"🥈",title:"Silver Lining",line:"Nearly had it"},{icon:"🥉",title:"Bronze Bomber",line:"Made the podium"}];
-  rank.forEach((p,i)=>{ if(!out[p]) out[p]=fb[i]||{icon:"🎉",title:"Here for the Vibes",line:"And that's what counts",joke:1}; });
+  if(n>=3 && !out[last]) out[last]={icon:"🥄",title:"Wooden Spoon",why:"Finished last. Someone had to, and they did it with style.",joke:1};
+  const fb=[{icon:"👑",title:"Quiz Champion",why:"Most points overall."},{icon:"🥈",title:"Silver Lining",why:"Second place, so close to the top."},{icon:"🥉",title:"Bronze Bomber",why:"Made it onto the podium."}];
+  rank.forEach((p,i)=>{ if(!out[p]) out[p]=fb[i]||{icon:"🎉",title:"Here for the Vibes",why:"No trophies this time, but a good time was had.",joke:1}; });
   return out; }
 function ordinal(n){ const s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
 /* accolades ride along with the podium: each one pops up above its player's head as their pillar finishes rising */
@@ -9266,8 +9261,11 @@ function awardsActive(){ return false; }
 /* the big screen behind the podium: "And the winner is…" until the winner rises, then their name */
 /* big text over the top of the stage: the drumroll line, then the winner's name */
 function finBoardHTML(){ const ps=Object.keys(S.scores||{}).sort((a,b)=>(S.scores[b]||0)-(S.scores[a]||0)), w=ps[0]; if(!w) return "";
-  if(!(Room.pod && Room.pod.fired) && !RM) return `<div class="fb-wait">And the winner is…</div>`;
+  if(!(Room.pod && Room.pod.fired) && !RM){ const pod=Room.pod; let last=null, lt=-1; if(pod && pod.aw) for(const p in pod.done||{}){ if(pod.done[p]>lt && pod.aw[p] && p!==pod.rank[0]){ lt=pod.done[p]; last=p; } }
+    if(last && (Room.time||0)-lt<3.4){ const a=pod.aw[last]; return `<div class="fb-acc${a.joke?" joke":""}" data-k="${esc(last)}"><div class="fba-t">${a.icon} ${esc(a.title)} · <b>${esc(last===me.pid?"You":nameOf(last))}</b></div><div class="fba-w">${esc(a.why||"")}</div></div>`; }
+    return `<div class="fb-wait">And the winner is…</div>`; }
   const co=ps.filter(p=>(S.scores[p]||0)===(S.scores[w]||0)); const wa=Room.pod && Room.pod.aw && Room.pod.aw[w]; return `<div class="fb-win"><span class="fb-crown">👑</span>${co.map(p=>esc(p===me.pid?"You":nameOf(p))).join(" &amp; ")}${co.length>1?"":"!"}</div><div class="fb-row"><div class="fb-sub num">${(S.scores[w]||0).toLocaleString("en-GB")} points</div>${wa&&wa.title!=="Quiz Champion"?`<div class="fb-aw">${wa.icon} ${esc(wa.title)}</div>`:""}</div>`; }
+Room.onRise=()=>{ finalBoard(); setTimeout(finalBoard, 3600); };
 function finalBoard(){ const fb=$("#finboard"); if(fb){ const h=finBoardHTML(); if(fb._h!==h){ fb._h=h; fb.innerHTML=h; } } if(!S || S.phase!=="final") return; const ps=Object.keys(S.scores||{}).sort((a,b)=>(S.scores[b]||0)-(S.scores[a]||0)), w=ps[0];
   if(!w) return Room.setBoard("", "Thanks for playing", "Well played!"); const co=ps.filter(p=>(S.scores[p]||0)===(S.scores[w]||0));
   if(!(Room.pod && Room.pod.fired)) return Room.setBoard("", "", "And the winner is…");
