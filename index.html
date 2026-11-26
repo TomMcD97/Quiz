@@ -991,6 +991,11 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .daily-card.dc-compact{padding:16px!important;gap:12px;align-self:start}
 .dc-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.dc-date{font-weight:700;font-size:14px}
 /* The Daily Dougle: a small newspaper masthead (title over a double rule, the date as the dateline) */
+.nick-chip{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border:1px solid var(--line);border-radius:14px;font-size:15px}
+.nick-chip .linkbtn{background:none;border:0;color:var(--accent);font-weight:700;font-size:14px;cursor:pointer;padding:4px 0}
+.intro-pts{margin:6px 0 4px;padding:0;list-style:none;display:grid;gap:8px}.intro-pts li{position:relative;padding-left:22px;line-height:1.45}.intro-pts li::before{content:"";position:absolute;left:4px;top:.6em;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.rp-fold{margin-top:14px}.rp-fold>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;font-weight:700;font-size:15px}.rp-fold>summary::-webkit-details-marker{display:none}.rp-fold>summary::after{content:"▾";font-size:12px;transition:transform .2s}.rp-fold[open]>summary::after{transform:rotate(180deg)}
+.rp-fold .rounds-preview{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}.rp-fold .rp{padding:14px}.rp-fold .rp span{font-size:12px}
 .dc-head.dc-mast{flex-direction:column;align-items:center;text-align:center;gap:0}
 .dc-mast .dc-title{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,7.4vw,38px);line-height:1.05;letter-spacing:-.015em;padding-bottom:8px;text-wrap:balance}
 .dc-mast .dc-date{width:100%;border-top:3px double var(--line);border-bottom:1px solid var(--line);padding:5px 0;font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
@@ -7579,6 +7584,7 @@ function howtoHTML(){ return `<div class="rep-sheet howto" id="howto" role="dial
   <div class="ht-s"><span>2</span><div><b>Party mode</b><p class="muted">One person hosts and gets a 4-letter code. Friends join on their own phones with the code, the link or the QR code.</p></div></div>
   <div class="ht-s"><span>3</span><div><b>Eleven rounds</b><p class="muted">From general knowledge to maps, word grids and Heist, where you can steal points off the leader. Highest score at the end wins.</p></div></div>
   ${window.SQ_STANDALONE?`<p class="muted" style="font-size:13px;margin:0">Tip: add Dougle to your home screen so it opens like an app. On iPhone, tap Share then <b>Add to Home Screen</b>.</p>`:""}
+  ${me.nick?"":`<div class="field"><label for="htnick">What should we call you?</label><input class="input" id="htnick" maxlength="18" placeholder="e.g. Sam" autocomplete="nickname"><small class="muted" style="font-size:12px">Shown on leaderboards and in parties. You can change it any time.</small></div>`}
   <button class="btn primary" data-act="howtoclose">Let's play</button></div></div>`; }
 let installEv=null; window.addEventListener("beforeinstallprompt", e=>{ e.preventDefault(); installEv=e; const b=$("#installbtn"); if(b) b.hidden=false; });
 function maybeHowto(){ if(!FEAT.howto || LS.get("sq-howto") || app.view!=="home" || $("#howto")) return; const d=document.createElement("div"); d.innerHTML=howtoHTML(); document.body.appendChild(d.firstChild); }
@@ -7645,7 +7651,7 @@ function homePartyHTML(){ return `
       <p>Host a game or join your friends. Everyone plays on their own phone.</p>
       ${!lowEnd()&&Room.init()?`<div class="room3d home3d" id="room3d"></div>`:`<div class="home2d"><div class="h2-av">${avSVG(me.av||AVATARS[0])}</div></div>`}
       <div style="display:grid;gap:16px;margin-top:22px;position:relative">
-        <div class="field"><label for="nick">Your name</label><input class="input" id="nick" maxlength="18" placeholder="e.g. Sam" value="${esc(me.nick)}" autocomplete="nickname"></div>
+        ${me.nick && !app.nickEdit?`<div class="nick-chip"><span>Playing as <b>${esc(me.nick)}</b></span><button type="button" class="linkbtn" data-act="nickedit">Change</button><input type="hidden" id="nick" value="${esc(me.nick)}"></div>`:`<div class="field"><label for="nick">Your name</label><input class="input" id="nick" maxlength="18" placeholder="e.g. Sam" value="${esc(me.nick)}" autocomplete="nickname"></div>`}
         <details class="av-drop"${app.homeLookOpen?" open":""}><summary><span class="avcur" aria-hidden="true">${avSVG(me.av||AVATARS[0])}</span><span class="avd-t"><b>Your avatar</b><small>Tap to change your look</small></span><span class="avd-chev" aria-hidden="true">▾</span></summary><div class="avd-in">${avPickerHTML()}</div></details>
         <div class="row">
           <button class="btn primary" data-act="host">Host a party</button>
@@ -7666,12 +7672,12 @@ function homeDailyHTML(tabs){ return `
     </section>`; }
 function homeRoundsHTML(){ return `<div class="rounds-preview">${ROUND_ORDER.map(t=>`<div class="rp">${ICON[t]}<b>${RT[t].name}</b><span>${esc(RT[t].short)}</span></div>`).join("")}</div>`; }
 function homeHTML(){
-  if(HOME_TABS && homeNarrow()){ const tab=HTABS.some(t=>t[0]===app.homeTab)?app.homeTab:"party"; /* every visit opens on Party; a pop-up offers today's daily quiz and word grid */
+  if(HOME_TABS && homeNarrow()){ const tab=HTABS.some(t=>t[0]===app.homeTab)?app.homeTab:(LS.get(DQ_LS+todayKey())?"party":"daily"); /* opens on The Daily Dougle until today's quiz is played, then on Party */
     const bar=`<nav class="htabs" role="tablist" aria-label="Home">${HTABS.map(([k,l])=>`<button type="button" role="tab" data-act="htab" data-v="${k}" aria-selected="${k===tab}">${l}</button>`).join("")}</nav>`;
     let inner="";
     if(tab==="daily") inner=`<div class="hero htab-one">${homeDailyHTML(true)}</div>
       <section class="panel hjoin"><div class="eyebrow">Got a party code?</div><div class="hjoin-row">${me.nick?"":`<input class="input" id="nick" maxlength="18" placeholder="Your name" aria-label="Your name" autocomplete="nickname">`}<input class="input" id="joincode" maxlength="4" placeholder="CODE" aria-label="Party code"><button class="btn primary" data-act="join">Join</button></div></section>`;
-    else if(tab==="party") inner=`<div class="hero htab-one">${homePartyHTML()}</div>${homeRoundsHTML()}`;
+    else if(tab==="party") inner=`<div class="hero htab-one">${homePartyHTML()}</div><details class="rp-fold"${app.rpOpen?" open":""}><summary>See all ${ROUND_ORDER.length} rounds</summary>${homeRoundsHTML()}</details>`;
     else if(tab==="lb") inner=lbTabHTML();
     else inner=`<div class="htab-stats">${statsHTML()}</div>`;
     return `<div class="htab-page">`+bar+inner+`</div>`+`${FEAT.howto?`<div class="rep-row"><button type="button" class="rep-btn" data-act="howto">How to play</button><button type="button" class="rep-btn" id="installbtn" data-act="install"${installEv?"":" hidden"}>Add to home screen</button></div>`:""}${window.SQ_STANDALONE?"":`<p class="foot">To play together, invite friends to this page by email from Share. People who open it through a public link can't join live parties. Invite them as Editors if you want their daily scores on the leaderboard.</p>`}`; }
@@ -10000,7 +10006,7 @@ function renderDaily(){
   const prog = D.qs ? `<div class="progress">${D.qs.map((_,i)=>`<i class="${i<D.i||(i===D.i&&D.phase==="fb")?"done":i===D.i&&D.phase==="q"?"cur":""}"></i>`).join("")}</div>` : "";
   let h="";
   if(D.phase==="loading") h=`<div class="intro"><div class="spinner"></div><h2>Loading today's quiz</h2><p>Everyone gets the same set today.</p></div>`;
-  else if(D.phase==="intro") h=`${prog}<div class="intro"><div class="eyebrow">The Daily Dougle · Quiz · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}))}</div><div class="ri">${D.qs.length} questions</div><p>Ten questions on ten different topics, from easy to tough, plus two guesstimates, a rank it, a country to find and a higher-or-lower. Multiple-choice and higher-or-lower questions start at <b>100 points</b> and count down, so be quick. Maps and guesstimates score up to 100 for how close you get. One go per day.</p>${acctPromptHTML()}<div class="row"><button class="btn spot" data-act="dbegin">Start</button></div></div>`;
+  else if(D.phase==="intro") h=`${prog}<div class="intro"><div class="eyebrow">The Daily Dougle · Quiz · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}))}</div><div class="ri">${D.qs.length} questions</div><ul class="intro-pts"><li>Ten topics from easy to tough, plus maps, guesses and a ranking</li><li>Points count down from <b>100</b>, so be quick</li><li>One go a day, same questions for everyone</li></ul>${acctPromptHTML()}<div class="row"><button class="btn spot" data-act="dbegin">Start</button></div></div>`;
   else if(D.phase==="q"||D.phase==="fb"){
     const q=D.qs[D.i]; const fb=D.phase==="fb";
     h = prog + `<div class="stagehead"><div><div class="eyebrow">${esc(q.cat||DNAME[q.t]||"Question")}</div><div class="muted num" style="font-size:14px">Question ${D.i+1} of ${D.qs.length}${q.t==="gk"&&D.i>=5&&D.src==="ai"?" · hard":""}</div></div>${fb?`<span class="pts on" style="font-size:28px">+${D.pts[D.i]}<span class="muted" style="font-size:.45em;display:block;text-align:right">${D.answers[D.i]==null?"no answer":"in "+D.secs[D.i].toFixed(1)+"s"}</span></span>`:`<div class="row" style="gap:12px;flex-wrap:nowrap">${(q.t==="gk"||q.t==="hl")?`<span class="pts on num" style="font-size:28px;min-width:2.4em;text-align:right" title="Points available"><span id="dpav">100</span><span class="muted" style="font-size:.4em;display:block">pts left</span></span>`:""}${timerHTML(D.end, DDUR[q.t])}</div>`}</div><div class="qtext">${esc(q.text)}</div>`;
@@ -10323,7 +10329,8 @@ document.addEventListener("click", async e=>{
   if(a==="logout"){ window.SQ_AUTH.logout(); app.acct=null; closeAcct(); renderStatus(); toast("Logged out"); if(app.view==="home") render(); else if(app.view==="daily") renderDaily(); else if(app.view==="dgrid") renderDGrid(); return; }
   if(a==="dgstart"){ if($("#nick") && !readNick()) return; dgBegin(); return; }
   if(a==="install"){ if(installEv){ installEv.prompt(); installEv=null; b.hidden=true; } return; }
-  if(a==="howtoclose"){ LS.set("sq-howto",1); const h=$("#howto"); if(h) h.remove(); setTimeout(maybeDailyPop,400); return; }
+  if(a==="nickedit"){ app.nickEdit=true; render(); setTimeout(()=>{ const i=$("#nick"); if(i){ i.focus(); i.select(); } },50); return; }
+  if(a==="howtoclose"){ LS.set("sq-howto",1); const ni=$("#htnick"), v=ni?ni.value.trim().slice(0,18):""; const h=$("#howto"); if(h) h.remove(); if(v){ me.nick=v; LS.set("sq-nick",v); if(app.view==="home") render(); } setTimeout(maybeDailyPop,400); return; }
   if(a==="dpop"){ const h=$("#dpop"); if(h) h.remove(); if(b.dataset.v==="daily") startDaily(); else if(b.dataset.v==="dgrid") startDGrid(); return; }
   if(a==="howto"){ LS.set("sq-howto",null); maybeHowto(); return; }
   if(a==="reportq"){ let q; if(b.dataset.src==="daily") q=D.qs&&D.qs[D.i]; else if(S&&S.q){ q=Object.assign({}, S.q, S.rev||{}, {text:S.q.text||(S.rev&&S.rev.text)||"", t:S.q.t}); } if(q) openReport(q, b.dataset.src); return; }
@@ -10390,7 +10397,7 @@ document.addEventListener("keydown", e=>{
   if(!e.target.closest("input") && S && S.phase==="q" && S.q.t==="hl" && !myAns && app.view==="party"){ if(e.key==="ArrowUp"||e.key.toLowerCase()==="h"){ e.preventDefault(); submitAnswer(0); } if(e.key==="ArrowDown"||e.key.toLowerCase()==="l"){ e.preventDefault(); submitAnswer(1); } }
 });
 document.addEventListener("change", e=>{ const t=e.target; if(t && t.id==="mkface" && t.files && t.files[0]){ faceAuto(t.files[0]); t.value=""; } else if(t && t.id==="mkphoto" && t.files && t.files[0]){ avatarFromPhoto(t.files[0]); t.value=""; } else if(t && t.dataset && t.dataset.mk){ app.mk[t.dataset.mk]= t.type==="checkbox"?t.checked:t.value; renderMaker(); } });
-document.addEventListener("toggle", e=>{ const t=e.target; if(t && t.classList && t.classList.contains("lb-look")) app.lookOpen=t.open; if(t && t.classList && t.classList.contains("av-drop")) app.homeLookOpen=t.open; if(t && t.open) setTimeout(()=>{ try{ avPump(); }catch(e){} },30); }, true);
+document.addEventListener("toggle", e=>{ const t=e.target; if(t && t.classList && t.classList.contains("lb-look")) app.lookOpen=t.open; if(t && t.classList && t.classList.contains("rp-fold")) app.rpOpen=t.open; if(t && t.classList && t.classList.contains("av-drop")) app.homeLookOpen=t.open; if(t && t.open) setTimeout(()=>{ try{ avPump(); }catch(e){} },30); }, true);
 document.addEventListener("keydown", e=>{ if(e.key==="Escape" && document.getElementById("mkmodal")) closeMaker(); if(e.key==="Escape" && document.getElementById("acctmodal")) closeAcct(); });
 document.addEventListener("input", e=>{
   const id=e.target.id;
