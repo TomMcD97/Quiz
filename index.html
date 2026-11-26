@@ -5058,6 +5058,11 @@ const Room={
     const acc=ACC.lin; this.flash=Math.max(0,this.flash-dt*1.8);
     const items=[], refl=[], tags=[], sprites=[]; let waiting=0; const camR=[V[0],V[4],V[8]], camU=[V[1],V[5],V[9]], camF=[V[2],V[6],V[10]];
     const pod=this.pod, beams=[];
+    /* drumroll: once everyone but the champion has risen, the stage dims; when the champion lands it comes back up and
+       their gold beam snaps on brighter for a moment */
+    { const drum=!!(pod && pod.started && !pod.fired && pod.rank && pod.rank.length>1 && pod.rank.slice(1).every(p=>pod.done[p]||!this.chars[p]));
+      this.dimK=(this.dimK||0)+((drum?1:0)-(this.dimK||0))*Math.min(1,dt*(drum?1.4:3.5)); this.snapK=pod&&pod.fired?Math.max(0,1-(t-(pod.ft||t))/2.2):0; }
+    const dimL=1-.6*(this.dimK||0);
     if(pod && !pod.started && !pod.hold){ const miss=this.order.some(p=>!this.chars[p]); if(!miss || t-pod.made>6){ pod.started=true; pod.t0=t; } }
     for(const pid of this.order){ const c=this.chars[pid]; if(!c){ waiting++; continue; }
       if(pod){ const s=pod.sc[pid]||0, H=.16+1.05*Math.max(0,s)/pod.max, k=pod.started?Math.max(0,Math.min(1,(t-pod.t0-(pod.del[pid]||0))/1.7)):0, e=k<1?1-Math.pow(1-k,3):1;
@@ -5088,7 +5093,7 @@ const Room={
       const lf=c.lift||0;
       if(pod && lf>.001){ const ri=pod.rank.indexOf(pid), col=ri===0?[.78,.55,.12]:ri===1?[.55,.58,.64]:ri===2?[.5,.27,.12]:[.16,.16,.18];
         const pm=M4.ch(M4.T(c.J.root.off[0],lf/2,c.J.root.off[2]),M4.S(.72,lf,.72)); items.push({mesh:this.boxM,m:pm,c:col,spec:ri<3?1.6:.5,gloss:ri<3?70:30}); refl.push({mesh:this.boxM,m:M4.mul(M4.S(1,-1,1),pm),c:col,noCast:true});
-        const bx=c.J.root.off[0], bz=c.J.root.off[2], bc=ri===0?[1,.78,.35]:[.85,.88,1], ba=(ri===0?.16:.09)*Math.min(1,c.podK*3);
+        const bx=c.J.root.off[0], bz=c.J.root.off[2], bc=ri===0?[1,.78,.35]:[.85,.88,1], ba=(ri===0?.16*(1+1.2*(this.snapK||0)):.09*(1-.75*(this.dimK||0)))*Math.min(1,c.podK*3);
         if(ba>0){ beams.push({mesh:this.beamM,m:M4.ch(M4.T(bx,0,bz),M4.S(ri===0?.75:.6,5.4,ri===0?.75:.6)),c:bc,emit:1.4,spec:0,blend:true,alpha:ba,noCast:true,noRecv:true});
           beams.push({mesh:this.discM,m:M4.ch(M4.T(bx,.004,bz),M4.S(ri===0?.85:.7,.002,ri===0?.85:.7)),c:bc,emit:1.2,spec:0,blend:true,alpha:ba*1.6,noCast:true,noRecv:true}); } }
       items.push({mesh:this.pad,m:M4.ch(M4.T(c.J.root.off[0],lf+.005,c.J.root.off[2]),M4.S(.34,.34,.34)),c:acc,emit:c.me?1.6:.7,spec:0,noCast:true,noRecv:true});
@@ -5105,7 +5110,7 @@ const Room={
     const scene=pod?this.arena:this.items;
     const all=refl.concat(scene.filter(x=>!x.blend), items, scene.filter(x=>x.blend), beams, sprites);
     if(this.loading){ const tx=waiting?`Getting ${waiting===1?"1 player":waiting+" players"} ready…`:""; if(this.loading.textContent!==tx) this.loading.textContent=tx; this.loading.hidden=!waiting; }
-    if(pod) this.gx.render(all,{vp:VP,eye},{dir:V3.norm([.2,-.9,-.38]), center:[0,.9,.4], radius:5.5, sun:[1.7,1.55,1.3], sky:[.2,.19,.24], gnd:[.07,.06,.08], fillDir:V3.norm([-.3,-.2,-1]), fill:[.22+this.flash*acc[0]*.6,.2+this.flash*acc[1]*.6,.26+this.flash*acc[2]*.6]},[.02,.02,.03,1]);
+    if(pod) this.gx.render(all,{vp:VP,eye},{dir:V3.norm([.2,-.9,-.38]), center:[0,.9,.4], radius:5.5, sun:[1.7*dimL,1.55*dimL,1.3*dimL], sky:[.2*dimL,.19*dimL,.24*dimL], gnd:[.07,.06,.08], fillDir:V3.norm([-.3,-.2,-1]), fill:[(.22+this.flash*acc[0]*.6)*dimL,(.2+this.flash*acc[1]*.6)*dimL,(.26+this.flash*acc[2]*.6)*dimL]},[.02,.02,.03,1]);
     else this.gx.render(all,{vp:VP,eye},{dir:V3.norm([.3,-.88,-.4]), center:[0,.9,.4], radius:5.5, sun:[1.75,1.62,1.42], sky:[.3,.29,.35], gnd:[.1,.09,.11], fillDir:V3.norm([-.3,-.2,-1]), fill:[.28+this.flash*acc[0]*.6,.27+this.flash*acc[1]*.6,.33+this.flash*acc[2]*.6]},[.02,.02,.03,1]);
     if(this.tags){ const crowd=this.order.length>4; if(this.tags._crowd!==crowd){ this.tags._crowd=crowd; this.tags.classList.toggle("rt-crowd",crowd); } const pd=!!pod; if(this.tags._pod!==pd){ this.tags._pod=pd; this.tags.classList.toggle("rt-pod",pd); } }
     /* podium with lots of players: alternate the name tags up and down so neighbours don't overlap */
