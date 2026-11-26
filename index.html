@@ -996,6 +996,24 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .intro-pts{margin:6px 0 4px;padding:0;list-style:none;display:grid;gap:8px}.intro-pts li{position:relative;padding-left:22px;line-height:1.45}.intro-pts li::before{content:"";position:absolute;left:4px;top:.6em;width:8px;height:8px;border-radius:50%;background:var(--accent)}
 .rp-fold{margin-top:14px}.rp-fold>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;font-weight:700;font-size:15px}.rp-fold>summary::-webkit-details-marker{display:none}.rp-fold>summary::after{content:"▾";font-size:12px;transition:transform .2s}.rp-fold[open]>summary::after{transform:rotate(180deg)}
 .rp-fold .rounds-preview{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}.rp-fold .rp{padding:14px}.rp-fold .rp span{font-size:12px}
+.fin-stage .room3d{height:min(78vh,760px)!important}
+.aw-splash{position:fixed;left:50%;z-index:70;pointer-events:none;width:min(92vw,540px);text-align:center;padding:18px 20px 20px;border-radius:26px;color:#fff;
+  background:radial-gradient(120% 90% at 50% 0%,rgba(255,200,90,.28),transparent 60%),rgba(9,9,13,.88);border:2px solid rgba(255,210,122,.75);
+  box-shadow:0 0 0 6px rgba(255,210,122,.12),0 0 60px rgba(255,190,80,.35),0 24px 60px rgba(0,0,0,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  transform:translate(-50%,-50%) rotate(-2deg);animation:awIn .6s cubic-bezier(.2,1.6,.4,1) both}
+.aw-splash.joke{border-color:rgba(255,120,180,.8);background:radial-gradient(120% 90% at 50% 0%,rgba(255,90,170,.28),transparent 60%),rgba(9,9,13,.88);box-shadow:0 0 0 6px rgba(255,120,180,.12),0 0 60px rgba(255,90,170,.35),0 24px 60px rgba(0,0,0,.6);transform:translate(-50%,-50%) rotate(2deg);animation-name:awInJ}
+.aw-splash.out{animation:awOut .35s ease-in forwards}
+.aws-kicker{font-family:var(--f-mono);font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,220,150,.9)}
+.aw-splash.joke .aws-kicker{color:rgba(255,170,210,.95)}
+.aws-icon{font-size:clamp(52px,14vw,78px);line-height:1.1;margin-top:6px;animation:awPop .7s cubic-bezier(.2,1.8,.4,1) .15s both}
+.aws-title{font-family:var(--f-display);font-weight:900;font-size:clamp(28px,8vw,46px);line-height:1.02;letter-spacing:-.02em;text-wrap:balance;margin-top:2px}
+.aws-who{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px;font-size:clamp(18px,5vw,22px);animation:fhIn .45s ease .3s both}
+.aws-who .av{width:44px;height:44px;flex:none}
+.aws-line{margin-top:8px;font-size:15px;color:rgba(255,255,255,.78);text-wrap:balance;animation:fhIn .45s ease .45s both}
+@keyframes awIn{0%{opacity:0;transform:translate(-50%,-50%) scale(1.9) rotate(-10deg)}100%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(-2deg)}}
+@keyframes awInJ{0%{opacity:0;transform:translate(-50%,-50%) scale(1.9) rotate(10deg)}100%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(2deg)}}
+@keyframes awOut{to{opacity:0;transform:translate(-50%,-50%) scale(.6) rotate(8deg)}}
+@keyframes awPop{0%{transform:scale(0) rotate(-30deg)}100%{transform:scale(1) rotate(0)}}
 .dc-head.dc-mast{flex-direction:column;align-items:center;text-align:center;gap:0}
 .dc-mast .dc-title{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,7.4vw,38px);line-height:1.05;letter-spacing:-.015em;padding-bottom:8px;text-wrap:balance}
 .dc-mast .dc-date{width:100%;border-top:3px double var(--line);border-bottom:1px solid var(--line);padding:5px 0;font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
@@ -4902,16 +4920,16 @@ const Room={
     const n0=it.length;
     add(gx.mesh("floorA",()=>GEO.plane(5)),"#16161C",M4.ch(M4.T(0,0,2),M4.S(24,1,20)),{spec:1.2,gloss:90,noCast:true,blend:true,alpha:.82});
     box(0,4,-4.6,26,8,.1,"#0B0B10",{noCast:true,spec:.05});
-    for(const side of [-1,1]) for(let k=0;k<16;k++){ const x=side*(4.2+k*.21), z=-4.3+k*.06+(k%2)*.05; add(CY,k%2?"#6E0C18":"#5A0913",M4.ch(M4.T(x,0,z),M4.S(.14,6.5,.14)),{spec:.5,gloss:18,wrap:.3,noCast:true}); }
-    for(const side of [-1,1]) add(B,"#5A0913",M4.ch(M4.T(side*5.6,5.9,-4.2),M4.S(3.8,.9,.25)),{spec:.4,noCast:true});
-    add(B,"#5A0913",M4.ch(M4.T(0,6.1,-4.35),M4.S(12,.8,.2)),{spec:.4,noCast:true});
+    for(const side of [-1,1]) for(let k=0;k<16;k++){ const x=side*(5.3+k*.21), z=-4.3+k*.06+(k%2)*.05; add(CY,k%2?"#6E0C18":"#5A0913",M4.ch(M4.T(x,0,z),M4.S(.14,6.5,.14)),{spec:.5,gloss:18,wrap:.3,noCast:true}); }
+    for(const side of [-1,1]) add(B,"#5A0913",M4.ch(M4.T(side*6.7,5.9,-4.2),M4.S(3.8,.9,.25)),{spec:.4,noCast:true});
+    add(B,"#5A0913",M4.ch(M4.T(0,6.1,-4.35),M4.S(15,.8,.2)),{spec:.4,noCast:true});
     const bulb=(x,y,z)=>add(S,"#FFE7B0",M4.ch(M4.T(x,y,z),M4.S(.05,.05,.05)),{emit:3,spec:0,noCast:true,noRecv:true});
-    for(let i=0;i<=22;i++){ const x=-3.3+i*.3; bulb(x,4.55,-4.5); bulb(x,.55,-4.5); }
-    for(let j=1;j<13;j++){ const y=.55+j*.3333; bulb(-3.3,y,-4.5); bulb(3.3,y,-4.5); }
-    box(0,2.55,-4.53,6.4,3.8,.02,"#14141C",{noCast:true,spec:.3,gloss:40});
-    for(let j=0;j<7;j++) box(0,1.0+j*.5,-4.51,6.2,.012,.01,"#2A2A38",{noCast:true,emit:.6});
-    add(gx.mesh("ringA",()=>GEO.torus(1,.012,96,6)),"#FFD27A",M4.ch(M4.T(0,.008,.6),M4.S(3.4,1,2.2)),{emit:2.2,spec:0,noCast:true,noRecv:true});
-    add(gx.mesh("ringA",()=>GEO.torus(1,.012,96,6)),"#FFD27A",M4.ch(M4.T(0,.008,.6),M4.S(3.65,1,2.4)),{emit:1.2,spec:0,noCast:true,noRecv:true});
+    for(let i=0;i<=29;i++){ const x=-4.35+i*.3; bulb(x,4.55,-4.5); bulb(x,.55,-4.5); }
+    for(let j=1;j<13;j++){ const y=.55+j*.3333; bulb(-4.35,y,-4.5); bulb(4.35,y,-4.5); }
+    box(0,2.55,-4.53,8.5,3.8,.02,"#14141C",{noCast:true,spec:.3,gloss:40});
+    for(let j=0;j<7;j++) box(0,1.0+j*.5,-4.51,8.3,.012,.01,"#2A2A38",{noCast:true,emit:.6});
+    add(gx.mesh("ringA",()=>GEO.torus(1,.012,96,6)),"#FFD27A",M4.ch(M4.T(0,.008,.6),M4.S(4.4,1,2.5)),{emit:2.2,spec:0,noCast:true,noRecv:true});
+    add(gx.mesh("ringA",()=>GEO.torus(1,.012,96,6)),"#FFD27A",M4.ch(M4.T(0,.008,.6),M4.S(4.7,1,2.75)),{emit:1.2,spec:0,noCast:true,noRecv:true});
     for(const side of [-1,1]) for(let k=0;k<3;k++){ const x=side*(1.4+k*1.2); add(CY,"#202024",M4.ch(M4.T(x,5.35,-1.5),M4.S(.12,.25,.12)),{spec:.8,noCast:true}); add(S,"#FFF2D0",M4.ch(M4.T(x,5.33,-1.5),M4.S(.09,.04,.09)),{emit:3,noCast:true}); }
     this.arena=it.splice(n0); this.beamM=HUM.cyl(gx,1,.1); this.discM=HUM.cyl(gx);
     this.quad=gx.mesh("quad",()=>({P:[-.5,-.5,0, .5,-.5,0, .5,.5,0, -.5,.5,0],N:[0,0,1,0,0,1,0,0,1,0,0,1],U:[0,0,1,0,1,1,0,1],I:[0,1,2,0,2,3]}));
@@ -5022,7 +5040,7 @@ const Room={
     const acc=ACC.lin; this.flash=Math.max(0,this.flash-dt*1.8);
     const items=[], refl=[], tags=[], sprites=[]; let waiting=0; const camR=[V[0],V[4],V[8]], camU=[V[1],V[5],V[9]], camF=[V[2],V[6],V[10]];
     const pod=this.pod, beams=[];
-    if(pod && !pod.started){ const miss=this.order.some(p=>!this.chars[p]); if(!miss || t-pod.made>6){ pod.started=true; pod.t0=t; } }
+    if(pod && !pod.started && !pod.hold){ const miss=this.order.some(p=>!this.chars[p]); if(!miss || t-pod.made>6){ pod.started=true; pod.t0=t; } }
     for(const pid of this.order){ const c=this.chars[pid]; if(!c){ waiting++; continue; }
       if(pod){ const s=pod.sc[pid]||0, H=.16+1.05*Math.max(0,s)/pod.max, k=pod.started?Math.max(0,Math.min(1,(t-pod.t0-(pod.del[pid]||0))/1.7)):0, e=k<1?1-Math.pow(1-k,3):1;
         c.lift=H*e; c.podH=H; c.podK=k; c.disp=`${shortTag(c.label,c.me)}\n${Math.round(Math.max(0,s)*e)}`;
@@ -5061,6 +5079,18 @@ const Room={
       if(back.length){ const x0=Math.min(...back.map(c=>c.x)), x1=Math.max(...back.map(c=>c.x)), z=back[0].z, hgt=back[0].baseLift, w=x1-x0+1.1;
         const rm=M4.ch(M4.T((x0+x1)/2,hgt/2,z),M4.S(w,hgt,.95)); items.push({mesh:this.boxM,m:rm,c:[.07,.07,.09],spec:1.2,gloss:80}); refl.push({mesh:this.boxM,m:M4.mul(M4.S(1,-1,1),rm),c:[.07,.07,.09],noCast:true});
         items.push({mesh:this.boxM,m:M4.ch(M4.T((x0+x1)/2,hgt-.02,z+.48),M4.S(w,.025,.01)),c:acc,emit:2,spec:0,noCast:true,noRecv:true}); } }
+    if(pod){ /* finale light show: six moving heads sweep the stage in colour, swing onto whoever is getting an award, then all
+         lock onto the champion in gold */
+      const at=pid=>{ const c=this.chars[pid]; return c?[c.J.root.off[0], c.J.root.off[2]]:null; };
+      const fp=this.awFocus?at(this.awFocus):(pod.fired?at(pod.rank[0]):null); this.focusK=(this.focusK||0)+((fp?1:0)-(this.focusK||0))*Math.min(1,dt*2.5); if(fp) this.focusP=fp;
+      const FX=[-4.2,-2.6,-1.0,1.0,2.6,4.2], COLS=[[1,.25,.75],[.25,.8,1],[1,.72,.25],[.6,.35,1],[.25,1,.7],[1,.45,.3]], gold=[1,.78,.35], fk=this.focusK||0, fq=this.focusP||[0,.6];
+      for(let i=0;i<6;i++){ const src=[FX[i],5.3,-1.3], sp=pod.fired?.35:1, sw=[Math.sin(t*.6*sp+i*1.3)*3.4, .8+Math.cos(t*.47*sp+i*.9)*1.2];
+        const tx=sw[0]+(fq[0]+(i-2.5)*.06-sw[0])*fk, tz=sw[1]+(fq[1]-sw[1])*fk, dx=src[0]-tx, dy=src[1], dz=src[2]-tz, L=Math.hypot(dx,dy,dz), up=[dx/L,dy/L,dz/L];
+        let X=[up[1]*1-up[2]*0, up[2]*0-up[0]*1, up[0]*0-up[1]*0]; /* up × z */ X=[up[1], -up[0], 0]; const xl=Math.hypot(...X)||1; X=X.map(v=>v/xl); const Z=[X[1]*up[2]-X[2]*up[1], X[2]*up[0]-X[0]*up[2], X[0]*up[1]-X[1]*up[0]];
+        const w=.5, col0=COLS[(i+Math.floor(t*.25))%6], col=pod.fired?[col0[0]+(gold[0]-col0[0])*fk,col0[1]+(gold[1]-col0[1])*fk,col0[2]+(gold[2]-col0[2])*fk]:col0, al=.05+.05*fk+(this.flash||0)*.05;
+        const m=new Float32Array([X[0]*w,X[1]*w,X[2]*w,0, up[0]*L,up[1]*L,up[2]*L,0, Z[0]*w,Z[1]*w,Z[2]*w,0, tx,0,tz,1]);
+        beams.push({mesh:this.beamM,m,c:col,emit:1.5,spec:0,blend:true,alpha:al,noCast:true,noRecv:true});
+        beams.push({mesh:this.discM,m:M4.ch(M4.T(tx,.006,tz),M4.S(.62,.002,.62)),c:col,emit:1.3,spec:0,blend:true,alpha:al*2.2,noCast:true,noRecv:true}); } }
     if(!pod){ /* lobby: just a pool of light on the floor under each player (no beams, so the stage stays clear) */
       for(const pid of this.order){ const c=this.chars[pid]; if(!c) continue; const bx=c.J.root.off[0], bz=c.J.root.off[2], y=(c.baseLift||0)+.004, bc=c.me?[1,.86,.55]:[.9,.93,1], ba=c.me?.16:.1, pulse=1+Math.sin(t*1.6+bx)*.03;
         beams.push({mesh:this.discM,m:M4.ch(M4.T(bx,y,bz),M4.S(.95*pulse,.002,.95*pulse)),c:bc,emit:1.1,spec:0,blend:true,alpha:ba,noCast:true,noRecv:true});
@@ -7406,7 +7436,7 @@ const MUSIC=(()=>{
   window.addEventListener("pagehide", sleep); window.addEventListener("freeze", sleep);
   /* away from a game with no music playing (home page, results), let the audio go quiet after a few seconds; taps wake it for sound effects */
   setInterval(()=>{ const inGame=app.view==="party"||app.view==="daily"||app.view==="dgrid"; if(track || inGame){ clearTimeout(idleT); idleT=null; return; } if(!idleT && ((keeper && !keeper.paused) || (ctx && ctx.state==="running"))) idleT=setTimeout(()=>{ idleT=null; if(!track) sleep(); },4000); }, 1000);
-  return {sync, sleep, setOn, cycle, isOn:()=>on, syncBtn, state:()=>({track, urgent, ctx:ctx?ctx.state:null, t:ctx?+ctx.currentTime.toFixed(1):0})};
+  return {sync, sleep, setOn, cycle, sting, isOn:()=>on, syncBtn, state:()=>({track, urgent, ctx:ctx?ctx.state:null, t:ctx?+ctx.currentTime.toFixed(1):0})};
 })();
 setInterval(()=>{ try{ MUSIC.sync(); }catch(e){} }, 200);
 function renderStatus(){
@@ -8320,7 +8350,7 @@ function goIntro(ri){
 function compactGs(){ const g=G.gs; if(!g) return null; const top=o=>{ let b=null; for(const p in o||{}) if(o[p]>0 && (!b || o[p]>o[b])) b=p; return b; };
   const avg=Object.entries(g.at||{}).filter(([,x])=>x[1]>=3).map(([p,x])=>({p, ms:Math.round(x[0]/x[1])})).sort((a,b)=>a.ms-b.ms);
   const hp=Object.keys(G.scores||{}), h=(g.hist||[]).map(([t,o])=>[t, ...hp.map(p=>o[p]||0)]); /* points after each round, for the line graph */
-  return {right:g.right, asked:g.asked, best:g.best, fast:g.fast, avg:avg.length>1?avg[0]:null, pin:g.pin, est:g.est, word:g.word, hp, h}; }
+  return {right:g.right, asked:g.asked, best:g.best, fast:g.fast, avg:avg.length>1?avg[0]:null, slow:avg.length>1?avg[avg.length-1]:null, pin:g.pin, est:g.est, word:g.word, pinW:g.pinW||null, estW:g.estW||null, fastW:g.fastW||null, hp, h}; }
 function goFinal(){ for(const p in (G.sp||{})){ G.scores[p]=(G.scores[p]||0)+G.sp[p]; } try{ G.gx=compactGs(); }catch(e){ G.gx=null; } G.spDone=G.sp||{}; G.sp={}; G.phase="final"; G.q=null; G.rev=null; G.adv=0; hostAdvAt=0; pushState(); }
 function nextQuestion(){
   const R=plan[G.ri]; G.qi++;
@@ -8352,10 +8382,11 @@ function gsOf(){ return G.gs||(G.gs={pts:{}, right:{}, asked:{}, cur:{}, best:{}
 function gsAns(pid, ok, ms, t){ const g=gsOf(); g.asked[pid]=(g.asked[pid]||0)+1;
   if(ms!=null){ const x=g.at[pid]||[0,0]; x[0]+=ms; x[1]++; g.at[pid]=x; }
   if(ok){ g.right[pid]=(g.right[pid]||0)+1; g.cur[pid]=(g.cur[pid]||0)+1; if(g.cur[pid]>(g.best[pid]||0)) g.best[pid]=g.cur[pid]; if(ms!=null && (!g.fast || ms<g.fast.ms)) g.fast={p:pid, ms:Math.round(ms), t}; }
-  else g.cur[pid]=0; }
+  else { g.cur[pid]=0; if(ms!=null && (!g.fastW || ms<g.fastW.ms)) g.fastW={p:pid, ms:Math.round(ms)}; } }
 function gsRoundEnd(t, pts){ const g=gsOf(), st=G.st||{}; const m=g.pts[t]||(g.pts[t]={}); for(const p in pts) m[p]=(m[p]||0)+(pts[p]||0);
   const snap={}; for(const p of Object.keys(G.scores||{})) snap[p]=(G.scores[p]||0)+(t==="sp"?((G.sp||{})[p]||0):0); (g.hist||(g.hist=[])).push([t, snap]);
-  if(st.pin && (!g.pin || st.pin.km<g.pin.km)) g.pin=st.pin; if(st.est && (!g.est || st.est.rel<g.est.rel)) g.est=st.est; if(st.word && (!g.word || st.word.w.length>g.word.w.length)) g.word=st.word; }
+  if(st.pin && (!g.pin || st.pin.km<g.pin.km)) g.pin=st.pin; if(st.est && (!g.est || st.est.rel<g.est.rel)) g.est=st.est; if(st.word && (!g.word || st.word.w.length>g.word.w.length)) g.word=st.word;
+  if(st.pinW && (!g.pinW || st.pinW.km>g.pinW.km)) g.pinW=st.pinW; if(st.estW && (!g.estW || st.estW.rel>g.estW.rel)) g.estW=st.estW; }
 function updStats(t, Q, A, rev){
   if(["gk","hl","sp","ctry","uniq","lead"].includes(t)){ for(const p of Object.keys(G.scores||{})){ const r=rev.rows.find(x=>x.p===p), a=A[p], ms=a && typeof a.t==="number" ? Math.max(0,a.t) : null; gsAns(p, !!(r && r.pts>0), ms, t); } }
   const st=G.st||(G.st={c:{}, n:0, at:{}}); st.n++;
@@ -8365,8 +8396,10 @@ function updStats(t, Q, A, rev){
     if(ms!=null){ const x=st.at[r.p]||[0,0]; x[0]+=ms; x[1]++; st.at[r.p]=x; }
     if(r.pts>0){ st.c[r.p]=(st.c[r.p]||0)+1; if(ms!=null && (!st.f || ms<st.f.ms)) st.f={p:r.p, ms:Math.round(ms)}; }
   }
-  if(t==="pin"){ const b=rev.rows.find(r=>r.km!=null); if(b && (!st.pin || b.km<st.pin.km)) st.pin={p:b.p, km:b.km}; }
-  if(t==="est"){ const b=rev.rows.find(r=>r.d!=null); if(b){ const rel=b.d/Math.max(1e-9, Math.abs(rev.ans)); if(!st.est || rel<st.est.rel) st.est={p:b.p, rel:+rel.toFixed(5), d:b.d, unit:rev.unit}; } }
+  if(t==="pin"){ const b=rev.rows.find(r=>r.km!=null); if(b && (!st.pin || b.km<st.pin.km)) st.pin={p:b.p, km:b.km};
+    let w=null; for(const r of rev.rows) if(r.km!=null && (!w || r.km>w.km)) w=r; if(w && (!st.pinW || w.km>st.pinW.km)) st.pinW={p:w.p, km:w.km}; }
+  if(t==="est"){ const b=rev.rows.find(r=>r.d!=null); if(b){ const rel=b.d/Math.max(1e-9, Math.abs(rev.ans)); if(!st.est || rel<st.est.rel) st.est={p:b.p, rel:+rel.toFixed(5), d:b.d, unit:rev.unit}; }
+    let w=null; for(const r of rev.rows) if(r.d!=null && (!w || r.d>w.d)) w=r; if(w){ const rel=w.d/Math.max(1e-9, Math.abs(rev.ans)); if(!st.estW || rel>st.estW.rel) st.estW={p:w.p, rel:+rel.toFixed(5), d:w.d, unit:rev.unit}; } }
 }
 async function closeQuestion(){
   if(closing) return; closing=true;
@@ -8755,7 +8788,7 @@ function renderLobbyStage(){
     let ps=players();
     if(S.phase==="final"){ const sc=S.scores||{}, sorted=ps.slice().sort((a,b)=>(sc[b.pid]||0)-(sc[a.pid]||0)), arr=[]; sorted.forEach((p,i)=>{ if(i%2) arr.unshift(p); else arr.push(p); }); ps=arr; }
     Room.sync(ps.map(p=>({pid:p.pid, av:p.av||avOf(p.pid), label:p.nick+(p.isMe?" (you)":""), me:!!p.isMe, color:pcol(p.pid), ph:photoOf(p.pid,p.av||avOf(p.pid))})));
-    if(S.phase==="final"){ const sc={}; ps.forEach(p=>sc[p.pid]=(S.scores||{})[p.pid]||0); Room.setPodium(sc); } else Room.setPodium(null);
+    if(S.phase==="final"){ awardsStart(); const sc={}; ps.forEach(p=>sc[p.pid]=(S.scores||{})[p.pid]||0); Room.setPodium(sc); if(Room.pod) Room.pod.hold=!awardsDone() && !!S.gx; } else { Room.setPodium(null); Room.awFocus=null; const e=document.getElementById("awsplash"); if(e) e.remove(); }
     const cap=($("#lcap")||{}).textContent||"";
     if(S.phase==="lobby") Room.setBoard(S.code, cap); else if(S.phase==="final") finalBoard(); else Room.setBoard("", cap, "Get ready");
     ps.forEach(p=>{ const em = p.isMe ? myPres.emo : p.emo; if(em && em.t && figEmo[p.pid]!==em.t){ figEmo[p.pid]=em.t; if(Date.now()-em.t<5000 || p.isMe) Room.emote(p.pid, em.e); } });
@@ -9175,13 +9208,61 @@ function gameSummaryHTML(ps, wait, D){
   if(pick.length) h+=`<div class="eyebrow" style="margin:16px 0 8px">Accolades</div><div class="aw-grid">${pick.map((c,i)=>`<div class="aw-card" style="--i:${i}">${avatar(c.p)}<div><div class="eyebrow">${c.icon} ${esc(c.title)}</div><b>${nm(c.p)}</b><div class="muted">${esc(c.val)}</div></div></div>`).join("")}</div>`;
   return h+`</div>`;
 }
+/* ---------- The Dougle Awards: a run of accolades splashed over the stage before the podium, a mix of proper ones and cheeky
+   ones. Worked out from the shared end-of-game summary, so every phone shows the same awards in the same order. ---------- */
+function awardList(){ const g=S.gx, sc=S.scores||{}; if(!g) return [];
+  const ids=Object.keys(sc), n=ids.length, rank=ids.slice().sort((a,b)=>(sc[b]||0)-(sc[a]||0)); if(n<2) return [];
+  const top=o=>{ let b=null; for(const p in o||{}) if(o[p]>0 && (!b || o[p]>o[b])) b=p; return b; }, km=v=>Math.round(v).toLocaleString("en-GB"), sec=ms=>(ms/1000).toFixed(1);
+  const C=[], add=(k,joke,icon,title,p,line)=>{ if(p && ids.includes(p)) C.push({k,joke,icon,title,p,line}); };
+  if(g.fast) add("fast",0,"⚡","Fastest Fingers",g.fast.p,`Right in ${sec(g.fast.ms)} seconds`);
+  if(g.pinW && g.pinW.km>=300) add("far",1,"🧭","Furthest Away",g.pinW.p,`Pinned it ${km(g.pinW.km)} km off. Wrong continent?`);
+  if(g.pin) add("pin",0,"📍","Human Satnav",g.pin.p,g.pin.km<1?"Bang on the spot":`Just ${km(g.pin.km)} km away`);
+  const wrong={}; for(const p of ids){ const w=(g.asked&&g.asked[p]||0)-(g.right&&g.right[p]||0); if(w>0) wrong[p]=w; } const mw=top(wrong); if(mw && wrong[mw]>=3) add("wrong",1,"🙈","Most Wrong Answers",mw,`${wrong[mw]} wrong. Confidently.`);
+  const b=top(g.best); if(b && g.best[b]>=3) add("streak",0,"🔥","On Fire",b,`${g.best[b]} right in a row`);
+  if(g.fastW && g.fastW.ms<2500) add("rash",1,"🤠","Shoot First, Think Later",g.fastW.p,`Wrong in ${sec(g.fastW.ms)} seconds`);
+  if(g.slow && g.avg && g.slow.p!==g.avg.p) add("slow",1,"🐢","Took the Scenic Route",g.slow.p,`${sec(g.slow.ms)} seconds an answer`);
+  if(g.estW && g.estW.rel>=.5) add("guess",1,"🌍","Wildest Guess",g.estW.p,`Off by ${fmtNum(g.estW.d, g.estW.unit==="year"?"":g.estW.unit)}${g.estW.unit==="year"?" years":unitTxt(g.estW.unit)}`);
+  if(g.word) add("word",0,"🔤","Wordsmith",g.word.p,g.word.w.toUpperCase());
+  /* comeback and collapse, from each player's place after every round */
+  if(g.h && g.h.length>=3 && g.hp){ const place=row=>{ const pts=g.hp.map((p,i)=>[p,row[i+1]||0]).sort((x,y)=>y[1]-x[1]); const o={}; pts.forEach(([p],i)=>o[p]=i); return o; };
+    const fin={}; rank.forEach((p,i)=>fin[p]=i); let best=null, worst=null;
+    for(const row of g.h.slice(0,-1)){ const pl=place(row); for(const p of g.hp){ if(!(p in fin)) continue; const up=pl[p]-fin[p]; if(up>=2 && (!best || up>best.d)) best={p,d:up,from:pl[p]}; if(pl[p]===0 && fin[p]>=2 && (!worst || fin[p]>worst.d)) worst={p,d:fin[p]}; } }
+    if(best) add("back",0,"🚀","Comeback Kid",best.p,`Climbed from ${ordinal(best.from+1)} place`);
+    if(worst) add("peak",1,"📉","Peaked Too Early",worst.p,`Was top of the pile. Then wasn't.`); }
+  if(n>=2){ const a=sc[rank[0]]||0, s2=sc[rank[1]]||0; if(a>0 && a-s2>0 && (a-s2)<=a*.08) add("close",1,"😬","So Close",rank[1],`Just ${(a-s2).toLocaleString("en-GB")} points off the crown`); }
+  if(n>=3){ const last=rank[n-1]; add("spoon",1,"🥄","Wooden Spoon",last,"Someone had to. Thanks for taking one for the team."); }
+  /* pick up to five: give as many different people a moment as possible, keep a couple of cheeky ones, Wooden Spoon last */
+  const spoon=C.find(c=>c.k==="spoon"), rest=C.filter(c=>c!==spoon), out=[], used=new Set(), max=Math.min(5, Math.max(3,n+1));
+  const take=c=>{ out.push(c); used.add(c.p); };
+  for(const want of [1,0,1,0,1,0]){ if(out.length>=max-(spoon?1:0)) break; const c=rest.find(x=>!out.includes(x) && x.joke===want && !used.has(x.p) && x.p!==rank[0]) || rest.find(x=>!out.includes(x) && x.joke===want && !used.has(x.p)); if(c) take(c); }
+  for(const c of rest){ if(out.length>=max-(spoon?1:0)) break; if(!out.includes(c)) take(c); }
+  if(spoon) out.push(spoon);
+  return out.slice(0,max); }
+function ordinal(n){ const s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
+let AW=null; /* {key, list, i, timer, done} */
+function awardsActive(){ return !!(S && S.phase==="final" && AW && AW.key===String(S.gid) && !AW.done); }
+function awardsDone(){ return !!(S && AW && AW.key===String(S.gid) && AW.done); }
+function awardsStart(){ const key=String(S.gid); if(AW && AW.key===key) return; if(!S.gx && Room.ok && !RM) return; /* wait for the end-of-game summary to arrive */ if(AW && AW.timer) clearTimeout(AW.timer); const list=(RM||!Room.ok)?[]:awardList();
+  AW={key, list, i:-1, done:!list.length}; if(AW.done) return; Room.setBoard("", "", "The Dougle Awards"); finalBoard(); const tok=AW; AW.timer=setTimeout(()=>awardsNext(tok), 1700); }
+function awardsNext(tok){ if(!AW || AW!==tok || AW.done || !S || S.phase!=="final") return; clearTimeout(AW.timer); AW.i++; const el0=document.getElementById("awsplash"); if(el0) el0.classList.add("out");
+  if(AW.i>=AW.list.length){ Room.awFocus=null; setTimeout(()=>{ const e=document.getElementById("awsplash"); if(e) e.remove(); },450); AW.done=true; finalBoard(); renderLobbyStage(); return; }
+  const a=AW.list[AW.i], st=document.querySelector(".fin-stage .room3d"), r=st?st.getBoundingClientRect():null, cy=r&&r.bottom>80&&r.top<innerHeight-80?Math.max(110,Math.min(innerHeight-140,r.top+r.height*.42)):innerHeight*.45;
+  setTimeout(()=>{ const o=document.getElementById("awsplash"); if(o) o.remove();
+    const el=document.createElement("div"); el.id="awsplash"; el.className="aw-splash"+(a.joke?" joke":""); el.style.top=cy+"px"; el.setAttribute("role","status");
+    el.innerHTML=`<div class="aws-kicker">The Dougle Awards · ${AW.i+1} of ${AW.list.length}</div><div class="aws-icon" aria-hidden="true">${a.icon}</div><div class="aws-title">${esc(a.title)}</div><div class="aws-who">${avatar(a.p)}<b>${esc(a.p===me.pid?"You":nameOf(a.p))}</b></div><div class="aws-line">${esc(a.line)}</div>`;
+    document.body.appendChild(el); },AW.i?260:0);
+  Room.awFocus=a.p; Room.flash=1; Room.emote(a.p, a.joke?(["shrug","lol","bow"][AW.i%3]):(["cheer","flex","hype"][AW.i%3]));
+  try{ MUSIC.sting(a.joke?"wrong":"right"); }catch(e){}
+  AW.timer=setTimeout(()=>awardsNext(tok), 3000); }
 /* the big screen behind the podium: "And the winner is…" until the winner rises, then their name */
 /* big text over the top of the stage: the drumroll line, then the winner's name */
 function finBoardHTML(){ const ps=Object.keys(S.scores||{}).sort((a,b)=>(S.scores[b]||0)-(S.scores[a]||0)), w=ps[0]; if(!w) return "";
+  if(awardsActive()) return `<div class="fb-wait">🏆 The Dougle Awards</div>`;
   if(!(Room.pod && Room.pod.fired) && !RM) return `<div class="fb-wait">And the winner is…</div>`;
   const co=ps.filter(p=>(S.scores[p]||0)===(S.scores[w]||0)); return `<div class="fb-win"><span class="fb-crown">👑</span>${co.map(p=>esc(p===me.pid?"You":nameOf(p))).join(" &amp; ")}${co.length>1?"":"!"}</div><div class="fb-sub num">${(S.scores[w]||0).toLocaleString("en-GB")} points</div>`; }
 function finalBoard(){ const fb=$("#finboard"); if(fb){ const h=finBoardHTML(); if(fb._h!==h){ fb._h=h; fb.innerHTML=h; } } if(!S || S.phase!=="final") return; const ps=Object.keys(S.scores||{}).sort((a,b)=>(S.scores[b]||0)-(S.scores[a]||0)), w=ps[0];
   if(!w) return Room.setBoard("", "Thanks for playing", "Well played!"); const co=ps.filter(p=>(S.scores[p]||0)===(S.scores[w]||0));
+  if(awardsActive()) return Room.setBoard("", "", "The Dougle Awards");
   if(!(Room.pod && Room.pod.fired)) return Room.setBoard("", "", "And the winner is…");
   Room.setBoard("", `${(S.scores[w]||0).toLocaleString("en-GB")} points · quiz champion${co.length>1?"s":""}`, "👑 "+(co.length>1?co.map(p=>nameOf(p)).join(" & "):nameOf(w))+"!"); }
 function finalHTML(){
