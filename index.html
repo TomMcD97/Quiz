@@ -4766,28 +4766,36 @@ function buildRelief(img, tt, ro){ ro=ro||{}; const N=84, S=document.createEleme
    as the surface turns away, into colours taken from the photo's edge, then your hair colour round the back. Same frame and
    mesh format as buildRelief (unit square of the "-10 -20 220 220" picture, y up), so the stage draws it the same way. */
 function buildPhotoHead3D(cv, hair, skin){
-  /* the head is placed from the face line-up, not from the cut-out's edges, so stray bits of background can't push it off-centre.
-     Frame units (the avatar's 200 frame): head spans x 43..157, y 36..170, a rounded bobblehead, eyes at y 95.5. */
-  const F=v=>v/220, cxn=0, cyn=.5-F(103+20), rx=F(57), ry=F(67), rz=rx*.9, cz=-rz*.12, eyeV=.5-F(95.5+20);
-  const hex=h=>{ const x=parseInt((h||"#3a2a20").slice(1),16); return [(x>>16)&255,(x>>8)&255,x&255]; }, HB=hex(hair), SK=hex(skin||"#D49C78"), lin=v=>Math.pow(v/255,2.2);
+  /* A smooth 3D head, with only your FACE from the photo on the front (forehead, eyes, nose, mouth, chin: no hair, ears or background).
+     The face sits on the flattest part of the head so it isn't stretched; the rest is your skin colour with a hair cap in your hair colour.
+     Frame units (the avatar's 200 frame, as lined up from your eyes and mouth): eyes at (79.9,95.5)/(120.1,95.5), mouth at y 130.8. */
+  const F=v=>v/220, cxn=0, cyn=.5-F(103+20), rx=F(57), ry=F(67), rz=rx*.92, cz=-rz*.1;
+  const FO={x:100,y:110,rx:37,ry:53};   /* the face oval in frame units */
+  const S=cv.width, kk=S/220, sx=cv.getContext("2d");
+  const avg=(pts)=>{ let r=0,g=0,b=0,n=0; for(const [X,Y] of pts){ const d=sx.getImageData(Math.round((X+10)*kk)-4,Math.round((Y+20)*kk)-4,8,8).data; for(let i=0;i<d.length;i+=4) if(d[i+3]>200){ r+=d[i]; g+=d[i+1]; b+=d[i+2]; n++; } } return n>20?[r/n,g/n,b/n]:null; };
+  const hex=h=>{ const x=parseInt((h||"#3a2a20").slice(1),16); return [(x>>16)&255,(x>>8)&255,x&255]; };
+  const SK=avg([[78,116],[122,116],[100,70],[90,112],[110,112]])||hex(skin||"#D49C78"), HB=avg([[100,40],[76,48],[124,48],[88,36],[112,36]])||((hair&&hair[0]==="#")?hex(hair):(hair||hex("#3a2a20"))), lin=v=>Math.pow(v/255,2.2);
   const sm=(a,b,x)=>{ const t=Math.max(0,Math.min(1,(x-a)/(b-a))); return t*t*(3-2*t); }, mix=(p,q,t)=>[p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t,p[2]+(q[2]-p[2])*t];
-  const RING=48, SEG=36, out=[];
+  const hlFront=.5-F(FO.y-FO.ry+6+20), hlSide=.5-F(96+20), hlBack=cyn-ry*.45;
+  const RING=80, SEG=56, out=[];
   for(const back of [0,1]){ const P=[],Nn=[],U=[],C=[],M=[],I=[];
     for(let r=0;r<=RING;r++){ const ph=r/RING*Math.PI, cph=Math.cos(ph), sph=Math.sin(ph);
       const taper=1-.15*Math.pow(Math.max(0,-cph),1.6);
-      for(let k=0;k<=SEG;k++){ const th=(back?Math.PI/2:-Math.PI/2)+k/SEG*Math.PI, x=cxn+rx*taper*sph*Math.sin(th), y=cyn+ry*cph, z=cz+rz*taper*sph*Math.cos(th);
+      for(let k=0;k<=SEG;k++){ const th=(back?Math.PI/2:-Math.PI/2)+k/SEG*Math.PI, ct=Math.cos(th), st=Math.sin(th);
+        /* the front is a little flatter than a ball, so the face lies on a gentle curve instead of wrapping round */
+        const zf=ct>0?Math.pow(ct,.62):ct;
+        const x=cxn+rx*taper*sph*st, y=cyn+ry*cph, z=cz+rz*taper*Math.pow(sph,.85)*zf;
         P.push(x,y,z); Nn.push(0,0,0); U.push(back?-1:x+.5, back?-1:y+.5);
-        /* skin on the face and jaw, hair above the brow and round the back */
-        const front=Math.max(0,Math.cos(th)), hairT=Math.max(sm(eyeV+.02,eyeV+.1,y), back?1-sm(cyn-ry*.75,cyn-ry*.45,y)*0:0, (1-front)*sm(cyn-ry*.2,cyn+ry*.1,y));
-        const c=mix(SK,HB,Math.min(1,hairT)); C.push(lin(c[0]),lin(c[1]),lin(c[2]),1); M.push(.3,.22,.22); } }
+        const side=Math.abs(st), hl=ct>=0? hlFront+(hlSide-hlFront)*Math.pow(side,3) : hlSide+(hlBack-hlSide)*Math.min(1,-ct*1.4);
+        const c=mix(SK,HB,sm(hl-.04,hl+.03,y)); C.push(lin(c[0]),lin(c[1]),lin(c[2]),1); M.push(.32,.2,.2); } }
     const W=SEG+1; for(let r=0;r<RING;r++) for(let k=0;k<SEG;k++){ const a=r*W+k,b=a+1,c=a+W,d=c+1; I.push(a,c,b, b,c,d); }
     for(let t=0;t<I.length;t+=3){ const a=I[t]*3,b=I[t+1]*3,c=I[t+2]*3; const ux=P[b]-P[a],uy=P[b+1]-P[a+1],uz=P[b+2]-P[a+2],vx=P[c]-P[a],vy=P[c+1]-P[a+1],vz=P[c+2]-P[a+2]; const nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx; for(const q of [a,b,c]){ Nn[q]+=nx; Nn[q+1]+=ny; Nn[q+2]+=nz; } }
     for(let q=0;q<Nn.length;q+=3){ let nx=Nn[q],ny=Nn[q+1],nz=Nn[q+2]; const ox=P[q]-cxn, oy=P[q+1]-cyn, oz=P[q+2]-cz; if(nx*ox+ny*oy+nz*oz<0){ nx=-nx; ny=-ny; nz=-nz; } const l=Math.hypot(nx,ny,nz)||1; Nn[q]=nx/l; Nn[q+1]=ny/l; Nn[q+2]=nz/l; }
     out.push({P:new Float32Array(P),N:new Float32Array(Nn),U:new Float32Array(U),C:new Float32Array(C),M:new Float32Array(M),I:new Uint32Array(I)}); }
-  /* the photo for the front: your cut-out, softly faded out towards the head's edge so nothing outside the head shows */
-  const S=cv.width, tc=document.createElement("canvas"); tc.width=tc.height=S; const x=tc.getContext("2d"); x.drawImage(cv,0,0);
-  x.globalCompositeOperation="destination-in"; x.save(); x.translate(S*(.5+cxn),S*(.5-cyn)); x.scale(1,ry/rx);
-  const g=x.createRadialGradient(0,0,0,0,0,S*rx); g.addColorStop(0,"#000"); g.addColorStop(.8,"#000"); g.addColorStop(.97,"rgba(0,0,0,0)"); x.fillStyle=g; x.fillRect(-S,-S,2*S,2*S); x.restore();
+  /* the photo for the front: just the face oval, feathered at its edge into the head's skin colour */
+  const tc=document.createElement("canvas"); tc.width=tc.height=S; const x=tc.getContext("2d"); x.drawImage(cv,0,0);
+  x.globalCompositeOperation="destination-in"; x.save(); x.translate((FO.x+10)*kk,(FO.y+20)*kk); x.scale(1,FO.ry/FO.rx);
+  const g=x.createRadialGradient(0,0,0,0,0,FO.rx*kk); g.addColorStop(0,"#000"); g.addColorStop(.72,"#000"); g.addColorStop(1,"rgba(0,0,0,0)"); x.fillStyle=g; x.fillRect(-S,-S,2*S,2*S); x.restore();
   out.tex=tc; return out; }
 const Room={
   ok:null, gx:null, cv:null, wrap:null, tags:null, chars:{}, order:[], items:[], raf:0, last:0, board:{code:null,cap:"",title:""}, want:{}, flash:0,
@@ -4897,7 +4905,7 @@ const Room={
       const gr=y.createRadialGradient(S*.45,S*.3,20,S/2,S*.5,S*.5); gr.addColorStop(0,"rgba(255,255,255,.2)"); gr.addColorStop(.6,"rgba(0,0,0,0)"); gr.addColorStop(1,"rgba(0,0,0,.35)"); y.fillStyle=gr; y.fillRect(0,0,S,S);
       const id=Math.random().toString(36).slice(2); ch.spriteTex=this.gx.texCanvas("phs_"+id,cv); ch.spriteBack=this.gx.texCanvas("phb_"+id,bc); ch.relief=null;
       /* real depth: a rounded head (nose, cheeks, back of the head in your hair colour) built from the cut-out, so it turns in 3D */
-      try{ const g2=buildPhotoHead3D(cv, t.hairColour||"#3a2a20", t.skin); if(g2) ch.relief={mesh:this.gx.upload(g2[0]), meshB:this.gx.upload(g2[1]), front:this.gx.texCanvas("phr_"+id,g2.tex)}; }catch(e){ console.warn("photo head 3D",e); ch.relief=null; }
+      try{ const g2=buildPhotoHead3D(cv, n?[r/n,g/n,b/n]:(t.hairColour||"#3a2a20"), t.skin); if(g2) ch.relief={mesh:this.gx.upload(g2[0]), meshB:this.gx.upload(g2[1]), front:this.gx.texCanvas("phr_"+id,g2.tex)}; }catch(e){ console.warn("photo head 3D",e); ch.relief=null; }
     }catch(e){ console.warn("photo head",e); ch.spriteTex=null; } };
     im.src=ph; },
   loadSprite(ch,av){ try{ const tt=(typeof avToon==="function")&&avToon(av); if(!tt) return; const SV="-10 -20 220 220", img=new Image(); ch.sprPending=true;
