@@ -116,6 +116,7 @@
       catch(e){ if(e.status===401){ await token(true); if(!sess) return null; try{ return save((await post("/api/auth/me",{})).profile); }catch(e2){ if(e2.status===401){ keep(null); return null; } } }
         return cached(); /* server or network hiccup: stay logged in with what we knew */ } },
     async saveProfile(patch){ if(!sess) return null; const p=(await post("/api/auth/profile",patch)).profile; if(p){ try{ localStorage.setItem("sq-prof",JSON.stringify(p)); }catch(e){} } return p; },
+    async seen(add){ if(!sess) return null; try{ const j=await post("/api/seen",{add:add||{}}); return j&&j.k||null; }catch(e){ return null; } },
     logout(){ keep(null); try{ localStorage.removeItem("sq-prof"); }catch(e){} },
     async deleteAccount(){ const j=await post("/api/auth/delete",{}); keep(null); try{ localStorage.removeItem("sq-prof"); }catch(e){} return j; }
   };
@@ -6803,11 +6804,23 @@ function ctryPick(n){
   return pick.map(c=>({text:"Where is "+c[0]+"?", place:c[0], lat:c[1], lng:c[2]}));
 }
 
-const qKey=(type,x)=>type+":"+(hashStr(String(x[0]))%1e9).toString(36);
+const qKey=(type,x)=>type+":"+(x.key ? x.key : (hashStr(String(x[0]))%1e9).toString(36));
 const seenAt = (()=>{ const o=LS.get("sq-seen2"); if(o && typeof o==="object" && !Array.isArray(o)) return o; const m={}; (LS.get("sq-used")||[]).forEach((k,i)=>m[k]=i+1); return m; })();
 const used = { has:k=>!!seenAt[k], add:k=>{ seenAt[k]=Date.now(); }, delete:k=>{} };
 const seenTexts = LS.get("sq-seentext")||{};
-function saveSeen(){ const ks=Object.keys(seenAt); if(ks.length>9000){ ks.sort((a,b)=>seenAt[a]-seenAt[b]).slice(0,ks.length-9000).forEach(k=>delete seenAt[k]); } LS.set("sq-seen2",seenAt); LS.set("sq-seentext",seenTexts); }
+function saveSeen(){ const ks=Object.keys(seenAt); if(ks.length>9000){ ks.sort((a,b)=>seenAt[a]-seenAt[b]).slice(0,ks.length-9000).forEach(k=>delete seenAt[k]); } LS.set("sq-seen2",seenAt); LS.set("sq-seentext",seenTexts);  seenSoon(); }
+/* signed-in players: what you've been asked follows you between phones, and a host avoids what anyone in the room has had */
+let seenTmr=null;
+function seenSoon(){ if(seenTmr || !(window.SQ_AUTH && SQ_AUTH.signedIn())) return; seenTmr=setTimeout(()=>{ seenTmr=null; seenSync(); }, 20000); }
+async function seenSync(){ const A=window.SQ_AUTH; if(!A || !A.signedIn()) return;
+  const since=+LS.get("sq-seen-up")||0, add={}; Object.keys(seenAt).filter(k=>seenAt[k]>since && k.length<=80).sort((a,b)=>seenAt[b]-seenAt[a]).slice(0,3000).forEach(k=>add[k]=seenAt[k]);
+  const started=Date.now(), got=await A.seen(add); if(!got) return;
+  let ch=false; for(const k in got){ if(!(seenAt[k]>=got[k])){ seenAt[k]=got[k]; ch=true; } }
+  LS.set("sq-seen-up", started); if(ch) LS.set("sq-seen2",seenAt); }
+async function roomSeen(ps){ const uids=[...new Set((ps||[]).filter(p=>p.uid && !p.isMe).map(p=>p.uid))]; if(!uids.length) return;
+  try{ const ctl=new AbortController(), t=setTimeout(()=>ctl.abort(), 2500);
+    const r=await fetch("/api/seen/room",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({uids}),signal:ctl.signal}); clearTimeout(t);
+    const j=await r.json(); for(const k in (j.k||{})){ if(!(seenAt[k]>=j.k[k])) seenAt[k]=j.k[k]; } }catch(e){} }
 function noteText(t,txt){ const a=seenTexts[t]||(seenTexts[t]=[]); a.push(String(txt).slice(0,120)); if(a.length>200) a.splice(0,a.length-200); }
 function recentTexts(t,n){ return (seenTexts[t]||[]).slice(-n); }
 
@@ -7614,7 +7627,7 @@ function privacyHTML(){ const signed=!!(window.SQ_AUTH && window.SQ_AUTH.signedI
   <h4>What we keep, and where</h4>
   <ul>
     <li><b>On your device:</b> your name, avatar, face photo (if you use one), daily results and settings. They stay in your browser and you can clear them above.</li>
-    <li><b>If you make an account:</b> your email, name, avatar, daily scores and streaks, and any leagues you join, so they work on all your devices and appear on leaderboards.</li>
+    <li><b>If you make an account:</b> your email, name, avatar, daily scores and streaks, any leagues you join, and a list of which questions you've been asked (stored as short codes, not your answers), so they work on all your devices, appear on leaderboards, and you don't get the same questions again.</li>
     <li><b>Things you send us:</b> feedback, question reports and name reports.</li>
     <li><b>Counts:</b> simple totals, like how many quizzes were played today. No cookies, no tracking IDs and no advertising. If something crashes, we receive the error message and your device type, nothing that identifies you.</li>
   </ul>
@@ -7904,7 +7917,7 @@ async function openParty(code, host, solo){
   pr.onPeers(onPartyPeers, ()=>{ toast("Lost connection to the party"); });
   app.phRoom=null; if(app.room && !pr.local){ app.room.join("sq-"+code.toLowerCase()+"-ph").then(r=>{ if(app.party!==pr){ try{ r.leave(); }catch(e){} return; } app.phRoom=r; r.onPeers(c=>{ let ch=false; for(const p of c.peers||[]){ const q=p.presence||{}; if(!q.pid || p.isMe) continue; const ph=photoFromPres(q); if((PHOTOS[q.pid]||null)!==ph){ PHOTOS[q.pid]=ph; ch=true; } } if(ch){ renderBoard(); if(S && ["lobby","intro","roundEnd","final"].includes(S.phase)){ stageKey=""; renderStage(); } } }); sharePhoto(); }).catch(()=>{}); }
   try{ document.body.classList.toggle("tvmode", !!app.tvMode); }catch(e){}
-  setMyPresence({role: app.tvMode?"tv":(host?"host":"player"), pid:me.pid, nick:app.tvMode?"TV":me.nick, av:me.av, topic:null, wc:null, ans:null, emo:null, sd:dayList().slice(-220).join(".")||null});
+  setMyPresence({role: app.tvMode?"tv":(host?"host":"player"), pid:me.pid, uid:(app.acct&&app.acct.id)||null, nick:app.tvMode?"TV":me.nick, av:me.av, topic:null, wc:null, ans:null, emo:null, sd:dayList().slice(-220).join(".")||null});
   if(host){
     const saved = SS.get("sq-host-"+code);
     if(saved && saved.G){ G=saved.G; plan=saved.plan; }
@@ -7994,7 +8007,7 @@ function botTick(now){
 function players(){
   const out=[]; const seen=new Set();
   for(const p of partyPeers()){ const pr=p.presence||{}; if(!pr.pid || (pr.role!=="host" && pr.role!=="player")) continue; if(seen.has(pr.pid)) continue; seen.add(pr.pid);
-    out.push({pid:String(pr.pid).slice(0,64), nick:String(pr.nick||"Player").slice(0,18), topicReq:(pr.topic && typeof pr.topic==="object")?pr.topic:null, wc:pr.wc, av:validAv(pr.av)?pr.av:null, emo:(pr.emo && typeof pr.emo==="object" && EMO_IDS.includes(pr.emo.e))?pr.emo:null, host:pr.role==="host", ans:pr.ans, rdy:typeof pr.rdy==="string"?pr.rdy.slice(0,40):null, sd:typeof pr.sd==="string"?pr.sd.slice(0,2400):null, isMe:pr.pid===me.pid}); }
+    out.push({pid:String(pr.pid).slice(0,64), nick:String(pr.nick||"Player").slice(0,18), topicReq:(pr.topic && typeof pr.topic==="object")?pr.topic:null, wc:pr.wc, av:validAv(pr.av)?pr.av:null, emo:(pr.emo && typeof pr.emo==="object" && EMO_IDS.includes(pr.emo.e))?pr.emo:null, host:pr.role==="host", ans:pr.ans, rdy:typeof pr.rdy==="string"?pr.rdy.slice(0,40):null, sd:typeof pr.sd==="string"?pr.sd.slice(0,2400):null, uid:typeof pr.uid==="string"&&/^[\w-]{3,80}$/.test(pr.uid)?pr.uid:null, isMe:pr.pid===me.pid}); }
   if(!seen.has(me.pid) && app.party && !app.tvMode) out.push({pid:me.pid, nick:me.nick, topicReq:myPres.topic||null, wc:myPres.wc, av:me.av, host:app.isHost, ans:myPres.ans, rdy:myPres.rdy||null, isMe:true});
   if(app.party) for(const b of botList()){ if(!b || seen.has(b.pid)) continue; seen.add(b.pid); out.push({pid:b.pid, nick:String(b.nick).slice(0,18), av:validAv(b.av)?b.av:null, bot:true, lv:b.lv}); }
   const K=((app.isHost?G:S)||{}).kicked; if(FEAT.kick && Array.isArray(K) && K.length) return out.filter(p=>p.isMe||!K.includes(p.pid));
@@ -8061,6 +8074,7 @@ async function hostStart(){
   G.phase="gen"; G.msg="Getting the questions ready"; G.ai=aiOn(); G.active=act.map(r=>r.t); G.scores={}; G.rs={}; G.sp={}; ps.forEach(p=>{ G.scores[p.pid]=0; G.names[p.pid]=p.nick; }); pushState();
   if(act.some(r=>r.t==="pin")) loadMap();
   if(act.some(r=>r.t==="grid")) loadDict();
+  await roomSeen(ps);
   plan=[]; mfH={used:new Set()}; gameQ=[]; dayBan=buildDayBan(ps);
   for(const r of act){
     G.msg = aiOn() ? `Writing ${RT[r.t].name} questions` : `Picking ${RT[r.t].name} questions`; pushState();
@@ -9131,14 +9145,58 @@ const HL_BANK={
   for(const t in (P.sp||{})) P.sp[t].forEach(x=>{ nq(x[0]); (SP_BANK[t]||(SP_BANK[t]=[])).push(x); });
   for(const f in (P.hl||{})) if(HL_BANK[f]) P.hl[f].forEach(x=>{ nq(x[0]); HL_BANK[f].items.push(x); });
 })();
-function hlFmt(fam, v){ if(fam==="money") return v>=1e9?`$${(v/1e9).toFixed(2).replace(/\.?0+$/,"")} billion`:`$${Math.round(v/1e6)} million`;
+/* ---------- questions built from data: fresh combinations every game, so the number rounds never run dry ----------
+   GEO_DATA: country, population (millions, about 2024), area (km²). Values only need to be right to within a few per cent:
+   every comparison or ranking the game builds keeps items at least 15% apart, so a rounding difference can't flip an answer. */
+const GEO_DATA=[
+["China",1410,9597000],["India",1440,3287000],["United States",340,9834000],["Indonesia",280,1905000],["Pakistan",245,882000],["Nigeria",225,924000],["Brazil",212,8516000],
+["Bangladesh",172,148000],["Russia",144,17098000],["Mexico",130,1964000],["Japan",124,378000],["Ethiopia",128,1104000],["Philippines",115,300000],["Egypt",114,1002000],
+["Vietnam",100,331000],["DR Congo",105,2345000],["Iran",90,1648000],["Turkey",85,784000],["Germany",84,357000],["Thailand",71,513000],["United Kingdom",68,242000],
+["France",68,552000],["Tanzania",67,947000],["South Africa",63,1221000],["Italy",59,301000],["Kenya",55,580000],["Myanmar",54,677000],["Colombia",52,1142000],
+["South Korea",52,100000],["Spain",48,506000],["Argentina",46,2780000],["Algeria",46,2382000],["Sudan",48,1886000],["Uganda",48,241000],["Iraq",45,438000],
+["Canada",40,9985000],["Poland",37,313000],["Morocco",37,447000],["Saudi Arabia",33,2150000],["Peru",34,1285000],["Malaysia",34,331000],["Afghanistan",42,652000],
+["Ghana",34,239000],["Nepal",30,147000],["Venezuela",28,916000],["Australia",27,7692000],["North Korea",26,121000],["Taiwan",23,36000],["Sri Lanka",22,66000],
+["Romania",19,238000],["Chile",20,756000],["Kazakhstan",20,2725000],["Netherlands",18,42000],["Cambodia",17,181000],["Zimbabwe",17,391000],["Ecuador",18,256000],
+["Guatemala",18,109000],["Senegal",18,197000],["Somalia",19,638000],["Zambia",21,753000],["Belgium",12,31000],["Bolivia",12,1099000],["Cuba",11,110000],["Tunisia",12,164000],
+["Greece",10,132000],["Portugal",10,92000],["Sweden",10.5,450000],["Czech Republic",10.9,79000],["Hungary",9.6,93000],["Jordan",11.5,89000],["United Arab Emirates",10,84000],
+["Austria",9.1,84000],["Israel",9.9,22000],["Switzerland",8.9,41000],["Serbia",6.6,88000],["Bulgaria",6.4,111000],["Paraguay",6.9,407000],
+["Libya",7,1760000],["Denmark",6,43000],["Finland",5.6,338000],["Norway",5.5,385000],["Singapore",5.9,730],["Ireland",5.3,70000],["New Zealand",5.3,268000],
+["Costa Rica",5.2,51000],["Lebanon",5.4,10000],["Oman",5.2,310000],["Croatia",3.9,57000],["Mongolia",3.4,1564000],["Uruguay",3.4,176000],["Jamaica",2.8,11000],
+["Lithuania",2.9,65000],["Namibia",3.0,824000],["Botswana",2.5,582000],["Slovenia",2.1,20000],["Latvia",1.9,65000],["Estonia",1.4,45000],
+["Fiji",0.93,18000],["Luxembourg",0.67,2600],["Montenegro",0.62,14000],["Malta",0.54,316],["Iceland",0.39,103000],["Bahamas",0.41,14000],["Barbados",0.28,430],
+["Wales",3.1,20800],["Scotland",5.4,77900],["Northern Ireland",1.9,14100],["England",57,130300],
+];
+function geoPairOk(a,b){ const r=a>b?a/b:b/a; return r>=1.15; }
+const GEO_OK=GEO_DATA;
+/* Higher or Lower families made from the table: every game strings together a different chain */
+HL_BANK.gpop={name:"How many people live there?", items:GEO_OK.map(c=>[c[0], Math.round(c[1]*1e6)]), gen:true};
+HL_BANK.garea={name:"How big is it?", items:GEO_OK.map(c=>[c[0], c[2]]), gen:true};
+/* Rank It: five places, smallest to biggest (or the other way), picked fresh each time */
+function genRank(rnd=Math.random){
+  const kind=rnd()<.5?"pop":"area", desc=rnd()<.3, pool=shuffle(GEO_OK.slice(),rnd), pick=[];
+  const v=c=>kind==="pop"?c[1]:c[2];
+  for(const c of pool){ if(pick.length>=5) break; if(pick.every(p=>geoPairOk(v(p),v(c)))) pick.push(c); }
+  pick.sort((a,b)=>v(a)-v(b)); if(desc) pick.reverse();
+  const fmt=c=>kind==="pop"?(c[1]>=1?`${+c[1].toFixed(c[1]<10?1:0)}m people`:`${Math.round(c[1]*1000)}k people`):`${c[2].toLocaleString("en-GB")} km²`;
+  const x=[kind==="pop"?`Put these by population, ${desc?"most":"fewest"} people first`:`Put these by area, ${desc?"biggest":"smallest"} first`, pick.map(c=>c[0]), pick.map(fmt), desc?(kind==="pop"?"Most":"Biggest"):(kind==="pop"?"Fewest":"Smallest"), desc?(kind==="pop"?"Fewest":"Smallest"):(kind==="pop"?"Most":"Biggest")];
+  NEWQ.add(norm(x[0])); x.key="g"+kind+(desc?"d":"a")+(hashStr(pick.map(c=>c[0]).sort().join("|"))%1e9).toString(36);
+  return x;
+}
+(function(){ const have=new Set([].concat(BANK.est,BANK.est_pop||[],BANK.est_hard||[]).map(x=>norm(x[0])));
+  /* every page load adds a different 60 ready-made rankings, so a group of regulars rarely sees the same five twice */
+  for(let i=0;i<60;i++) BANK.rank.push(genRank());
+  /* guesstimates: how many people live in a country, and how big it is */
+  for(const c of GEO_OK){ if(c[1]>=1){ const t=`Roughly how many people live in ${c[0]}, in millions?`; if(!have.has(norm(t))) BANK.est.push([t, c[1]>=10?Math.round(c[1]):+c[1].toFixed(1), "million"]); }
+    const t2=`How big is ${c[0]}, in square kilometres?`; if(c[2]>=10000 && !have.has(norm(t2))) (BANK.est_hard||(BANK.est_hard=[])).push([t2, c[2], "km²"]); }
+})();
+function hlFmt(fam, v){ if(fam==="garea") return `${v.toLocaleString("en-GB")} km²`; if(fam==="money") return v>=1e9?`$${(v/1e9).toFixed(2).replace(/\.?0+$/,"")} billion`:`$${Math.round(v/1e6)} million`;
   if(fam==="height") return `${v.toLocaleString("en-GB")} m`; if(fam==="length") return `${v.toLocaleString("en-GB")} km`; if(fam==="age") return `${v} years old`; if(fam==="year") return String(v);
   return v>=1e6 ? `${(v/1e6).toFixed(v>=1e8?0:1).replace(/\.0$/,"")} million` : v.toLocaleString("en-GB"); }
 function hlBuild(n){
   const fams=Object.keys(HL_BANK), last=LS.get("sq-hl-last")||""; const pool=fams.filter(f=>f!==last); const fam=pool[Math.floor(Math.random()*pool.length)]; LS.set("sq-hl-last",fam);
   const items=dayFilter(HL_BANK[fam].items.filter(x=>!dailyOnly(x[0])), n+1, x=>x[0]).map(x=>({x, s:seenAt["hl:"+norm(x[0])]||0})).sort((a,b)=>a.s-b.s||Math.random()-.5).map(o=>o.x);
-  const chain=[items[0]]; for(const it of items.slice(1)){ if(chain.length>n) break; if(it[1]!==chain[chain.length-1][1]) chain.push(it); }
-  const c=shuffle(chain); for(let i=1;i<c.length;i++) if(c[i][1]===c[i-1][1]){ const j=(i+1)%c.length; [c[i],c[j]]=[c[j],c[i]]; }
+  const gen=!!HL_BANK[fam].gen, chain=[items[0]]; for(const it of items.slice(1)){ if(chain.length>n) break; const pv=chain[chain.length-1][1]; if(gen ? geoPairOk(it[1],pv) : it[1]!==pv) chain.push(it); }
+  const c=gen?chain:shuffle(chain); for(let i=1;i<c.length;i++) if(!gen && c[i][1]===c[i-1][1]){ const j=(i+1)%c.length; [c[i],c[j]]=[c[j],c[i]]; }
   c.forEach(x=>{ seenAt["hl:"+norm(x[0])]=Date.now(); }); saveSeen();
   const yr=fam==="year", opts=yr?["Later","Earlier"]:["Higher","Lower"], qs=[];
   for(let i=1;i<c.length && qs.length<n;i++){ const A=c[i-1], B=c[i]; qs.push({text: yr?`Did this happen later or earlier?`:`Higher or lower?`, fam, famName:HL_BANK[fam].name, opts, a:{l:A[0], v:A[1], f:hlFmt(fam,A[1])}, b:{l:B[0], v:B[1], f:hlFmt(fam,B[1])}, ans: B[1]>A[1]?0:1}); }
@@ -10418,7 +10476,7 @@ async function acctInit(){
 }
 function acctRefreshView(){ if(app.view==="home") render(); else if(app.view==="daily") renderDaily(); else if(app.view==="dgrid") renderDGrid(); }
 function acctApply(p, quiet){
-  app.acct=p;
+  const was=app.acct&&app.acct.id; app.acct=p; if(p && p.id && p.id!==was){ if(was) LS.set("sq-seen-up",0); setTimeout(seenSync, 1500); }
   if(p.name){ me.nick=p.name; LS.set("sq-nick",p.name); const ni=$("#nick"); if(ni) ni.value=p.name; }
   if(p.sj && typeof p.sj==="object" && !LS.get("sq-subj-pend")) LS.set("sq-subj", p.sj);
   const pend=LS.get("sq-av-sync");

@@ -113,7 +113,9 @@ const SCORE = /^(daily|dq\d*|dg\d*)\/[^/]+\/scores\/([^/]+)$/;
 function dbOp(b, user) {
   const p = b.path;
   if (!okPath(p)) return { error: "bad_path" };
-  if (b.op === "set" && /^users\//.test(p)) return { error: "not_allowed" };
+  /* the server's own records (accounts, question history, feedback, counts, name reports) are never read or written through here */
+  if (/^(users|seen|hidden|namerep|feedback|ev|stats)(\/|$)/.test(p)) return { error: "not_allowed" };
+  if (/^reports(\/|$)/.test(p) && b.op !== "set") return { error: "not_allowed" };
   if (b.op === "set" && SB_ON) { // with accounts on, a leaderboard score must come from that player's own account
     const m = SCORE.exec(p);
     if (m) {
@@ -217,7 +219,7 @@ async function authRoute(req, res, url) {
     const user = await userOf(req); if (!user) return json(res, 401, { error: "Please log in again.", code: "login_required" });
     if (act === "me") return json(res, 200, { profile: profileOut(user) });
     if (act === "delete") { /* your account, profile, leaderboard scores and reports about your name, then the login itself */
-      const id = user.id, esc = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), re = new RegExp("(^users/" + esc + "$)|(/scores/" + esc + "$)|(^namerep/" + esc + "$)|(^hidden/" + esc + "$)|(/members/" + esc + "$)");
+      const id = user.id, esc = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), re = new RegExp("(^users/" + esc + "$)|(^seen/" + esc + "$)|(/scores/" + esc + "$)|(^namerep/" + esc + "$)|(^hidden/" + esc + "$)|(/members/" + esc + "$)");
       let n = 0; for (const k of Object.keys(store)) if (re.test(k)) { delete store[k]; gone.add(k); dirty.delete(k); n++; } save();
       try { await sbFetch("/auth/v1/admin/users/" + encodeURIComponent(id), { method: "DELETE", headers: sbHead(SB_SERVICE) }); } catch (e) { console.error("delete login failed", e.message); return json(res, 500, { error: "Your data was removed but the login couldn't be deleted. Please email us and we'll finish it." }); }
       return json(res, 200, { ok: true, removed: n });
@@ -318,6 +320,26 @@ async function evRoute(req, res) {
   const list = (Array.isArray(b.e) ? b.e : [b.e]).filter(x => EVENTS.has(x)).slice(0, 10); if (!list.length) return json(res, 200, { ok: true });
   const day = new Date().toISOString().slice(0, 10), k = "ev/" + day, cur = store[k] || {};
   for (const x of list) cur[x] = (cur[x] || 0) + 1; store[k] = cur; save(k); return json(res, 200, { ok: true });
+}
+/* ---------------- questions each signed-in player has already been asked ----------------
+   kept per account so a player's history follows them between phones, and so a host can avoid
+   questions anyone in the room has already had. Only short hashed question keys are stored. */
+const SEEN_MAX = 3000;
+async function seenRoute(req, res, url) {
+  const b = await readBody(req, 300000);
+  if (url.pathname === "/api/seen/room") {
+    if (tooMany(req, "seenroom", 300)) return json(res, 429, { error: "slow down" });
+    const uids = (Array.isArray(b.uids) ? b.uids : []).filter(u => typeof u === "string" && /^[\w-]{3,80}$/.test(u)).slice(0, 16), out = {};
+    for (const u of uids) { const s = store["seen/" + u]; if (s && s.k) for (const k in s.k) { if (!(out[k] >= s.k[k])) out[k] = s.k[k]; } }
+    return json(res, 200, { k: out });
+  }
+  const user = await userOf(req); if (!user) return json(res, 401, { error: "login_required" });
+  const key = "seen/" + user.id, cur = store[key] && store[key].k ? store[key] : { k: {} }, add = b.add && typeof b.add === "object" ? b.add : {};
+  let n = 0, ch = false;
+  for (const k in add) { if (++n > SEEN_MAX) break; if (k.length > 80) continue; const t = Math.min(Date.now(), +add[k] || 0); if (t > 0 && !(cur.k[k] >= t)) { cur.k[k] = t; ch = true; } }
+  const ks = Object.keys(cur.k); if (ks.length > SEEN_MAX) { ks.sort((a, c) => cur.k[a] - cur.k[c]).slice(0, ks.length - SEEN_MAX).forEach(k => delete cur.k[k]); ch = true; }
+  if (ch) { store[key] = cur; save(key); }
+  return json(res, 200, { k: cur.k });
 }
 async function forgetRoute(req, res) { return json(res, 200, { ok: true }); } /* guests have nothing stored on the server; the game clears the phone */
 /* ---------- feedback from the game ---------- */
@@ -509,6 +531,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/log" && req.method === "POST") { await ready; return logRoute(req, res); }
     if (url.pathname === "/api/ev" && req.method === "POST") { await ready; return evRoute(req, res); }
     if (url.pathname === "/api/feedback" && req.method === "POST") { await ready; return feedbackRoute(req, res); }
+    if ((url.pathname === "/api/seen" || url.pathname === "/api/seen/room") && req.method === "POST") { await ready; return seenRoute(req, res, url); }
     if (url.pathname === "/api/forget" && req.method === "POST") { await ready; return forgetRoute(req, res); }
     if (url.pathname === "/admin" && req.method === "GET") { await ready; return adminRoute(req, res, url); }
     /* face finding and head cut-out models, loaded only when someone uses "Use my face" */
