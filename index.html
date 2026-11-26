@@ -3322,6 +3322,7 @@ function toonSVGLite(t, opts){ opts=opts||{}; if(t && t.gender==="f" && t.facial
     if(t.facial!=="stubble"){ const ps=[]; for(let i=0;i<14;i++){ const x=62+i*5.6; ps.push(`M${x} ${140+Math.abs(x-100)*.0} q2 8 0 ${12+ (14-Math.abs(i-7))*1.2}`); } strands(ps,1.2,.3); } }
   if(!FO && t.facial==="goatee") push(`<path d="${crPath([[100,146],[114,148],[116,162],[108,chinY+4],[100,chinY+6],[92,chinY+4],[84,162],[86,148]],true)}" fill="${U("h")}"/>`);
   push(`</g>`);
+  const featAt=out.length;
   // ---------- eyes ----------
   const mix=(a,b,f)=>{ const A=parseInt(a.slice(1),16), B=parseInt(b.slice(1),16); return "#"+[16,8,0].map(k=>Math.round(((A>>k)&255)*(1-f)+((B>>k)&255)*f).toString(16).padStart(2,"0")).join(""); };
   const eh={almond:9,round:10.5,narrow:7.8}[t.eyes]||9, EY=101, EW=13.5;
@@ -3362,6 +3363,7 @@ function toonSVGLite(t, opts){ opts=opts||{}; if(t && t.gender==="f" && t.facial
   for(const s of [-1,1]) push(`<path d="M${100+s*(MW+.5)} ${MY-3} q${s*2.6} 1.4 ${s*1.4} 4.6" stroke="${shade(sk,.58)}" stroke-width="1.2" fill="none" opacity=".5" stroke-linecap="round"/>`);
   push(`<ellipse cx="100" cy="${MY+full*2.2+3.5}" rx="8.5" ry="2.6" fill="${shade(sk,.6)}" opacity=".32" filter="url(#${id}s)"/><ellipse cx="100" cy="${chinY-9}" rx="9" ry="4" fill="#fff" opacity=".13" filter="url(#${id}s)"/>`);
   if(!FO && ["moustache","goatee","short","full"].includes(t.facial)) push(`<path d="M${100-19} ${MY-1} C${100-14} ${MY-10} ${100-4} ${MY-9} 100 ${MY-6} C${100+4} ${MY-9} ${100+14} ${MY-10} ${100+19} ${MY-1} C${100+11} ${MY-4} ${100+4} ${MY-2} 100 ${MY-3} C${100-4} ${MY-2} ${100-11} ${MY-4} ${100-19} ${MY-1} Z" fill="${U("h")}"/>`);
+  if(opts.faceOverlay){ out.length=featAt; out.push(opts.faceOverlay); }
   if(!FO){ // ---------- hair over the head ----------
   front=true;
   const hl=(y)=>[[100+ck-14,58],[132,y-2],[116,y],[100,y+1],[84,y],[68,y-2],[100-ck+14,58]];
@@ -3444,13 +3446,15 @@ function avSrc(t,o,px){ px=Math.round((px||360)*(AV_MOBILE?.66:1));
   return l; }
 function phdSrc(t,o,px){ const ph=o.photo; if(!ph || !/^data:image\/jpeg;base64,/.test(ph)) return avSrc(Object.assign({},t,{eyes:"almond"}),Object.assign({},o,{noPhoto:1}),px);
   const k="phd|"+encodeToon(t)+"|"+(o.vb||"")+"|"+ph.length+ph.slice(-32); const c=AVR.lite.get(k); if(c) return c;
-  const body=Object.assign({},t,{eyes:"almond",hair:"bald",hat:"none",glasses:"none",facial:"none",earrings:false});
-  let svg=""; try{ svg=toonSVGLite(body,{vb:o.vb, bodyOnly:true}); }catch(e){ return ""; }
+  /* the avatar as built (hair and all), with just the face from your photo set into it: the same placement as the 3D head */
+  const body=Object.assign({},t,{eyes:"almond",glasses:"none",facial:"none"});
   const id="h"+Math.random().toString(36).slice(2,7);
-  const head=`<mask id="${id}m" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200"><image href="${ph}" x="-200" y="0" width="400" height="200" preserveAspectRatio="none"/></mask><filter id="${id}s" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3"/></filter>`
-    +`<g mask="url(#${id}m)" transform="translate(0 4)" opacity=".35" filter="url(#${id}s)"><rect x="0" y="0" width="200" height="200" fill="#000"/></g>`
-    +`<image href="${ph}" x="0" y="0" width="400" height="200" preserveAspectRatio="none" mask="url(#${id}m)"/>`;
-  const i=svg.lastIndexOf("</svg>"); const out="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg.slice(0,i)+head+"</svg>");
+  const head=`<defs><radialGradient id="${id}g" gradientUnits="userSpaceOnUse" cx="100" cy="119" r="41" gradientTransform="translate(100 119) scale(1 1.463) translate(-100 -119)"><stop offset=".74" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>`
+    +`<mask id="${id}f" maskUnits="userSpaceOnUse" x="-50" y="-50" width="300" height="300"><rect x="-50" y="-50" width="300" height="300" fill="url(#${id}g)"/></mask>`
+    +`<mask id="${id}m" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200"><image href="${ph}" x="-200" y="0" width="400" height="200" preserveAspectRatio="none"/></mask></defs>`
+    +`<g mask="url(#${id}f)"><g transform="translate(100 100.8) scale(1.19) translate(-100 -95.5)"><image href="${ph}" x="0" y="0" width="400" height="200" preserveAspectRatio="none" mask="url(#${id}m)"/></g></g>`;
+  let svg=""; try{ svg=toonSVGLite(body,{vb:o.vb, faceOverlay:head}); }catch(e){ return ""; }
+  const out="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
   if(AVR.lite.size>400) AVR.lite.clear(); AVR.lite.set(k,out); return out; }
 /* finished face pictures are kept on the device (IndexedDB), so the next visit shows them straight away */
 const AVDB={p:null, v:"r"+(typeof toonSVG==="function"?toonSVG.toString().length.toString(36):"0"),
@@ -4462,6 +4466,9 @@ function toonFaceImg(ch,key){ const C=ch.tfImgs||(ch.tfImgs={}); let e=C[key]; i
     e.img.onerror=()=>{ if(settled) return; settled=true; clearTimeout(to); if(typeof avNote==="function") avNote("3D face error"); lite(); };
     e.img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg); }catch(x){ lite(); } return null; }
 function updateFace(gx,ch){ const ex=ch.ex||{}, q=v=>Math.round((v||0)*14)/14;
+  if(ch.toonT && ch.toonT.eyes==="photohead"){ const want=ch.phFace?"ph":"ph0"; if(ch.faceKey===want) return; ch.faceKey=want;
+    const x=ch.faceCv.getContext("2d"); x.clearRect(0,0,ch.faceCv.width,ch.faceCv.height); if(ch.phFace) x.drawImage(ch.phFace,0,0,ch.faceCv.width,ch.faceCv.height);
+    const gl=gx.gl; gl.bindTexture(gl.TEXTURE_2D,ch.faceTex); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,ch.faceCv); gl.generateMipmap(gl.TEXTURE_2D); return; }
   if(ch.toonT){ let op=ch.mouthOp!==undefined?ch.mouthOp:(ex.open||0), key=(op>.32?((ex.smile||0)>.15?"O":"o"):"");
     if(ch.photo) key=""; if(key===ch.faceKey) return; const base=toonBaseImg(ch); if(!base) return; let over=(key && !ch.photo && !(typeof AV_MOBILE!=="undefined"&&AV_MOBILE))?toonFaceImg(ch,key):null; ch.faceKey=(!key||over)?key:"~"+key;
     const x=ch.faceCv.getContext("2d"); x.clearRect(0,0,ch.faceCv.width,ch.faceCv.height); if(ch.photo){ const W0=ch.faceCv.width, H0=ch.faceCv.height; x.save(); x.translate(W0*.5,H0*.6); x.scale(1.3,1.17); x.translate(-W0*.5,-H0*.6); x.drawImage(base,0,0,W0,H0); x.restore(); } else x.drawImage(base,0,0,ch.faceCv.width,ch.faceCv.height); if(over) x.drawImage(over,0,0,ch.faceCv.width,ch.faceCv.height); { const W=ch.faceCv.width, H=ch.faceCv.height; x.save(); x.globalCompositeOperation="destination-in"; if(ch.photo){ x.translate(W*.5,H*.6); x.scale(1,1.35); } else { x.translate(W*.5,H*.56); x.scale(1,1.42); } const g=ch.photo?x.createRadialGradient(0,0,W*.24,0,0,W*.31):x.createRadialGradient(0,0,W*.1,0,0,W*.225); g.addColorStop(0,"rgba(0,0,0,1)"); g.addColorStop(1,"rgba(0,0,0,0)"); x.fillStyle=g; x.fillRect(-W,-H,2*W,2*H); x.restore(); }
@@ -4479,7 +4486,7 @@ function makeChar(gx, id, geo){
   if(geo.hairC){ ch.hairMesh=gx.upload(geo.hairC); ch.parts.push({mesh:ch.hairMesh, bone:b.head, rest:HT(0,0,0), c:[1,1,1], tex:gx.texCanvas("__hairstrand",hairStrandCanvas()), hair:true, noCast:true}); }
   if(geo.beardC){ ch.beardMesh=gx.upload(geo.beardC); ch.parts.push({mesh:ch.beardMesh, bone:b.jaw, rest:HT(0,0,0), c:[1,1,1], tex:gx.texCanvas("__hairstrand",hairStrandCanvas()), hair:true, noCast:true}); }
   if(ch.toonT===undefined){ try{ ch.toonT=(typeof avToon==="function")?avToon(id):null; }catch(e){ ch.toonT=null; } }
-  if(ch.toonT && ch.toonT.eyes!=="photo"){ const irisT=gx.texCanvas("iris"+P.iris, irisCanvas(P.iris)), eyeMesh=gx.mesh("eyeball",()=>GEO.sphere(20,28)); ch.eyes=[];
+  if(ch.toonT && ch.toonT.eyes!=="photo" && ch.toonT.eyes!=="photohead"){ const irisT=gx.texCanvas("iris"+P.iris, irisCanvas(P.iris)), eyeMesh=gx.mesh("eyeball",()=>GEO.sphere(20,28)); ch.eyes=[];
     for(const s of [1,-1]){ const c=[.0334*s,.0882,.0785];
       add(eyeMesh,"#FFFFFF",b.head,null,{c:[.8,.76,.73],tex:irisT,spec:1.1,gloss:90,ec:c});
       add(gx.mesh("cornea",()=>GEO.sphere(16,24)),"#FFFFFF",b.head,null,{c:[1,1,1],spec:2.6,gloss:180,ec:c,blend:true,alpha:.05,cornea:true});
@@ -4892,21 +4899,22 @@ const Room={
   },
   /* photo bobblehead: the cut-out photo head is drawn as a big, wobbling, camera-facing head on the 3D body (the drawn head is hidden).
      Until the photo arrives the player shows with a drawn head. */
-  photoSprite(ch){ const t=avToon(ch.av); ch.spriteTex=null; ch.spriteBack=null; ch.relief=null; if(!(t && t.eyes==="photohead") || !ch.photo) return; const ph=ch.photo, im=new Image();
+  /* your photo on the same 3D head as everyone else's: only the face (brows, eyes, nose, mouth, chin), lined up to where the
+     avatar's own eyes and mouth go and feathered into the head's skin, so it's the same size and shape as a built avatar. */
+  photoSprite(ch){ const t=avToon(ch.av); ch.spriteTex=null; ch.spriteBack=null; ch.relief=null; ch.phFace=null; if(!(t && t.eyes==="photohead") || !ch.photo) return; const ph=ch.photo, im=new Image();
     im.onload=()=>{ try{ if(ch.photo!==ph) return; const W=Math.round(im.width/2), H=im.height;
       const col=document.createElement("canvas"); col.width=W; col.height=H; const cx=col.getContext("2d"); cx.drawImage(im,0,0); const cd=cx.getImageData(0,0,W,H);
       const mk=document.createElement("canvas"); mk.width=W; mk.height=H; const mx=mk.getContext("2d"); mx.drawImage(im,-W,0); const md=mx.getImageData(0,0,W,H).data;
-      let r=0,g=0,b=0,n=0; for(let i=0;i<cd.data.length;i+=4){ const a=md[i]; cd.data[i+3]=a; const y=(i/4/W)|0; if(a>240 && y<H*.22){ r+=cd.data[i]; g+=cd.data[i+1]; b+=cd.data[i+2]; n++; } } cx.putImageData(cd,0,0);
-      /* same framing as the drawn heads: the avatar's 200-unit frame inside a 220-unit square starting at (-10,-20) */
-      const S=512, k=S/220, cv=document.createElement("canvas"); cv.width=cv.height=S; const x=cv.getContext("2d"); x.drawImage(col,10*k,20*k,200*k,200*k);
-      const hc=n?`rgb(${r/n|0},${g/n|0},${b/n|0})`:"#3a2a20";
-      const bc=document.createElement("canvas"); bc.width=bc.height=S; const y=bc.getContext("2d"); y.translate(S,0); y.scale(-1,1); y.drawImage(cv,0,0); y.setTransform(1,0,0,1,0,0);
-      y.globalCompositeOperation="source-in"; y.fillStyle=hc; y.fillRect(0,0,S,S); y.globalCompositeOperation="source-atop";
-      const gr=y.createRadialGradient(S*.45,S*.3,20,S/2,S*.5,S*.5); gr.addColorStop(0,"rgba(255,255,255,.2)"); gr.addColorStop(.6,"rgba(0,0,0,0)"); gr.addColorStop(1,"rgba(0,0,0,.35)"); y.fillStyle=gr; y.fillRect(0,0,S,S);
-      const id=Math.random().toString(36).slice(2); ch.spriteTex=this.gx.texCanvas("phs_"+id,cv); ch.spriteBack=this.gx.texCanvas("phb_"+id,bc); ch.relief=null;
-      /* real depth: a rounded head (nose, cheeks, back of the head in your hair colour) built from the cut-out, so it turns in 3D */
-      try{ const g2=buildPhotoHead3D(cv, n?[r/n,g/n,b/n]:(t.hairColour||"#3a2a20"), t.skin); if(g2) ch.relief={mesh:this.gx.upload(g2[0]), meshB:this.gx.upload(g2[1]), front:this.gx.texCanvas("phr_"+id,g2.tex)}; }catch(e){ console.warn("photo head 3D",e); ch.relief=null; }
-    }catch(e){ console.warn("photo head",e); ch.spriteTex=null; } };
+      for(let i=0;i<cd.data.length;i+=4) cd.data[i+3]=md[i]; cx.putImageData(cd,0,0);
+      /* photo frame (the avatar's 200 frame): eyes (79.9,95.5)/(120.1,95.5), mouth y 130.8.
+         Head face space (TF_VB drawing units): eyes (76,100.8)/(124,100.8), mouth y 142.6. */
+      const vb=TF_VB.split(" ").map(Number), N=ch.faceCv?ch.faceCv.width:1024, q=N/vb[2], sc=1.19, FO={x:100,y:119,rx:41,ry:60};
+      const fc=document.createElement("canvas"); fc.width=fc.height=N; const x=fc.getContext("2d");
+      x.setTransform(q,0,0,q,-vb[0]*q,-vb[1]*q); x.translate(100,100.8); x.scale(sc,sc); x.translate(-100,-95.5); x.drawImage(col,0,0,200,200);
+      x.setTransform(q,0,0,q,-vb[0]*q,-vb[1]*q); x.globalCompositeOperation="destination-in"; x.translate(FO.x,FO.y); x.scale(1,FO.ry/FO.rx);
+      const g=x.createRadialGradient(0,0,0,0,0,FO.rx); g.addColorStop(0,"#000"); g.addColorStop(.74,"#000"); g.addColorStop(1,"rgba(0,0,0,0)"); x.fillStyle=g; x.fillRect(-FO.rx*2,-FO.rx*2,FO.rx*4,FO.rx*4);
+      ch.phFace=fc; ch.faceKey="?";
+    }catch(e){ console.warn("photo head",e); ch.phFace=null; } };
     im.src=ph; },
   loadSprite(ch,av){ try{ const tt=(typeof avToon==="function")&&avToon(av); if(!tt) return; const SV="-10 -20 220 220", img=new Image(); ch.sprPending=true;
       img.onload=()=>{ try{ const cv=document.createElement("canvas"); cv.width=cv.height=512; const x=cv.getContext("2d"); x.drawImage(img,0,0,512,512); ch.spriteTex=this.gx.texCanvas("spr_"+Math.random().toString(36).slice(2),cv); ch.sprPending=false;
@@ -6988,7 +6996,7 @@ function faceEditorUse(){ if(!FE.img) return; const S=256, c=document.createElem
   o.save(); o.translate(W,0); o.fillStyle="#000"; o.fillRect(0,0,W,W); o.transform(...T); o.filter="blur(0.5px)"; phdShape(o,1,PHD.ring+.6); o.fillStyle="#fff"; o.fill(); o.restore();
   faceEditorClose(); photoHeadSave(out, skin, null); }
 function makerHTML(){ const m=mkState(), photo=app.mkMode==="photo";
-  const tabs=photo?[["outfit","Outfit"]]:MK.tabs.filter(([k])=>!(k==="beard" && m.gender==="f")), tab=tabs.some(([k])=>k===app.mkTab)?app.mkTab:tabs[0][0];
+  const tabs=photo?[["hair","Hair"],["outfit","Outfit"]]:MK.tabs.filter(([k])=>!(k==="beard" && m.gender==="f")), tab=tabs.some(([k])=>k===app.mkTab)?app.mkTab:tabs[0][0];
   return `<div class="mk-sheet" role="dialog" aria-modal="true" aria-label="${photo?"Your bobblehead":"Build your avatar"}">
     <div class="mk-top"><b>${photo?"Your bobblehead":"Build your avatar"}</b><button type="button" class="mk-x" data-act="maker" aria-label="Close">✕</button></div>
     <div class="mk-main">
