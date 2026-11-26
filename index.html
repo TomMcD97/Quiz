@@ -6854,13 +6854,13 @@ function sharePhoto(){ if(!app.phRoom) return; const t=avToon(me.av), on=isPhoto
   app.phRoom.presence(patch).catch(e=>console.warn("photo share",e)); }
 function photoFromPres(q){ const n=q.pn|0; if(!n || n>40) return null; let s=""; for(let i=0;i<n;i++){ if(typeof q["p"+i]!=="string") return null; s+=q["p"+i]; } return (s.startsWith("data:image/jpeg;base64,") && s.length<70000)?s:null; }
 /* ---------- "Use my face", done for you: find the face, line it up, cut the head (hair and all) out of the background ---------- */
-const FACE_BASE_=()=>(window.SQ_STANDALONE?"/face/":"face/");
-let FACEAPI=null, SEGP=null;
+const FACE_BASE_=()=>"face/"; /* next to the page, wherever it's served from */
+let FACEAPI=null, SEGP=null, FACEPRE=null;
+/* where model files can't be served as-is (a test page), they come bundled in face/models.js; the file fetch is patched before anything loads */
+function facePrep(){ return FACEPRE||(FACEPRE=(async()=>{ if(!window.SQ_FACE_BIN){ try{ await faceScript(FACE_BASE_()+"models.js"); }catch(e){} }
+  if(window.SQ_FACE_BIN && !window.SQ_FACE_PATCHED){ window.SQ_FACE_PATCHED=1; const B=window.SQ_FACE_BIN, nf=window.fetch.bind(window); window.fetch=(u,o)=>{ const n=String(u&&u.url||u).split("?")[0].split("/").pop(); if(B[n]){ const bin=atob(B[n]), a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return Promise.resolve(new Response(a,{status:200,headers:{"content-type":"application/octet-stream"}})); } return nf(u,o); }; } })()); }
 function faceScript(src){ return new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src=src; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); }); }
-function faceApiLoad(){ if(FACEAPI) return FACEAPI; FACEAPI=(async()=>{ if(!window.faceapi) await faceScript(FACE_BASE_()+"face-api.js");
-    /* where .bin files can't be served (a test page), the weights come bundled in a script instead */
-    if(!window.SQ_STANDALONE && !window.SQ_FACE_BIN){ try{ await faceScript(FACE_BASE_()+"models.js"); }catch(e){} }
-    if(window.SQ_FACE_BIN && !window.SQ_FACE_PATCHED){ window.SQ_FACE_PATCHED=1; const B=window.SQ_FACE_BIN, nf=window.fetch.bind(window); window.fetch=(u,o)=>{ const n=String(u&&u.url||u).split("?")[0].split("/").pop(); if(B[n]){ const bin=atob(B[n]), a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return Promise.resolve(new Response(a,{status:200,headers:{"content-type":"application/octet-stream"}})); } return nf(u,o); }; }
+function faceApiLoad(){ if(FACEAPI) return FACEAPI; FACEAPI=(async()=>{ await facePrep(); if(!window.faceapi) await faceScript(FACE_BASE_()+"face-api.js");
     const fa=window.faceapi; await fa.nets.tinyFaceDetector.loadFromUri(FACE_BASE_()); await fa.nets.faceLandmark68Net.loadFromUri(FACE_BASE_()); return fa; })().catch(e=>{ FACEAPI=null; throw e; }); return FACEAPI; }
 /* the biggest face in the photo, as 68 points; a tilted head is retried with the photo turned a little each way */
 async function faceFind(im){ const fa=await faceApiLoad(); let best=null;
@@ -6878,9 +6878,9 @@ function simFit(src,dst,w){ let sw=0, pc=[0,0], qc=[0,0]; src.forEach((p,i)=>{ s
   let a=0,b=0,n=0; src.forEach((p,i)=>{ const px=p[0]-pc[0], py=p[1]-pc[1], qx=dst[i][0]-qc[0], qy=dst[i][1]-qc[1]; a+=w[i]*(px*qx+py*qy); b+=w[i]*(px*qy-py*qx); n+=w[i]*(px*px+py*py); }); a/=n; b/=n;
   return {a, b, tx:qc[0]-(a*pc[0]-b*pc[1]), ty:qc[1]-(b*pc[0]+a*pc[1])}; }
 const facePts=P=>[avgPts(P,36,41), avgPts(P,42,47), avgPts(P,48,59)];
-function segLoad(){ if(SEGP) return SEGP; SEGP=(async()=>{ if(!window.SelfieSegmentation) await faceScript(FACE_BASE_()+"seg/selfie_segmentation.js");
+function segLoad(){ if(SEGP) return SEGP; SEGP=(async()=>{ await facePrep(); if(!window.SelfieSegmentation) await faceScript(FACE_BASE_()+"seg/selfie_segmentation.js");
     /* a test page can't serve .tflite/.binarypb files, so there they carry a .txt name */
-    const ss=new window.SelfieSegmentation({locateFile:f=>FACE_BASE_()+"seg/"+f+((!window.SQ_STANDALONE && /\.(tflite|binarypb)$/.test(f))?".txt":"")}); ss.setOptions({modelSelection:0}); await ss.initialize(); return ss; })().catch(e=>{ SEGP=null; throw e; }); return SEGP; }
+    const ss=new window.SelfieSegmentation({locateFile:f=>FACE_BASE_()+"seg/"+f+((window.SQ_FACE_BIN && /\.(tflite|binarypb)$/.test(f))?".txt":"")}); ss.setOptions({modelSelection:0}); await ss.initialize(); return ss; })().catch(e=>{ SEGP=null; throw e; }); return SEGP; }
 async function segRun(im){ const ss=await segLoad(); const W=im.naturalWidth||im.width, H=im.naturalHeight||im.height, k=Math.min(1,1024/Math.max(W,H));
   const src=document.createElement("canvas"); src.width=Math.round(W*k); src.height=Math.round(H*k); src.getContext("2d").drawImage(im,0,0,src.width,src.height);
   return new Promise((res,rej)=>{ const to=setTimeout(()=>rej(new Error("timeout")),25000); ss.onResults(r=>{ clearTimeout(to); const c=document.createElement("canvas"); c.width=W; c.height=H; c.getContext("2d").drawImage(r.segmentationMask,0,0,W,H); res(c); }); ss.send({image:src}).catch(e=>{ clearTimeout(to); rej(e); }); }); }
