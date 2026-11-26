@@ -7587,7 +7587,7 @@ addEventListener("pagehide", evFlush);
 const EV_ACT={daily:"dq_start", dgstart:"dg_start", host:"party_host", join:"party_join", solo:"bots", nshare:"share", nsharegrid:"share", copyshare:"share", copygrid:"share", sharelink:"invite", copylink:"invite", lgcreate:"league", again:"rematch", mksave:"avatar", install:"install"};
 
 /* ---------- feedback, privacy and your data ---------- */
-const CONTACT="hello@dougle.app";
+const CONTACT="support@dougle.app";
 function openSheet(id, label, html){ let el=$("#"+id); if(el) el.remove(); el=document.createElement("div"); el.id=id; el.className="rep-sheet"; el.setAttribute("role","dialog"); el.setAttribute("aria-modal","true"); el.setAttribute("aria-label",label); el.innerHTML=html;
   el.addEventListener("click",e=>{ if(e.target===el) el.remove(); }); document.body.appendChild(el); const f=el.querySelector("textarea,select,button"); if(f) setTimeout(()=>f.focus(),50); return el; }
 function openFeedback(){ openSheet("fbsheet","Send feedback",`<div class="rep-card"><b>Tell us what you think</b><p class="muted">Found a bug, got an idea, or just want to say hi? It comes straight to us.</p>
