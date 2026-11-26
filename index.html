@@ -5035,7 +5035,7 @@ const Room={
     if(this.pod && this.pod.rank){ const rk=this.pod.rank.filter(p=>this.order.includes(p)), slots=[], m=rk.length, mid=(m-1)/2;
       /* evenly spaced and centred: the winner takes the middle spot, then the others fill outwards alternately */
       const byCentre=[...Array(m).keys()].sort((a,b)=>Math.abs(a-mid)-Math.abs(b-mid) || b-a); rk.forEach((p,i)=>{ slots[i]=byCentre[i]-mid; });
-      const gap=phone?(n>6?.78:n>4?.86:1.0):(n>8?.9:1.05); this.rows=1;
+      const gap=phone?(n>6?.95:n>4?1.1:1.3):(n>8?1.15:n>5?1.35:1.55); this.rows=1;
       this.order.forEach(pid=>{ const c=this.chars[pid]; if(!c) return; const i=rk.indexOf(pid), sl=i<0?0:slots[i]; c.row=0; c.baseLift=0; c.x=sl*gap; c.z=.55-Math.abs(sl)*.06; c.ry=-c.x*.07; });
       const mn=Math.min(0,...slots), mx=Math.max(0,...slots); this.span=Math.max(1.8,(mx-mn)*gap+1.3); return; }
     const per = phone ? (n<=4?Math.max(1,n):Math.ceil(n/2)) : (n<=8?Math.max(1,n):Math.ceil(n/2)); const rows=Math.ceil(n/per)||1; this.rows=rows;
@@ -5067,7 +5067,8 @@ const Room={
     for(const pid of this.order){ const c=this.chars[pid]; if(!c){ waiting++; continue; }
       if(pod){ const s=pod.sc[pid]||0, H=.16+1.05*Math.max(0,s)/pod.max, k=pod.started?Math.max(0,Math.min(1,(t-pod.t0-(pod.del[pid]||0))/1.7)):0, e=k<1?1-Math.pow(1-k,3):1;
         c.lift=H*e; c.podH=H; c.podK=k; c.disp=`${shortTag(c.label,c.me)}\n${Math.round(Math.max(0,s)*e)}`;
-        if(k>=1 && !pod.done[pid]){ pod.done[pid]=t; try{ this.onRise&&this.onRise(pid); }catch(e){} const win=pod.rank[0]===pid; c.emote={e: win?"cheer":(pod.rank.indexOf(pid)<3?"wave":"clap"), t0:t}; if(win){ this.flash=1; if(!pod.fired){ pod.fired=true; pod.ft=t; try{ this.onPodium&&this.onPodium(); }catch(e){} } } }
+        pod.rs=pod.rs||{}; if(k>0 && !pod.rs[pid]){ pod.rs[pid]=t; try{ this.onRise&&this.onRise(pid); }catch(e){} }
+        if(k>=1 && !pod.done[pid]){ pod.done[pid]=t; const win=pod.rank[0]===pid; c.emote={e: win?"cheer":(pod.rank.indexOf(pid)<3?"wave":"clap"), t0:t}; if(win){ this.flash=1; if(!pod.fired){ pod.fired=true; pod.ft=t; try{ this.onPodium&&this.onPodium(); }catch(e){} } } }
         if(pod.rank[0]===pid) this.winF={x:c.J.root.off[0], z:c.J.root.off[2], lift:c.lift||0};
         else if(pod.fired && this.winF){ const tgt=Math.max(-1.1,Math.min(1.1,Math.atan2(this.winF.x-c.x, .9)))*.85; c.ry+=(tgt-c.ry)*Math.min(1,dt*2.2); }
         if(pod.rank[0]===pid && pod.done[pid] && t-pod.done[pid]>4.5){ pod.done[pid]=t; c.emote={e:["dance","cheer","jump"][Math.floor(t)%3], t0:t}; } }
@@ -5120,7 +5121,7 @@ const Room={
     { const W2=cv.clientWidth, H2=cv.clientHeight, pts=[]; let rowY=1e9;
       for(const pid of this.order){ const c=this.chars[pid]; if(!c) continue; const hw=c.J.head.world, q=M4.xf(VP,[hw[12],hw[13]+.5,hw[14]]), sx=(q[0]*.5+.5)*W2, sy=(.5-q[1]*.5)*H2; pts.push([pid,c,sx]); if(sy<rowY) rowY=sy; }
       pts.sort((a,b)=>a[2]-b[2]); rowY=Math.max(64, rowY-6);
-      pts.forEach(([pid,c,sx],i)=>{ const aw=pod && pod.aw && pod.aw[pid], show=aw && pod.done[pid] && pod.rank[0]!==pid;
+      pts.forEach(([pid,c,sx],i)=>{ const aw=pod && pod.aw && pod.aw[pid], show=aw && pod.rs && pod.rs[pid] && pod.rank[0]!==pid;
         if(!show){ if(c.awTag){ c.awTag.remove(); c.awTag=null; } return; }
         if(!c.awTag){ c.awTag=document.createElement("div"); c.awTag.className="room-aw"+(aw.joke?" joke":""); c.awTag.innerHTML=`<span aria-hidden="true">${aw.icon}</span><b>${esc(aw.title)}</b>`; this.tags.appendChild(c.awTag); }
         const gl=i>0?sx-pts[i-1][2]:1e9, gr=i<pts.length-1?pts[i+1][2]-sx:1e9, wMax=Math.max(52,Math.min(150,Math.min(gl,gr)-6, (Math.min(sx,W2-sx)-4)*2));
@@ -9266,8 +9267,8 @@ function awardsActive(){ return false; }
 /* the big screen behind the podium: "And the winner is…" until the winner rises, then their name */
 /* big text over the top of the stage: the drumroll line, then the winner's name */
 function finBoardHTML(){ const ps=Object.keys(S.scores||{}).sort((a,b)=>(S.scores[b]||0)-(S.scores[a]||0)), w=ps[0]; if(!w) return "";
-  if(!(Room.pod && Room.pod.fired) && !RM){ const pod=Room.pod; let last=null, lt=-1; if(pod && pod.aw) for(const p in pod.done||{}){ if(pod.done[p]>lt && pod.aw[p] && p!==pod.rank[0]){ lt=pod.done[p]; last=p; } }
-    if(last && (Room.time||0)-lt<3.4){ const a=pod.aw[last]; return `<div class="fb-acc${a.joke?" joke":""}" data-k="${esc(last)}"><div class="fba-t">${a.icon} ${esc(a.title)} · <b>${esc(last===me.pid?"You":nameOf(last))}</b></div><div class="fba-w">${esc(a.why||"")}</div></div>`; }
+  if(!(Room.pod && Room.pod.fired) && !RM){ const pod=Room.pod; let last=null, lt=-1; if(pod && pod.aw) for(const p in pod.rs||{}){ if(pod.rs[p]>lt && pod.aw[p] && p!==pod.rank[0]){ lt=pod.rs[p]; last=p; } }
+    if(last && (Room.time||0)-lt<3.6){ const a=pod.aw[last]; return `<div class="fb-acc${a.joke?" joke":""}" data-k="${esc(last)}"><div class="fba-t">${a.icon} ${esc(a.title)} · <b>${esc(last===me.pid?"You":nameOf(last))}</b></div><div class="fba-w">${esc(a.why||"")}</div></div>`; }
     return `<div class="fb-wait">And the winner is…</div>`; }
   const co=ps.filter(p=>(S.scores[p]||0)===(S.scores[w]||0)); const wa=Room.pod && Room.pod.aw && Room.pod.aw[w]; return `<div class="fb-win"><span class="fb-crown">👑</span>${co.map(p=>esc(p===me.pid?"You":nameOf(p))).join(" &amp; ")}${co.length>1?"":"!"}</div><div class="fb-row"><div class="fb-sub num">${(S.scores[w]||0).toLocaleString("en-GB")} points</div>${wa&&wa.title!=="Quiz Champion"?`<div class="fb-aw">${wa.icon} ${esc(wa.title)}</div>`:""}</div>`; }
 Room.onRise=()=>{ finalBoard(); setTimeout(finalBoard, 3600); };
