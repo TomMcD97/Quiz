@@ -997,22 +997,23 @@ button.opt:hover:not(:disabled),.opts button.opt:hover:not(:disabled){background
 .rp-fold{margin-top:14px}.rp-fold>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;font-weight:700;font-size:15px}.rp-fold>summary::-webkit-details-marker{display:none}.rp-fold>summary::after{content:"▾";font-size:12px;transition:transform .2s}.rp-fold[open]>summary::after{transform:rotate(180deg)}
 .rp-fold .rounds-preview{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}.rp-fold .rp{padding:14px}.rp-fold .rp span{font-size:12px}
 .fin-stage .room3d{height:min(78vh,760px)!important}
-.aw-splash{position:fixed;left:50%;z-index:70;pointer-events:none;width:min(92vw,540px);text-align:center;padding:18px 20px 20px;border-radius:26px;color:#fff;
-  background:radial-gradient(120% 90% at 50% 0%,rgba(255,200,90,.28),transparent 60%),rgba(9,9,13,.88);border:2px solid rgba(255,210,122,.75);
-  box-shadow:0 0 0 6px rgba(255,210,122,.12),0 0 60px rgba(255,190,80,.35),0 24px 60px rgba(0,0,0,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
-  transform:translate(-50%,-50%) rotate(-2deg);animation:awIn .6s cubic-bezier(.2,1.6,.4,1) both}
-.aw-splash.joke{border-color:rgba(255,120,180,.8);background:radial-gradient(120% 90% at 50% 0%,rgba(255,90,170,.28),transparent 60%),rgba(9,9,13,.88);box-shadow:0 0 0 6px rgba(255,120,180,.12),0 0 60px rgba(255,90,170,.35),0 24px 60px rgba(0,0,0,.6);transform:translate(-50%,-50%) rotate(2deg);animation-name:awInJ}
-.aw-splash.out{animation:awOut .35s ease-in forwards}
-.aws-kicker{font-family:var(--f-mono);font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,220,150,.9)}
+.aw-splash{position:absolute;left:50%;top:120px;z-index:70;pointer-events:none;width:min(88vw,400px);text-align:center;padding:10px 14px 12px;border-radius:18px;color:#fff;
+  background:radial-gradient(120% 90% at 50% 0%,rgba(255,200,90,.26),transparent 60%),rgba(9,9,13,.86);border:1.5px solid rgba(255,210,122,.75);
+  box-shadow:0 0 0 4px rgba(255,210,122,.1),0 0 36px rgba(255,190,80,.3),0 14px 36px rgba(0,0,0,.55);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);
+  transform:translateX(-50%) rotate(-1.5deg);transform-origin:50% 0;animation:awIn .55s cubic-bezier(.2,1.6,.4,1) both}
+.aw-splash.joke{border-color:rgba(255,120,180,.8);background:radial-gradient(120% 90% at 50% 0%,rgba(255,90,170,.26),transparent 60%),rgba(9,9,13,.86);box-shadow:0 0 0 4px rgba(255,120,180,.1),0 0 36px rgba(255,90,170,.3),0 14px 36px rgba(0,0,0,.55);transform:translateX(-50%) rotate(1.5deg);animation-name:awInJ}
+.aw-splash.out{animation:awOut .3s ease-in forwards}
+.aws-kicker{font-family:var(--f-mono);font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,220,150,.9)}
 .aw-splash.joke .aws-kicker{color:rgba(255,170,210,.95)}
-.aws-icon{font-size:clamp(52px,14vw,78px);line-height:1.1;margin-top:6px;animation:awPop .7s cubic-bezier(.2,1.8,.4,1) .15s both}
-.aws-title{font-family:var(--f-display);font-weight:900;font-size:clamp(28px,8vw,46px);line-height:1.02;letter-spacing:-.02em;text-wrap:balance;margin-top:2px}
-.aws-who{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px;font-size:clamp(18px,5vw,22px);animation:fhIn .45s ease .3s both}
-.aws-who .av{width:44px;height:44px;flex:none}
-.aws-line{margin-top:8px;font-size:15px;color:rgba(255,255,255,.78);text-wrap:balance;animation:fhIn .45s ease .45s both}
-@keyframes awIn{0%{opacity:0;transform:translate(-50%,-50%) scale(1.9) rotate(-10deg)}100%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(-2deg)}}
-@keyframes awInJ{0%{opacity:0;transform:translate(-50%,-50%) scale(1.9) rotate(10deg)}100%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(2deg)}}
-@keyframes awOut{to{opacity:0;transform:translate(-50%,-50%) scale(.6) rotate(8deg)}}
+.aws-head{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px}
+.aws-icon{font-size:clamp(26px,7vw,34px);line-height:1;animation:awPop .6s cubic-bezier(.2,1.8,.4,1) .12s both}
+.aws-title{font-family:var(--f-display);font-weight:900;font-size:clamp(20px,5.6vw,28px);line-height:1.05;letter-spacing:-.015em;text-wrap:balance}
+.aws-who{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px;font-size:clamp(15px,4vw,17px);animation:fhIn .4s ease .25s both}
+.aws-who .av{width:30px;height:30px;flex:none}
+.aws-line{margin-top:4px;font-size:13px;line-height:1.35;color:rgba(255,255,255,.78);text-wrap:balance;animation:fhIn .4s ease .38s both}
+@keyframes awIn{0%{opacity:0;transform:translateX(-50%) scale(1.5) rotate(-8deg)}100%{opacity:1;transform:translateX(-50%) scale(1) rotate(-1.5deg)}}
+@keyframes awInJ{0%{opacity:0;transform:translateX(-50%) scale(1.5) rotate(8deg)}100%{opacity:1;transform:translateX(-50%) scale(1) rotate(1.5deg)}}
+@keyframes awOut{to{opacity:0;transform:translateX(-50%) scale(.75) rotate(6deg)}}
 @keyframes awPop{0%{transform:scale(0) rotate(-30deg)}100%{transform:scale(1) rotate(0)}}
 .dc-head.dc-mast{flex-direction:column;align-items:center;text-align:center;gap:0}
 .dc-mast .dc-title{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,7.4vw,38px);line-height:1.05;letter-spacing:-.015em;padding-bottom:8px;text-wrap:balance}
@@ -5083,11 +5084,12 @@ const Room={
          lock onto the champion in gold */
       const at=pid=>{ const c=this.chars[pid]; return c?[c.J.root.off[0], c.J.root.off[2]]:null; };
       const fp=this.awFocus?at(this.awFocus):(pod.fired?at(pod.rank[0]):null); this.focusK=(this.focusK||0)+((fp?1:0)-(this.focusK||0))*Math.min(1,dt*2.5); if(fp) this.focusP=fp;
-      const FX=[-4.2,-2.6,-1.0,1.0,2.6,4.2], COLS=[[1,.25,.75],[.25,.8,1],[1,.72,.25],[.6,.35,1],[.25,1,.7],[1,.45,.3]], gold=[1,.78,.35], fk=this.focusK||0, fq=this.focusP||[0,.6];
-      for(let i=0;i<6;i++){ const src=[FX[i],5.3,-1.3], sp=pod.fired?.35:1, sw=[Math.sin(t*.6*sp+i*1.3)*3.4, .8+Math.cos(t*.47*sp+i*.9)*1.2];
+      /* one moving head per player, each roaming gently around its own player */
+      const who=this.order.filter(p=>this.chars[p]), NB=who.length, COLS=[[1,.25,.75],[.25,.8,1],[1,.72,.25],[.6,.35,1],[.25,1,.7],[1,.45,.3]], gold=[1,.78,.35], fk=this.focusK||0, fq=this.focusP||[0,.6];
+      for(let i=0;i<NB;i++){ const home=at(who[i])||[0,.6], src=[home[0]*1.15,5.3,-1.3], sp=pod.fired?.35:1, sw=[home[0]+Math.sin(t*.7*sp+i*1.7)*.45, home[1]+.15+Math.cos(t*.55*sp+i*1.1)*.3];
         const tx=sw[0]+(fq[0]+(i-2.5)*.06-sw[0])*fk, tz=sw[1]+(fq[1]-sw[1])*fk, dx=src[0]-tx, dy=src[1], dz=src[2]-tz, L=Math.hypot(dx,dy,dz), up=[dx/L,dy/L,dz/L];
         let X=[up[1]*1-up[2]*0, up[2]*0-up[0]*1, up[0]*0-up[1]*0]; /* up × z */ X=[up[1], -up[0], 0]; const xl=Math.hypot(...X)||1; X=X.map(v=>v/xl); const Z=[X[1]*up[2]-X[2]*up[1], X[2]*up[0]-X[0]*up[2], X[0]*up[1]-X[1]*up[0]];
-        const w=.5, col0=COLS[(i+Math.floor(t*.25))%6], col=pod.fired?[col0[0]+(gold[0]-col0[0])*fk,col0[1]+(gold[1]-col0[1])*fk,col0[2]+(gold[2]-col0[2])*fk]:col0, al=.05+.05*fk+(this.flash||0)*.05;
+        const w=.42, col0=COLS[(i+Math.floor(t*.25))%6], col=pod.fired?[col0[0]+(gold[0]-col0[0])*fk,col0[1]+(gold[1]-col0[1])*fk,col0[2]+(gold[2]-col0[2])*fk]:col0, al=.05+.05*fk+(this.flash||0)*.05;
         const m=new Float32Array([X[0]*w,X[1]*w,X[2]*w,0, up[0]*L,up[1]*L,up[2]*L,0, Z[0]*w,Z[1]*w,Z[2]*w,0, tx,0,tz,1]);
         beams.push({mesh:this.beamM,m,c:col,emit:1.5,spec:0,blend:true,alpha:al,noCast:true,noRecv:true});
         beams.push({mesh:this.discM,m:M4.ch(M4.T(tx,.006,tz),M4.S(.62,.002,.62)),c:col,emit:1.3,spec:0,blend:true,alpha:al*2.2,noCast:true,noRecv:true}); } }
@@ -9244,12 +9246,18 @@ function awardsActive(){ return !!(S && S.phase==="final" && AW && AW.key===Stri
 function awardsDone(){ return !!(S && AW && AW.key===String(S.gid) && AW.done); }
 function awardsStart(){ const key=String(S.gid); if(AW && AW.key===key) return; if(!S.gx && Room.ok && !RM) return; /* wait for the end-of-game summary to arrive */ if(AW && AW.timer) clearTimeout(AW.timer); const list=(RM||!Room.ok)?[]:awardList();
   AW={key, list, i:-1, done:!list.length}; if(AW.done) return; Room.setBoard("", "", "The Dougle Awards"); finalBoard(); const tok=AW; AW.timer=setTimeout(()=>awardsNext(tok), 1700); }
-function awardsNext(tok){ if(!AW || AW!==tok || AW.done || !S || S.phase!=="final") return; clearTimeout(AW.timer); AW.i++; const el0=document.getElementById("awsplash"); if(el0) el0.classList.add("out");
+function awardsNext(tok){ if(!AW || AW!==tok || AW.done || !S || S.phase!=="final") return; clearTimeout(AW.timer);
+  /* wait until everyone has walked onto the stage before the first award (up to 8 seconds) */
+  if(AW.i<0){ const ready=Room.order && Room.order.length && Room.order.every(p=>Room.chars[p] && (Room.chars[p].enter==null || Room.chars[p].enter>=1)); AW.w=(AW.w||0)+1; if(!ready && AW.w<20){ AW.timer=setTimeout(()=>awardsNext(tok),400); return; } }
+  AW.i++; const el0=document.getElementById("awsplash"); if(el0) el0.classList.add("out");
   if(AW.i>=AW.list.length){ Room.awFocus=null; setTimeout(()=>{ const e=document.getElementById("awsplash"); if(e) e.remove(); },450); AW.done=true; finalBoard(); renderLobbyStage(); return; }
-  const a=AW.list[AW.i], st=document.querySelector(".fin-stage .room3d"), r=st?st.getBoundingClientRect():null, cy=r&&r.bottom>80&&r.top<innerHeight-80?Math.max(110,Math.min(innerHeight-140,r.top+r.height*.42)):innerHeight*.45;
+  const a=AW.list[AW.i];
   setTimeout(()=>{ const o=document.getElementById("awsplash"); if(o) o.remove();
-    const el=document.createElement("div"); el.id="awsplash"; el.className="aw-splash"+(a.joke?" joke":""); el.style.top=cy+"px"; el.setAttribute("role","status");
-    el.innerHTML=`<div class="aws-kicker">The Dougle Awards · ${AW.i+1} of ${AW.list.length}</div><div class="aws-icon" aria-hidden="true">${a.icon}</div><div class="aws-title">${esc(a.title)}</div><div class="aws-who">${avatar(a.p)}<b>${esc(a.p===me.pid?"You":nameOf(a.p))}</b></div><div class="aws-line">${esc(a.line)}</div>`;
+    /* sits over the big screen at the top of the stage, so the players below stay in view */
+    const st=document.querySelector(".fin-stage .room3d"), r=st?st.getBoundingClientRect():null;
+    const el=document.createElement("div"); el.id="awsplash"; el.className="aw-splash"+(a.joke?" joke":""); el.setAttribute("role","status");
+    if(r && r.width>0){ el.style.left=(r.left+r.width/2+scrollX)+"px"; el.style.top=(r.top+scrollY+Math.max(10,r.height*.04))+"px"; el.style.width=Math.min(r.width-24, 400)+"px"; }
+    el.innerHTML=`<div class="aws-kicker">The Dougle Awards · ${AW.i+1} of ${AW.list.length}</div><div class="aws-head"><span class="aws-icon" aria-hidden="true">${a.icon}</span><span class="aws-title">${esc(a.title)}</span></div><div class="aws-who">${avatar(a.p)}<b>${esc(a.p===me.pid?"You":nameOf(a.p))}</b></div><div class="aws-line">${esc(a.line)}</div>`;
     document.body.appendChild(el); },AW.i?260:0);
   Room.awFocus=a.p; Room.flash=1; Room.emote(a.p, a.joke?(["shrug","lol","bow"][AW.i%3]):(["cheer","flex","hype"][AW.i%3]));
   try{ MUSIC.sting(a.joke?"wrong":"right"); }catch(e){}
@@ -9257,7 +9265,7 @@ function awardsNext(tok){ if(!AW || AW!==tok || AW.done || !S || S.phase!=="fina
 /* the big screen behind the podium: "And the winner is…" until the winner rises, then their name */
 /* big text over the top of the stage: the drumroll line, then the winner's name */
 function finBoardHTML(){ const ps=Object.keys(S.scores||{}).sort((a,b)=>(S.scores[b]||0)-(S.scores[a]||0)), w=ps[0]; if(!w) return "";
-  if(awardsActive()) return `<div class="fb-wait">🏆 The Dougle Awards</div>`;
+  if(awardsActive()) return "";
   if(!(Room.pod && Room.pod.fired) && !RM) return `<div class="fb-wait">And the winner is…</div>`;
   const co=ps.filter(p=>(S.scores[p]||0)===(S.scores[w]||0)); return `<div class="fb-win"><span class="fb-crown">👑</span>${co.map(p=>esc(p===me.pid?"You":nameOf(p))).join(" &amp; ")}${co.length>1?"":"!"}</div><div class="fb-sub num">${(S.scores[w]||0).toLocaleString("en-GB")} points</div>`; }
 function finalBoard(){ const fb=$("#finboard"); if(fb){ const h=finBoardHTML(); if(fb._h!==h){ fb._h=h; fb.innerHTML=h; } } if(!S || S.phase!=="final") return; const ps=Object.keys(S.scores||{}).sort((a,b)=>(S.scores[b]||0)-(S.scores[a]||0)), w=ps[0];
