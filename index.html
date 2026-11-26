@@ -4845,7 +4845,8 @@ function buildPhotoHead3D(cv, hair, skin){
   for(const back of [0,1]){ const base=P.length/3, i0=back?RG:0, i1=back?2*RG:RG;
     for(let i=i0;i<=i1;i++) for(let k=0;k<=AN;k++){ const q=gi(i,k), g=G[q], n=GN[q]; P.push(g[0],g[1],g[2]); Nn.push(n[0],n[1],n[2]); const u=Math.max(0,Math.min(1,g[0]+.5)), v=Math.max(0,Math.min(1,g[1]+.5)); U.push(back?.5+u*.5:u*.5, v); C.push(1,1,1,1); M.push(.1,.25,.18); }
     const W=AN+1; for(let i=0;i<i1-i0;i++) for(let k=0;k<AN;k++){ const a=base+i*W+k,b=a+1,c=a+W,d=c+1; I.push(a,c,b, b,c,d); } }
-  return {mesh:{P:new Float32Array(P),N:new Float32Array(Nn),U:new Float32Array(U),C:new Float32Array(C),M:new Float32Array(M),I:new Uint32Array(I)}, tex:T}; }
+  let topY=-1; for(let q=1;q<P.length;q+=3) if(P[q]>topY) topY=P[q];
+  return {top:topY, mesh:{P:new Float32Array(P),N:new Float32Array(Nn),U:new Float32Array(U),C:new Float32Array(C),M:new Float32Array(M),I:new Uint32Array(I)}, tex:T}; }
 const Room={
   ok:null, gx:null, cv:null, wrap:null, tags:null, chars:{}, order:[], items:[], raf:0, last:0, board:{code:null,cap:"",title:""}, want:{}, flash:0,
   init(){
@@ -4954,7 +4955,7 @@ const Room={
       const gr=y.createRadialGradient(S*.45,S*.3,20,S/2,S*.5,S*.5); gr.addColorStop(0,"rgba(255,255,255,.2)"); gr.addColorStop(.6,"rgba(0,0,0,0)"); gr.addColorStop(1,"rgba(0,0,0,.35)"); y.fillStyle=gr; y.fillRect(0,0,S,S);
       const id=Math.random().toString(36).slice(2); ch.spriteTex=this.gx.texCanvas("phs_"+id,cv); ch.spriteBack=this.gx.texCanvas("phb_"+id,bc); ch.relief=null;
       /* real depth: a rounded head (nose, cheeks, back of the head in your hair colour) built from the cut-out, so it turns in 3D */
-      try{ const g2=buildPhotoHead3D(cv, n?[r/n,g/n,b/n]:(t.hairColour||"#3a2a20"), t.skin); if(g2) ch.relief={mesh:this.gx.upload(g2.mesh), meshB:null, front:this.gx.texCanvas("phr_"+id,g2.tex), whole:true}; }catch(e){ console.warn("photo head 3D",e); ch.relief=null; }
+      try{ const g2=buildPhotoHead3D(cv, n?[r/n,g/n,b/n]:(t.hairColour||"#3a2a20"), t.skin); if(g2){ const sz=(2*.0334*HEAD_S)/(40.2/220), ey=.0882*HEAD_S+sz*(95.5+20-110)/220; ch.relief={mesh:this.gx.upload(g2.mesh), meshB:null, front:this.gx.texCanvas("phr_"+id,g2.tex), whole:true, topY:ey+sz*g2.top}; } }catch(e){ console.warn("photo head 3D",e); ch.relief=null; }
     }catch(e){ console.warn("photo head",e); ch.spriteTex=null; } };
     im.src=ph; },
   loadSprite(ch,av){ try{ const tt=(typeof avToon==="function")&&avToon(av); if(!tt) return; const SV="-10 -20 220 220", img=new Image(); ch.sprPending=true;
@@ -4981,6 +4982,18 @@ const Room={
     const n=ids.length, rest=Math.max(0,n-3), t3=1.0+(rest?rest*.2+.8:0), T={3:t3, 2:(n>=3?t3+1.6:1.0), 1:(n>=3?t3+1.6:n===2?1.0:-1.8)+2.8};
     ids.forEach((p,i)=>{ const place=n-i; del[p]=place>3?1.0+i*.2:T[place]; });
     this.pod={key, sc, max, del, t0:this.time||0, made:this.time||0, started:false, fired:false, done:{}, rank:ids.slice().reverse()}; this.layout(); },
+  /* a gold crown that drops onto the winner's head with a little bounce, and keeps catching the light */
+  crownItems(c, e, items, refl){ if(e<.25) return; const gx=this.gx;
+    if(!this.crownM){ this.crownM={ band:gx.upload(GEO.lathe2([[.92,0],[1,.02],[1,.34],[1.06,.4],[1.02,.46],[.9,.44],[.9,.02]],40)), spike:gx.upload(GEO.lathe2([[.26,0],[.2,.25],[.1,.6],[0,.82]],16)), gem:gx.upload(GEO.sphere(10,16)) }; }
+    const d=Math.min(1,(e-.25)/.65), bounce=d<1?(1-d)*(1-d)*1.4 - Math.sin(d*Math.PI)*.12*(1-d):0, drop=Math.max(0,bounce);
+    const hw=c.J.head.world, top=c.relief?(c.relief.topY||.3):.215*HEAD_S, cr=.088, tilt=.16+Math.sin(e*2.1)*.03;
+    const base=M4.mul(hw,M4.ch(M4.T(.004,top-.024+drop*.9,-.006),M4.RZ(tilt),M4.RX(-.08),M4.S(cr,cr,cr)));
+    const gold=[.95,.52,.07], add=(mesh,m,o)=>{ const it=Object.assign({mesh,m,c:gold,spec:2.4,gloss:110,emit:.25,noCast:true},o||{}); items.push(it); refl.push(Object.assign({},it,{m:M4.mul(M4.S(1,-1,1),m)})); };
+    add(this.crownM.band, M4.mul(base,M4.S(1,1.15,1)));
+    for(let i=0;i<5;i++){ const a=i/5*Math.PI*2+Math.PI/2, x=Math.cos(a), z=Math.sin(a);
+      add(this.crownM.spike, M4.mul(base,M4.ch(M4.T(x*.97,.4,z*.97),M4.S(1,1,1))));
+      add(this.crownM.gem, M4.mul(base,M4.ch(M4.T(x*.97,1.24,z*.97),M4.S(.13,.13,.13))), {c:[1,.85,.45],emit:.6});
+      add(this.crownM.gem, M4.mul(base,M4.ch(M4.T(x*1.04,.2,z*1.04),M4.S(.1,.1,.1))), {c:i%2?[.85,.1,.18]:[.15,.35,.95],spec:3,gloss:140,emit:.3}); } },
   emote(pid,e){ if(!EM_DUR[e]) return; this.flash=1; const c=this.chars[pid]; if(!c){ if(this.want[pid]) this.want[pid].emote=e; return; } c.emote={e, t0:this.time||0}; },
   /* stage layout. Lobby: up to 4 across on a phone (8 on a wide screen); bigger groups get a second row standing on a riser
      behind, offset so everyone shows between the people in front. Podium: one row, winner in the middle, then outwards. */
@@ -4999,7 +5012,12 @@ const Room={
     const asp=W/H, fov=38*Math.PI/180, rows=this.rows||1, t=this.time;
     if(Math.abs((this.boardHue||0)-ACC.hue)>25) this.drawBoard();
     const need=(this.span/2+.5)/(Math.tan(fov/2)*asp), needV=(1.15+rows*.3)/Math.tan(fov/2); const dist=Math.max(4.2, need*1.08, needV)+(rows-1)*.6+(this.pod?1.3:0);
-    const sway=Math.sin(t*.11)*.2, eye=[sway, 1.8+dist*.08+(BIG.on?.12:0), .9+dist], ctr=[0,1.45+(BIG.on?.14:0)+(this.pod?.6:0),.0+(rows-1)*.3];
+    let sway=Math.sin(t*.11)*.2, eye=[sway, 1.8+dist*.08+(BIG.on?.12:0), .9+dist], ctr=[0,1.45+(BIG.on?.14:0)+(this.pod?.6:0),.0+(rows-1)*.3];
+    /* the winner moment: the camera eases in on the champion as the crown lands, holds, then drifts back so everyone's in shot */
+    if(this.pod && this.pod.fired && this.winF && !(typeof RM!=="undefined" && RM)){ const e=t-(this.pod.ft||t), sm=x=>{ x=Math.max(0,Math.min(1,x)); return x*x*(3-2*x); };
+      const k=e<2.2?sm(e/2.2):e<6.5?1:1-sm((e-6.5)/2.5)*.7, w=this.winF, cw=[w.x, w.lift+1.7, w.z];
+      const ez=[cw[0]+(eye[0]-ctr[0])*.5, cw[1]+(eye[1]-ctr[1])*.5-.1, cw[2]+(eye[2]-ctr[2])*.5];
+      for(let i=0;i<3;i++){ eye[i]+= (ez[i]-eye[i])*k; ctr[i]+=(cw[i]-ctr[i])*k; } }
     const V=M4.look(eye,ctr,[0,1,0]), Pm=M4.persp(fov,asp,.1,80), VP=M4.mul(Pm,V);
     const acc=ACC.lin; this.flash=Math.max(0,this.flash-dt*1.8);
     const items=[], refl=[], tags=[], sprites=[]; let waiting=0; const camR=[V[0],V[4],V[8]], camU=[V[1],V[5],V[9]], camF=[V[2],V[6],V[10]];
@@ -5008,7 +5026,9 @@ const Room={
     for(const pid of this.order){ const c=this.chars[pid]; if(!c){ waiting++; continue; }
       if(pod){ const s=pod.sc[pid]||0, H=.16+1.05*Math.max(0,s)/pod.max, k=pod.started?Math.max(0,Math.min(1,(t-pod.t0-(pod.del[pid]||0))/1.7)):0, e=k<1?1-Math.pow(1-k,3):1;
         c.lift=H*e; c.podH=H; c.podK=k; c.disp=`${shortTag(c.label,c.me)}\n${Math.round(Math.max(0,s)*e)}`;
-        if(k>=1 && !pod.done[pid]){ pod.done[pid]=t; const win=pod.rank[0]===pid; c.emote={e: win?"cheer":(pod.rank.indexOf(pid)<3?"wave":"clap"), t0:t}; if(win){ this.flash=1; if(!pod.fired){ pod.fired=true; try{ this.onPodium&&this.onPodium(); }catch(e){} } } }
+        if(k>=1 && !pod.done[pid]){ pod.done[pid]=t; const win=pod.rank[0]===pid; c.emote={e: win?"cheer":(pod.rank.indexOf(pid)<3?"wave":"clap"), t0:t}; if(win){ this.flash=1; if(!pod.fired){ pod.fired=true; pod.ft=t; try{ this.onPodium&&this.onPodium(); }catch(e){} } } }
+        if(pod.rank[0]===pid) this.winF={x:c.J.root.off[0], z:c.J.root.off[2], lift:c.lift||0};
+        else if(pod.fired && this.winF){ const tgt=Math.max(-1.1,Math.min(1.1,Math.atan2(this.winF.x-c.x, .9)))*.85; c.ry+=(tgt-c.ry)*Math.min(1,dt*2.2); }
         if(pod.rank[0]===pid && pod.done[pid] && t-pod.done[pid]>4.5){ pod.done[pid]=t; c.emote={e:["dance","cheer","jump"][Math.floor(t)%3], t0:t}; } }
       else { c.lift=c.baseLift||0; c.disp=null; }
       c.J.head.sc=BIG.on?BIG.s:1; poseChar(c,t,dt); bobble(c,dt); const ci=[]; charItems(c,ci,this.gx); for(const x of ci){ items.push(x); refl.push(Object.assign({},x,{m:M4.mul(M4.S(1,-1,1),x.m||M4.I()),noCast:true})); }
@@ -5028,6 +5048,7 @@ const Room={
         const Px=[P[0]+R[0]*shx+Uu[0]*dn, P[1]+R[1]*shx+Uu[1]*dn, P[2]+R[2]*shx+Uu[2]*dn];
         const m=new Float32Array([R[0]*sx,R[1]*sx,R[2]*sx,0, Uu[0]*sy,Uu[1]*sy,Uu[2]*sy,0, camF[0],camF[1],camF[2],0, Px[0]+camF[0]*.06,Px[1]+camF[1]*.06,Px[2]+camF[2]*.06,1]);
         sprites.push({mesh:this.quad,m,c:[1,1,1],tex:back?c.spriteBack:c.spriteTex,flat:true,blend:true,noCast:true,noRecv:true}); }
+      if(pod && pod.fired && pod.rank[0]===pid) this.crownItems(c, t-(pod.ft||t), items, refl);
       const lf=c.lift||0;
       if(pod && lf>.001){ const ri=pod.rank.indexOf(pid), col=ri===0?[.78,.55,.12]:ri===1?[.55,.58,.64]:ri===2?[.5,.27,.12]:[.16,.16,.18];
         const pm=M4.ch(M4.T(c.J.root.off[0],lf/2,c.J.root.off[2]),M4.S(.72,lf,.72)); items.push({mesh:this.boxM,m:pm,c:col,spec:ri<3?1.6:.5,gloss:ri<3?70:30}); refl.push({mesh:this.boxM,m:M4.mul(M4.S(1,-1,1),pm),c:col,noCast:true});
@@ -7150,11 +7171,11 @@ function avPickerHTML(){ const t=avToon(me.av), ph=!!(t && t.eyes==="photohead" 
   const step=()=>{ const t=(performance.now()-t0)/1000; const h=(30+t*1.5)%360; if(Math.abs(h-last)>.6){ last=h; root.style.setProperty("--hue",h.toFixed(1)); if(typeof ACC!=="undefined") ACC.set(h); } };
   step(); setInterval(()=>{ if(!document.hidden) step(); },120); })();
 function strobe(){ if(RM) return; const d=document.createElement("div"); d.className="strobe-fx"; document.body.appendChild(d); setTimeout(()=>d.remove(),700); }
-function confetti(n=140){
+function confetti(n=140, palette){
   if(RM) return;
   const c=document.createElement("canvas"); c.className="confetti"; document.body.appendChild(c);
   const w=c.width=innerWidth*devicePixelRatio, h=c.height=innerHeight*devicePixelRatio, x=c.getContext("2d");
-  const cols=["#FFFFFF","#FFFFFF","#9A9AA0", (typeof ACC!=="undefined"?ACC.css:"#fff")];
+  const cols=palette||["#FFFFFF","#FFFFFF","#9A9AA0", (typeof ACC!=="undefined"?ACC.css:"#fff")];
   const P=Array.from({length:n},()=>({x:w*(0.2+Math.random()*0.6), y:h*0.35, vx:(Math.random()-.5)*w*0.022, vy:-(Math.random()*h*0.022+h*0.006), r:Math.random()*6.3, vr:(Math.random()-.5)*0.3, s:(6+Math.random()*7)*devicePixelRatio, c:cols[Math.floor(Math.random()*cols.length)]}));
   const t0=performance.now();
   const f=t=>{ const el=t-t0; x.clearRect(0,0,w,h); for(const p of P){ p.vy+=h*0.0007; p.vx*=0.99; p.x+=p.vx; p.y+=p.vy; p.r+=p.vr; x.save(); x.translate(p.x,p.y); x.rotate(p.r); x.globalAlpha=Math.max(0,1-el/2600); x.fillStyle=p.c; x.fillRect(-p.s/2,-p.s/4,p.s,p.s/2); x.restore(); } if(el<2600) requestAnimationFrame(f); else c.remove(); };
@@ -8705,7 +8726,7 @@ function renderStage(){
   if(hostGone) h = `<div class="banner">The host has left, so this game can't continue.</div>` + h;
   el.innerHTML = h;
   afterStage();
-  if(S.phase==="final"){ const go=()=>{ if(!S||S.phase!=="final") return; document.querySelectorAll(".wait3d").forEach(e=>e.classList.remove("wait3d")); finalBoard(); confetti(220); cheer(5000); setTimeout(()=>confetti(120),1400); };
+  if(S.phase==="final"){ const go=()=>{ if(!S||S.phase!=="final") return; document.querySelectorAll(".wait3d").forEach(e=>e.classList.remove("wait3d")); finalBoard(); { const GOLD=["#FFD15C","#FFB703","#FFF3C4","#F59E0B","#FFFFFF"]; confetti(240,GOLD); setTimeout(()=>confetti(180,GOLD),700); } cheer(5000); setTimeout(()=>confetti(120),1400); };
     if(Room.ok && !RM){ if(Room.pod && Room.pod.fired) go(); else Room.onPodium=go; } else setTimeout(go, (RM?0:finalRevealDelay()*1000)+200); }
   if(S.phase==="intro") cheer(1600);
 
