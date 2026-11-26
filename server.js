@@ -127,7 +127,7 @@ function dbOp(b, user) {
       b.data = Object.assign({}, b.data || {}, { nick: String(prof.name || user.name || "Player").slice(0, 18), uid: user.id });
     }
   }
-  if (b.op === "get") return store[p] ? { exists: true, data: store[p] } : { exists: false };
+  if (b.op === "get") return store[p] ? { exists: true, data: cleanNick(store[p]) } : { exists: false };
   if (b.op === "set") {
     const s = JSON.stringify(b.data || {}); if (s.length > 60000) return { error: "too_big" };
     store[p] = b.data || {}; prune(); save(p); return { ok: true };
@@ -141,7 +141,7 @@ function dbOp(b, user) {
     const pre = p + "/", lim = Math.max(1, Math.min(100, +b.limit || 20)), f = b.orderBy, desc = b.dir === "desc";
     let docs = Object.keys(store).filter(k => k.startsWith(pre) && !k.slice(pre.length).includes("/")).map(k => ({ id: k.slice(pre.length), data: store[k] }));
     if (f) docs.sort((a, c) => { const x = (a.data || {})[f], y = (c.data || {})[f]; return (x > y ? 1 : x < y ? -1 : 0) * (desc ? -1 : 1); });
-    return { docs: docs.slice(0, lim) };
+    return { docs: docs.slice(0, lim).map(d => ({ id: d.id, data: cleanNick(d.data) })) };
   }
   return { error: "bad_op" };
 }
@@ -188,6 +188,7 @@ async function authRoute(req, res, url) {
   try {
     if (act === "signup") {
       const name = cleanName(b.name); if (!name || !nameKey(name)) return json(res, 400, { error: "Add a name for the leaderboard." });
+      if (badName(name)) return json(res, 400, { error: "Please pick a different name. That one isn't allowed on the leaderboards.", code: "bad_name" });
       if (nameTaken(name, "")) return json(res, 400, { error: TAKEN, code: "name_taken" });
       if (password.length < 8) return json(res, 400, { error: "Use a longer password (at least 8 characters)." });
       const j = await sbFetch("/auth/v1/signup?redirect_to=" + encodeURIComponent(origin), { method: "POST", headers: { apikey: SB_ANON, "content-type": "application/json" }, body: JSON.stringify({ email, password, data: { name } }) });
@@ -215,6 +216,12 @@ async function authRoute(req, res, url) {
     }
     const user = await userOf(req); if (!user) return json(res, 401, { error: "Please log in again.", code: "login_required" });
     if (act === "me") return json(res, 200, { profile: profileOut(user) });
+    if (act === "delete") { /* your account, profile, leaderboard scores and reports about your name, then the login itself */
+      const id = user.id, esc = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), re = new RegExp("(^users/" + esc + "$)|(/scores/" + esc + "$)|(^namerep/" + esc + "$)|(^hidden/" + esc + "$)|(/members/" + esc + "$)");
+      let n = 0; for (const k of Object.keys(store)) if (re.test(k)) { delete store[k]; gone.add(k); dirty.delete(k); n++; } save();
+      try { await sbFetch("/auth/v1/admin/users/" + encodeURIComponent(id), { method: "DELETE", headers: sbHead(SB_SERVICE) }); } catch (e) { console.error("delete login failed", e.message); return json(res, 500, { error: "Your data was removed but the login couldn't be deleted. Please email us and we'll finish it." }); }
+      return json(res, 200, { ok: true, removed: n });
+    }
     if (act === "password") {
       if (password.length < 8) return json(res, 400, { error: "Use a longer password (at least 8 characters)." });
       await sbFetch("/auth/v1/user", { method: "PUT", headers: { apikey: SB_ANON, authorization: req.headers.authorization, "content-type": "application/json" }, body: JSON.stringify({ password }) });
@@ -222,6 +229,7 @@ async function authRoute(req, res, url) {
     }
     if (act === "profile") {
       const k = "users/" + user.id, p = Object.assign({}, store[k] || {});
+      if (b.name !== undefined && badName(b.name)) return json(res, 400, { error: "Please pick a different name. That one isn't allowed on the leaderboards.", code: "bad_name" });
       if (b.name !== undefined) { const n = cleanName(b.name); if (n && nameKey(n)) { if (nameTaken(n, user.id)) return json(res, 400, { error: TAKEN, code: "name_taken" }); p.name = n; } }
       if (typeof b.av === "string" && b.av.length < 600) p.av = b.av;
       if (b.sjd && typeof b.sjd === "object") { // subject stats: add this device's new right/total counts
@@ -289,9 +297,41 @@ const clip = (v, n) => String(v == null ? "" : v).slice(0, n);
 async function reportRoute(req, res) {
   if (tooMany(req, "rep", 30)) return json(res, 429, { error: "slow_down" });
   const b = await readBody(req, 4000); const id = Date.now().toString(36) + "-" + crypto.randomBytes(3).toString("hex");
-  store["reports/" + id] = { text: clip(b.text, 300), answer: clip(b.answer, 300), t: clip(b.t, 8), cat: clip(b.cat, 40), reason: clip(b.reason, 60), src: clip(b.src, 10), day: clip(b.day, 10), by: clip(b.by, 18), at: Date.now() };
-  save("reports/" + id); return json(res, 200, { ok: true });
+  store["reports/" + id] = { text: clip(b.text, 300), answer: clip(b.answer, 300), t: clip(b.t, 8), cat: clip(b.cat, 40), reason: clip(b.reason, 60), src: clip(b.src, 10), day: clip(b.day, 10), by: clip(b.by, 18), uid: clip(b.uid, 80), at: Date.now() };
+  save("reports/" + id); if (b.reason === "name") { try { noteNameReport(clip(b.uid, 80), ipOf(req)); } catch (e) {} } return json(res, 200, { ok: true });
 }
+/* ---------- names: a short list of words that never belong in a public name. Letters are normalised first
+   (0→o, 1→i, 3→e, 4→a, 5→s, 7→t, @→a, $→s, repeated letters squashed, everything else dropped) so "Sh1tt!" is caught too. ---------- */
+const BAD_WORDS = Buffer.from("ZnVjayxzaGl0LGN1bnQsYml0Y2gsd2Fua2VyLHR3YXQscHJpY2ssZGlja2hlYWQsYXNzaG9sZSxhcnNlaG9sZSxiYXN0YXJkLHdob3JlLHNsdXQsbmlnZ2VyLG5pZ2dhLGZhZ2dvdCxmYWcscmV0YXJkLHNwYXN0aWMsc3BheixwYWtpLGNoaW5rLGtpa2UsdHJhbm55LGRpa2UscmFwZSxyYXBpc3QscGVkbyxwYWVkbyxuYXppLGhpdGxlcixraWxseW91cnNlbGYsa3lzLGNvY2sscGVuaXMsdmFnaW5hLHB1c3N5LGJvbGxvY2tz", "base64").toString().split(",");
+const SHORT_BAD = new Set(["fag", "kys", "spaz", "dike", "pedo", "rape", "paki", "cock", "kike", "chink", "nazi", "twat", "prick", "slut"]); /* short ones only count as a whole word, so innocent names aren't caught */
+function normName(s) { return String(s || "").toLowerCase().replace(/[0@4]/g, c => ({ "0": "o", "@": "a", "4": "a" }[c])).replace(/1|!|\|/g, "i").replace(/3/g, "e").replace(/[5$]/g, "s").replace(/7/g, "t"); }
+function badName(s) { const n = normName(s), flat = n.replace(/[^a-z]/g, "").replace(/(.)\1+/g, "$1"), words = n.split(/[^a-z]+/).map(w => w.replace(/(.)\1+/g, "$1"));
+  return BAD_WORDS.some(w => SHORT_BAD.has(w) ? words.includes(w) : flat.includes(w.replace(/(.)\1+/g, "$1"))); }
+function hiddenName(uid) { return !!(uid && store["hidden/" + uid]); }
+function cleanNick(d) { if (d && typeof d === "object" && d.nick && (badName(d.nick) || hiddenName(d.uid))) return Object.assign({}, d, { nick: "Player" }); return d; }
+
+/* ---------- anonymous counts: no cookies, no IDs, nothing stored on the phone. Each event just adds 1 to today's tally. ---------- */
+const EVENTS = new Set(["visit", "dq_start", "dq_done", "dg_start", "dg_done", "party_host", "party_join", "bots", "finale", "share", "invite", "league", "rematch", "avatar", "face", "feedback", "install"]);
+async function evRoute(req, res) {
+  if (tooMany(req, "ev", 400)) return json(res, 200, { ok: true });
+  let b = {}; try { b = await readBody(req, 600); } catch (e) {}
+  const list = (Array.isArray(b.e) ? b.e : [b.e]).filter(x => EVENTS.has(x)).slice(0, 10); if (!list.length) return json(res, 200, { ok: true });
+  const day = new Date().toISOString().slice(0, 10), k = "ev/" + day, cur = store[k] || {};
+  for (const x of list) cur[x] = (cur[x] || 0) + 1; store[k] = cur; save(k); return json(res, 200, { ok: true });
+}
+async function forgetRoute(req, res) { return json(res, 200, { ok: true }); } /* guests have nothing stored on the server; the game clears the phone */
+/* ---------- feedback from the game ---------- */
+async function feedbackRoute(req, res) {
+  if (tooMany(req, "fb", 10)) return json(res, 429, { error: "slow_down" });
+  const b = await readBody(req, 4000), text = clip(b.text, 1000).trim(); if (text.length < 3) return json(res, 400, { error: "empty" });
+  const id = Date.now().toString(36) + "-" + crypto.randomBytes(3).toString("hex");
+  store["feedback/" + id] = { text, kind: clip(b.kind, 20), contact: clip(b.contact, 120), where: clip(b.where, 40), ua: clip(req.headers["user-agent"], 120), at: Date.now() };
+  save("feedback/" + id); return json(res, 200, { ok: true });
+}
+/* ---------- a reported leaderboard name: hidden for everyone once three different people report it ---------- */
+function noteNameReport(uid, ip) { if (!uid || !/^[\w-]{3,80}$/.test(uid)) return; const k = "namerep/" + uid, cur = store[k] || { ips: [] };
+  const h = crypto.createHash("sha256").update(ip + "|dougle").digest("hex").slice(0, 12); if (!cur.ips.includes(h)) cur.ips.push(h); cur.at = Date.now(); store[k] = cur; save(k);
+  if (cur.ips.length >= 3 && !store["hidden/" + uid]) { store["hidden/" + uid] = { at: Date.now(), auto: 1 }; save("hidden/" + uid); } }
 const errRing = [];
 async function logRoute(req, res) {
   if (tooMany(req, "log", 60)) return json(res, 429, { error: "slow_down" });
@@ -311,6 +351,14 @@ function adminRoute(req, res, url) {
   const keys = Object.keys(store), count = re => keys.filter(k => re.test(k)).length;
   const rows = days.map(d => { const st = store["stats/" + d] || {}; return { d, dq: count(new RegExp("^dq\\d*/" + d + "/scores/")), dg: count(new RegExp("^dg\\d*/" + d + "/scores/")), parties: st.parties || 0, joins: st.joins || 0 }; });
   const users = count(/^users\/[^/]+$/), reps = keys.filter(k => k.startsWith("reports/")).map(k => store[k]).sort((a, b) => b.at - a.at).slice(0, 60);
+  /* unhide / hide a name from this page: /admin?key=…&hide=<uid> or &unhide=<uid> */
+  const hu = url.searchParams.get("hide"), uh = url.searchParams.get("unhide");
+  if (hu && /^[\w-]{3,80}$/.test(hu)) { store["hidden/" + hu] = { at: Date.now() }; save("hidden/" + hu); }
+  if (uh && /^[\w-]{3,80}$/.test(uh)) { delete store["hidden/" + uh]; gone.add("hidden/" + uh); save(); }
+  const EVL = [["visit", "Visits"], ["dq_start", "Quiz started"], ["dq_done", "Quiz finished"], ["dg_start", "Grid started"], ["dg_done", "Grid finished"], ["party_host", "Parties hosted"], ["party_join", "Party joins"], ["bots", "Vs bots"], ["finale", "Games finished"], ["share", "Results shared"], ["invite", "Invites sent"], ["league", "Leagues made"], ["face", "Faces made"], ["feedback", "Feedback"]];
+  const evRows = days.map(d => ({ d, v: store["ev/" + d] || {} }));
+  const fbs = keys.filter(k => k.startsWith("feedback/")).map(k => store[k]).sort((a, b) => b.at - a.at).slice(0, 60);
+  const hidden = keys.filter(k => k.startsWith("hidden/")).map(k => k.slice(7));
   const errs = errRing.slice(-40).reverse(), live = [...rooms.keys()].filter(n => /^(p:)?sq-[a-z]{4}$/.test(n) && rooms.get(n).members.size);
   const e = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const t = new Date().toLocaleString("en-GB", { timeZone: "Europe/London" });
@@ -319,7 +367,12 @@ function adminRoute(req, res, url) {
 <div class="big" style="margin-top:16px"><div><b>${rows[0].dq}</b>daily quiz players today</div><div><b>${rows[0].dg}</b>word grid players today</div><div><b>${rows[0].parties}</b>parties today</div><div><b>${live.length}</b>parties live now</div><div><b>${users}</b>accounts</div></div>
 <h2>Last 14 days</h2><div class="box"><table><tr><th>Day</th><th class="n">Daily quiz</th><th class="n">Word grid</th><th class="n">Parties</th><th class="n">Party joins</th></tr>${rows.map(r => `<tr><td>${r.d}</td><td class="n">${r.dq}</td><td class="n">${r.dg}</td><td class="n">${r.parties}</td><td class="n">${r.joins}</td></tr>`).join("")}</table></div>
 <p class="m">Daily counts are players with an account on the leaderboard. Party counts started on the day this page went live.</p>
-<h2>Reported questions (${reps.length})</h2><div class="box"><table><tr><th>When</th><th>Reason</th><th>Question</th><th>Answer given</th><th>Where</th></tr>${reps.map(r => `<tr><td class="m">${e(new Date(r.at).toLocaleString("en-GB", { timeZone: "Europe/London" }))}</td><td>${e(r.reason)}</td><td>${e(r.text)}</td><td>${e(r.answer)}</td><td class="m">${e(r.src)}${r.cat ? " · " + e(r.cat) : ""}${r.by ? " · " + e(r.by) : ""}</td></tr>`).join("") || `<tr><td colspan="5" class="m">None yet</td></tr>`}</table></div>
+<h2>What players did (last 14 days)</h2><div class="box"><table><tr><th>Day</th>${EVL.map(([, l]) => `<th class="n">${e(l)}</th>`).join("")}</tr>${evRows.map(r => `<tr><td>${r.d}</td>${EVL.map(([k]) => `<td class="n">${r.v[k] || 0}</td>`).join("")}</tr>`).join("")}</table></div>
+<p class="m">Anonymous counts: no cookies or IDs. "Visits" counts page loads.</p>
+<h2>Feedback (${fbs.length})</h2><div class="box"><table><tr><th>When</th><th>Type</th><th>Message</th><th>Reply to</th><th>Where</th></tr>${fbs.map(f => `<tr><td class="m">${e(new Date(f.at).toLocaleString("en-GB", { timeZone: "Europe/London" }))}</td><td>${e(f.kind)}</td><td>${e(f.text)}</td><td>${e(f.contact || "")}</td><td class="m">${e(f.where || "")}<br>${e(f.ua || "")}</td></tr>`).join("") || `<tr><td colspan="5" class="m">Nothing yet</td></tr>`}</table></div>
+<h2>Hidden names (${hidden.length})</h2><div class="box"><table><tr><th>Player</th><th>Name</th><th></th></tr>${hidden.map(u => `<tr><td class="m">${e(u)}</td><td>${e(((store["users/" + u] || {}).name) || "")}</td><td><a href="?key=${encodeURIComponent(key)}&unhide=${encodeURIComponent(u)}">Show again</a></td></tr>`).join("") || `<tr><td colspan="3" class="m">None</td></tr>`}</table></div>
+<p class="m">A name is hidden automatically after three different people report it. Reports with the reason "name" are in the list below; add <code>&amp;hide=PLAYER_ID</code> to this page's address to hide one yourself.</p>
+<h2>Reported questions and names (${reps.length})</h2><div class="box"><table><tr><th>When</th><th>Reason</th><th>Question</th><th>Answer given</th><th>Where</th></tr>${reps.map(r => `<tr><td class="m">${e(new Date(r.at).toLocaleString("en-GB", { timeZone: "Europe/London" }))}</td><td>${e(r.reason)}</td><td>${e(r.text)}</td><td>${e(r.answer)}</td><td class="m">${e(r.src)}${r.cat ? " · " + e(r.cat) : ""}${r.by ? " · " + e(r.by) : ""}${r.uid ? ` · <a href="?key=${encodeURIComponent(key)}&hide=${encodeURIComponent(r.uid)}">Hide this name</a>` : ""}</td></tr>`).join("") || `<tr><td colspan="5" class="m">None yet</td></tr>`}</table></div>
 <h2>Recent errors from players' phones (${errs.length})</h2><div class="box"><table><tr><th>When</th><th>Error</th><th>Device</th></tr>${errs.map(x => `<tr><td class="m">${e(new Date(x.at).toLocaleTimeString("en-GB", { timeZone: "Europe/London" }))}</td><td>${e(x.msg)}<div class="m">${e(x.src)}:${x.line}</div></td><td class="m">${e(x.ua)}</td></tr>`).join("") || `<tr><td colspan="3" class="m">None since the last restart</td></tr>`}</table></div>`;
   res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" }); res.end(html);
 }
@@ -435,6 +488,7 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, h); return res.end(pc.body);
     }
     if (url.pathname === "/healthz") return json(res, 200, { ok: true });
+    if (req.method === "GET" && (url.pathname === "/privacy" || url.pathname === "/terms")) { res.writeHead(302, { location: "/?privacy" }); return res.end(); }
     if (req.method === "GET" && (url.pathname === "/geo/low.json" || url.pathname === "/geo/high.json")) {
       const d = await geoGet(url.pathname.includes("high") ? "high" : "low");
       if (!d) return json(res, 503, { error: "map data unavailable" });
@@ -453,6 +507,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/api/report" && req.method === "POST") { await ready; return reportRoute(req, res); }
     if (url.pathname === "/api/log" && req.method === "POST") { await ready; return logRoute(req, res); }
+    if (url.pathname === "/api/ev" && req.method === "POST") { await ready; return evRoute(req, res); }
+    if (url.pathname === "/api/feedback" && req.method === "POST") { await ready; return feedbackRoute(req, res); }
+    if (url.pathname === "/api/forget" && req.method === "POST") { await ready; return forgetRoute(req, res); }
     if (url.pathname === "/admin" && req.method === "GET") { await ready; return adminRoute(req, res, url); }
     /* face finding and head cut-out models, loaded only when someone uses "Use my face" */
     if (req.method === "GET" && url.pathname.startsWith("/face/")) {
