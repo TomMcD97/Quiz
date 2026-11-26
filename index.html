@@ -4529,7 +4529,7 @@ function makeChar(gx, id, geo){
   ch.J=J; ch.root=J.root; ch.meshes=[body,head]; ch.faceOpts={freckles:!!(P.acc&&P.acc.freckles), stubble:!!(P.acc&&P.acc.stubble), lipstick:!!(P.acc&&P.acc.lipstick)}; ch.parts.forEach(p=>{ if(p.mesh && !p.mesh.shared) {} }); return ch;
 }
 
-function freeChar(gx,ch){ gx.free(ch.body); gx.free(ch.head); ch.parts.slice(0,2).forEach(p=>gx.free(p.mesh)); if(ch.faceTex) gx.gl.deleteTexture(ch.faceTex); if(ch.relief){ gx.free(ch.relief.mesh); gx.free(ch.relief.meshB); } if(ch.hairMesh) gx.free(ch.hairMesh); if(ch.beardMesh) gx.free(ch.beardMesh); }
+function freeChar(gx,ch){ gx.free(ch.body); gx.free(ch.head); ch.parts.slice(0,2).forEach(p=>gx.free(p.mesh)); if(ch.faceTex) gx.gl.deleteTexture(ch.faceTex); if(ch.relief){ gx.free(ch.relief.mesh); if(ch.relief.meshB) gx.free(ch.relief.meshB); } if(ch.hairMesh) gx.free(ch.hairMesh); if(ch.beardMesh) gx.free(ch.beardMesh); }
 
 function charWorld(ch){ const W=[]; const rec=(j,parent)=>{ let m=M4.ch(M4.T(j.off[0]+j.tx,j.off[1]+j.ty,j.off[2]+j.tz),M4.RY(j.ry),M4.RX(j.rx),M4.RZ(j.rz)); if(j===ch.root && ch.scale!==1) m=M4.mul(m,M4.S(ch.scale,ch.scale,ch.scale)); if(j.sc && j.sc!==1) m=M4.mul(m,M4.S(j.sc,j.sc,j.sc)); if(j.sy!==1) m=M4.mul(m,M4.S(1,j.sy,1)); if(j.pre) m=M4.mul(m,j.pre); const w=parent?M4.mul(parent,m):m; j.world=w; W[j.i]=w; j.kids.forEach(k=>rec(k,w)); }; rec(ch.root,null);
   for(let i=0;i<RIG.names.length;i++){ const p=RIG.piv[i]; const B=M4.mul(W[i],M4.T(-p[0],-p[1],-p[2])); ch.bones.set(B,i*16); } return W; }
@@ -4766,43 +4766,55 @@ function buildRelief(img, tt, ro){ ro=ro||{}; const N=84, S=document.createEleme
    as the surface turns away, into colours taken from the photo's edge, then your hair colour round the back. Same frame and
    mesh format as buildRelief (unit square of the "-10 -20 220 220" picture, y up), so the stage draws it the same way. */
 function buildPhotoHead3D(cv, hair, skin){
-  /* Your whole cut-out (face AND your own hair) fills a smooth, rounded 3D head.
+  /* Your whole cut-out (face AND your own hair) wrapped smoothly round a rounded 3D head.
      1. keep only the part of the cut-out joined to your face (stray bits of background are dropped)
-     2. fit the head's shape to that, so the photo fills it edge to edge without being pulled wider or taller
-     3. the photo covers the front; as the head turns, the sides and back take the photo's own edge colours (your hair) */
+     2. fit the head to that, so the photo fills it edge to edge at its true proportions
+     3. one texture for the whole head: the photo on the front, its edge colours carried smoothly round the sides into your
+        hair colour at the back, so there's no seam or fade anywhere as it turns */
   const N=128, sc=document.createElement("canvas"); sc.width=sc.height=N; const sx=sc.getContext("2d"); sx.drawImage(cv,0,0,N,N); const A=sx.getImageData(0,0,N,N).data;
   const fx=X=>(X+10)/220*N, fy=Y=>(Y+20)/220*N, keep=new Uint8Array(N*N);
   { const st=[Math.round(fy(110))*N+Math.round(fx(100))]; if(A[st[0]*4+3]<=90){ let best=-1,bd=1e9; for(let i=0;i<N*N;i++) if(A[i*4+3]>90){ const d=Math.hypot(i%N-fx(100),(i/N|0)-fy(110)); if(d<bd){bd=d;best=i;} } st[0]=best; }
     if(st[0]>=0){ keep[st[0]]=1; while(st.length){ const i=st.pop(), x=i%N, y=(i/N)|0; for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const xx=x+dx, yy=y+dy; if(xx<0||yy<0||xx>=N||yy>=N) continue; const j=yy*N+xx; if(!keep[j] && A[j*4+3]>90){ keep[j]=1; st.push(j); } } } } }
-  /* the head's outline: the kept cut-out, held to sensible bounds around the face (eyes 40 units apart at y 95.5, chin near y 172) */
   let x0=N,x1=0,y0=N,y1=0; for(let i=0;i<N*N;i++) if(keep[i]){ const x=i%N,y=(i/N)|0; if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; }
   if(x1<=x0){ x0=fx(46); x1=fx(154); y0=fy(30); y1=fy(172); }
   x0=Math.max(x0,fx(100-95)); x1=Math.min(x1,fx(100+95)); y0=Math.max(y0,fy(95.5-105)); y1=Math.min(y1,fy(176));
   x0=Math.min(x0,fx(100-50)); x1=Math.max(x1,fx(100+50)); y0=Math.min(y0,fy(45)); y1=Math.max(y1,fy(160));
-  const cxn=((x0+x1+1)/2)/N-.5, cyn=.5-((y0+y1+1)/2)/N, rx=(x1-x0+1)/N/2, ry=(y1-y0+1)/N/2, rz=Math.min(rx,ry)*.9, cz=-rz*.12;
-  /* soft colours from the kept cut-out, for the sides as they turn away */
-  let CR=new Float32Array(N*N*4); for(let i=0;i<N*N;i++){ const a=keep[i]?A[i*4+3]/255:0; CR[i*4]=A[i*4]*a; CR[i*4+1]=A[i*4+1]*a; CR[i*4+2]=A[i*4+2]*a; CR[i*4+3]=a; }
-  for(let pass=0;pass<6;pass++) for(const dir of [1,N]){ const T=new Float32Array(N*N*4); for(let i=0;i<N*N;i++){ const x=i%N,y=(i/N)|0; for(let k=-3;k<=3;k++){ const xx=dir===1?x+k:x, yy=dir===1?y:y+k; if(xx<0||yy<0||xx>=N||yy>=N) continue; const r=(yy*N+xx)*4; T[i*4]+=CR[r]; T[i*4+1]+=CR[r+1]; T[i*4+2]+=CR[r+2]; T[i*4+3]+=CR[r+3]; } } CR=T; }
-  const HB=Array.isArray(hair)?hair:(()=>{ const x=parseInt((hair||"#3a2a20").slice(1),16); return [(x>>16)&255,(x>>8)&255,x&255]; })(), lin=v=>Math.pow(v/255,2.2);
-  const soft=(u,v)=>{ const x=Math.max(0,Math.min(N-1,Math.round(u*N-.5))), y=Math.max(0,Math.min(N-1,Math.round((1-v)*N-.5))), i=(y*N+x)*4, a=CR[i+3]; return a>.02?[CR[i]/a,CR[i+1]/a,CR[i+2]/a]:HB; };
-  const RING=72, SEG=48, out=[];
-  for(const back of [0,1]){ const P=[],Nn=[],U=[],C=[],M=[],I=[];
+  const cxn=((x0+x1+1)/2)/N-.5, cyn=.5-((y0+y1+1)/2)/N, rx=(x1-x0+1)/N/2*.98, ry=(y1-y0+1)/N/2*.98, rz=Math.min(rx,ry)*.92, cz=-rz*.1;
+  /* trim the cut-out's outer edge a little (that's where bits of the old background cling), then fill every empty spot with the
+     colours nearest to it (a smooth fill from coarse to fine), so the whole head has a seamless, sensible colour */
+  const core=new Uint8Array(N*N); for(let y=2;y<N-2;y++) for(let x=2;x<N-2;x++){ const i=y*N+x; if(!keep[i]||A[i*4+3]<200) continue; let ok=1; for(let dy=-2;dy<=2&&ok;dy++) for(let dx=-2;dx<=2;dx++) if(!keep[i+dy*N+dx]){ ok=0; break; } core[i]=ok; }
+  const fill=(()=>{ let lv=[], n=N, R=new Float32Array(N*N*4); for(let i=0;i<N*N;i++) if(core[i]){ R[i*4]=A[i*4]; R[i*4+1]=A[i*4+1]; R[i*4+2]=A[i*4+2]; R[i*4+3]=1; }
+    lv.push(R); while(n>1){ const m=n>>1, D=new Float32Array(m*m*4), Sx=lv[lv.length-1]; for(let y=0;y<m;y++) for(let x=0;x<m;x++){ const o=(y*m+x)*4; for(const [dx,dy] of [[0,0],[1,0],[0,1],[1,1]]){ const q=((2*y+dy)*n+2*x+dx)*4; for(let c=0;c<4;c++) D[o+c]+=Sx[q+c]; } } lv.push(D); n=m; }
+    for(let L=lv.length-2;L>=0;L--){ const n2=N>>L, m=n2>>1, F=lv[L], Cc=lv[L+1]; for(let y=0;y<n2;y++) for(let x=0;x<n2;x++){ const o=(y*n2+x)*4; if(F[o+3]>=.999) { if(F[o+3]>1){ for(let c=0;c<3;c++) F[o+c]/=F[o+3]; F[o+3]=1; } continue; }
+        /* smooth (bilinear) colour from the coarser level */
+        const fx2=Math.max(0,Math.min(m-1,(x+.5)/2-.5)), fy2=Math.max(0,Math.min(m-1,(y+.5)/2-.5)), ax=Math.floor(fx2), ay=Math.floor(fy2), bx2=Math.min(m-1,ax+1), by2=Math.min(m-1,ay+1), tx2=fx2-ax, ty2=fy2-ay;
+        for(let c=0;c<3;c++){ const v00=Cc[(ay*m+ax)*4+c], v10=Cc[(ay*m+bx2)*4+c], v01=Cc[(by2*m+ax)*4+c], v11=Cc[(by2*m+bx2)*4+c]; F[o+c]=(v00*(1-tx2)+v10*tx2)*(1-ty2)+(v01*(1-tx2)+v11*tx2)*ty2; } F[o+3]=1; } }
+    return lv[0]; })();
+  /* your hair colour: the average of your real photo pixels across the top of the head */
+  let hr=0,hg=0,hb2=0,hn=0; for(let y=0;y<N;y++){ const yy=.5-(y+.5)/N; if(yy<cyn+ry*.4) continue; for(let x=0;x<N;x++){ const xx=(x+.5)/N-.5; if(((xx-cxn)/rx)**2+((yy-cyn)/ry)**2>1 || !core[y*N+x]) continue; const o=(y*N+x)*4; hr+=fill[o]; hg+=fill[o+1]; hb2+=fill[o+2]; hn++; } }
+  const HC=hn?`rgb(${hr/hn|0},${hg/hn|0},${hb2/hn|0})`:"#3a2a20";
+  let BL=fill; for(let pass=0;pass<4;pass++) for(const dir of [1,N]){ const Tq=new Float32Array(N*N*4); for(let i=0;i<N*N;i++){ const x=i%N,y=(i/N)|0; let w=0; for(let k=-3;k<=3;k++){ const xx=dir===1?x+k:x, yy=dir===1?y:y+k; if(xx<0||yy<0||xx>=N||yy>=N) continue; const r=(yy*N+xx)*4; Tq[i*4]+=BL[r]; Tq[i*4+1]+=BL[r+1]; Tq[i*4+2]+=BL[r+2]; w++; } Tq[i*4]/=w; Tq[i*4+1]/=w; Tq[i*4+2]/=w; } BL=Tq; }
+  const fc=document.createElement("canvas"); fc.width=fc.height=N; { const x=fc.getContext("2d"), d=x.createImageData(N,N); for(let i=0;i<N*N*4;i++) d.data[i]=(i%4===3)?255:Math.max(0,Math.min(255,BL[i])); x.putImageData(d,0,0); }
+  const S=cv.width, cut=document.createElement("canvas"); cut.width=cut.height=S; { const x=cut.getContext("2d"); x.drawImage(cv,0,0);
+    const km=document.createElement("canvas"); km.width=km.height=N; const kx=km.getContext("2d"), kd=kx.createImageData(N,N); let SM=new Float32Array(N*N); for(let i=0;i<N*N;i++) SM[i]=core[i]; for(let pass=0;pass<2;pass++) for(const dir of [1,N]){ const Tq=new Float32Array(N*N); for(let i=0;i<N*N;i++){ const x=i%N,y=(i/N)|0; let w=0,v=0; for(let k=-2;k<=2;k++){ const xx=dir===1?x+k:x, yy=dir===1?y:y+k; if(xx<0||yy<0||xx>=N||yy>=N) continue; v+=SM[yy*N+xx]; w++; } Tq[i]=v/w; } SM=Tq; }
+    for(let i=0;i<N*N;i++) kd.data[i*4+3]=Math.round(255*Math.max(0,Math.min(1,(SM[i]-.25)/.6))); kx.putImageData(kd,0,0);
+    x.globalCompositeOperation="destination-in"; x.imageSmoothingEnabled=true; x.drawImage(km,0,0,S,S); }
+  /* texture: left half the front (the photo over its filled colours), right half the back (your hair colour, meeting the
+     front's edge colours round the rim so the sides join seamlessly) */
+  const T=document.createElement("canvas"); T.width=2*S; T.height=S; const tx=T.getContext("2d"); tx.imageSmoothingEnabled=true;
+  tx.drawImage(fc,0,0,S,S); tx.drawImage(cut,0,0);
+  const bk=document.createElement("canvas"); bk.width=bk.height=S; const bx=bk.getContext("2d"); bx.imageSmoothingEnabled=true; bx.drawImage(fc,0,0,S,S); bx.globalCompositeOperation="destination-in";
+  bx.save(); bx.translate(S*(.5+cxn),S*(.5-cyn)); bx.scale(1,ry/rx); const g=bx.createRadialGradient(0,0,0,0,0,S*rx); g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(.5,"rgba(0,0,0,0)"); g.addColorStop(.98,"#000"); bx.fillStyle=g; bx.fillRect(-S*2,-S*2,S*4,S*4); bx.restore();
+  tx.fillStyle=HC; tx.fillRect(S,0,S,S); tx.drawImage(bk,S,0);
+  /* one smooth ellipsoid; normals straight from its shape, so the shading has no creases */
+  const RING=64, SEG=96, P=[],Nn=[],U=[],C=[],M=[],I=[];
+  for(const back of [0,1]){ const base=P.length/3;
     for(let r=0;r<=RING;r++){ const ph=r/RING*Math.PI, cph=Math.cos(ph), sph=Math.sin(ph);
-      for(let k=0;k<=SEG;k++){ const th=(back?Math.PI/2:-Math.PI/2)+k/SEG*Math.PI, ct=Math.cos(th), st=Math.sin(th), zf=ct>0?Math.pow(ct,.8):ct;
-        const x=cxn+rx*sph*st, y=cyn+ry*cph, z=cz+rz*Math.pow(sph,.9)*zf;
-        P.push(x,y,z); Nn.push(0,0,0); U.push(back?-1:x+.5, back?-1:y+.5);
-        let c=soft(x+.5,y+.5); if(back){ const t=Math.min(1,-ct*1.3); c=[c[0]+(HB[0]-c[0])*t, c[1]+(HB[1]-c[1])*t, c[2]+(HB[2]-c[2])*t]; }
-        C.push(lin(c[0]),lin(c[1]),lin(c[2]),1); M.push(.3,.2,.2); } }
-    const W=SEG+1; for(let r=0;r<RING;r++) for(let k=0;k<SEG;k++){ const a=r*W+k,b=a+1,c=a+W,d=c+1; I.push(a,c,b, b,c,d); }
-    for(let t=0;t<I.length;t+=3){ const a=I[t]*3,b=I[t+1]*3,c=I[t+2]*3; const ux=P[b]-P[a],uy=P[b+1]-P[a+1],uz=P[b+2]-P[a+2],vx=P[c]-P[a],vy=P[c+1]-P[a+1],vz=P[c+2]-P[a+2]; const nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx; for(const q of [a,b,c]){ Nn[q]+=nx; Nn[q+1]+=ny; Nn[q+2]+=nz; } }
-    for(let q=0;q<Nn.length;q+=3){ let nx=Nn[q],ny=Nn[q+1],nz=Nn[q+2]; const ox=P[q]-cxn, oy=P[q+1]-cyn, oz=P[q+2]-cz; if(nx*ox+ny*oy+nz*oz<0){ nx=-nx; ny=-ny; nz=-nz; } const l=Math.hypot(nx,ny,nz)||1; Nn[q]=nx/l; Nn[q+1]=ny/l; Nn[q+2]=nz/l; }
-    out.push({P:new Float32Array(P),N:new Float32Array(Nn),U:new Float32Array(U),C:new Float32Array(C),M:new Float32Array(M),I:new Uint32Array(I)}); }
-  /* the photo for the front: the kept cut-out only, softened just inside the head's edge */
-  const S=cv.width, tc=document.createElement("canvas"); tc.width=tc.height=S; const x=tc.getContext("2d"); x.drawImage(cv,0,0);
-  const km=document.createElement("canvas"); km.width=km.height=N; const kx=km.getContext("2d"), kd=kx.createImageData(N,N); for(let i=0;i<N*N;i++){ kd.data[i*4+3]=keep[i]?255:0; } kx.putImageData(kd,0,0);
-  x.globalCompositeOperation="destination-in"; x.imageSmoothingEnabled=true; x.drawImage(km,0,0,S,S);
-  x.save(); x.translate(S*(.5+cxn),S*(.5-cyn)); x.scale(1,ry/rx); const g=x.createRadialGradient(0,0,0,0,0,S*rx); g.addColorStop(0,"#000"); g.addColorStop(.86,"#000"); g.addColorStop(1,"rgba(0,0,0,0)"); x.fillStyle=g; x.fillRect(-S,-S,2*S,2*S); x.restore();
-  out.tex=tc; return out; }
+      for(let k=0;k<=SEG/2;k++){ const th=(back?Math.PI/2:-Math.PI/2)+k/(SEG/2)*Math.PI, x=cxn+rx*sph*Math.sin(th), y=cyn+ry*cph, z=cz+rz*sph*Math.cos(th);
+        P.push(x,y,z); let nx=(x-cxn)/(rx*rx), ny=(y-cyn)/(ry*ry), nz=(z-cz)/(rz*rz); const l=Math.hypot(nx,ny,nz)||1; Nn.push(nx/l,ny/l,nz/l);
+        const u=Math.max(0,Math.min(1,x+.5)), v=Math.max(0,Math.min(1,y+.5)); U.push(back?.5+u*.5:u*.5, v); C.push(1,1,1,1); M.push(.1,.25,.18); } }
+    const W=SEG/2+1; for(let r=0;r<RING;r++) for(let k=0;k<SEG/2;k++){ const a=base+r*W+k,b=a+1,c=a+W,d=c+1; I.push(a,c,b, b,c,d); } }
+  return {mesh:{P:new Float32Array(P),N:new Float32Array(Nn),U:new Float32Array(U),C:new Float32Array(C),M:new Float32Array(M),I:new Uint32Array(I)}, tex:T}; }
 const Room={
   ok:null, gx:null, cv:null, wrap:null, tags:null, chars:{}, order:[], items:[], raf:0, last:0, board:{code:null,cap:"",title:""}, want:{}, flash:0,
   init(){
@@ -4911,7 +4923,7 @@ const Room={
       const gr=y.createRadialGradient(S*.45,S*.3,20,S/2,S*.5,S*.5); gr.addColorStop(0,"rgba(255,255,255,.2)"); gr.addColorStop(.6,"rgba(0,0,0,0)"); gr.addColorStop(1,"rgba(0,0,0,.35)"); y.fillStyle=gr; y.fillRect(0,0,S,S);
       const id=Math.random().toString(36).slice(2); ch.spriteTex=this.gx.texCanvas("phs_"+id,cv); ch.spriteBack=this.gx.texCanvas("phb_"+id,bc); ch.relief=null;
       /* real depth: a rounded head (nose, cheeks, back of the head in your hair colour) built from the cut-out, so it turns in 3D */
-      try{ const g2=buildPhotoHead3D(cv, n?[r/n,g/n,b/n]:(t.hairColour||"#3a2a20"), t.skin); if(g2) ch.relief={mesh:this.gx.upload(g2[0]), meshB:this.gx.upload(g2[1]), front:this.gx.texCanvas("phr_"+id,g2.tex)}; }catch(e){ console.warn("photo head 3D",e); ch.relief=null; }
+      try{ const g2=buildPhotoHead3D(cv, n?[r/n,g/n,b/n]:(t.hairColour||"#3a2a20"), t.skin); if(g2) ch.relief={mesh:this.gx.upload(g2.mesh), meshB:null, front:this.gx.texCanvas("phr_"+id,g2.tex), whole:true}; }catch(e){ console.warn("photo head 3D",e); ch.relief=null; }
     }catch(e){ console.warn("photo head",e); ch.spriteTex=null; } };
     im.src=ph; },
   loadSprite(ch,av){ try{ const tt=(typeof avToon==="function")&&avToon(av); if(!tt) return; const SV="-10 -20 220 220", img=new Image(); ch.sprPending=true;
@@ -4971,8 +4983,8 @@ const Room={
       c.J.head.sc=BIG.on?BIG.s:1; poseChar(c,t,dt); bobble(c,dt); const ci=[]; charItems(c,ci,this.gx); for(const x of ci){ items.push(x); refl.push(Object.assign({},x,{m:M4.mul(M4.S(1,-1,1),x.m||M4.I()),noCast:true})); }
       if(c.spriteTex && c.relief){ /* sized so your eyes are as far apart as an avatar's eyes and sit at the same height: same head size as everyone else */
         const hw=c.J.head.world, sz=(2*.0334*HEAD_S)/(40.2/220), ey=.0882*HEAD_S+sz*(95.5+20-110)/220, m=M4.mul(hw,M4.ch(M4.T(0,ey,.012),M4.S(sz,sz,sz)));
-        const fr={mesh:c.relief.mesh,m,c:[1,1,1],tex:c.relief.front,decal:true,noRecv:true}, bk={mesh:c.relief.meshB,m,c:[1,1,1],noRecv:true};
-        for(const it of [fr,bk]){ items.push(it); refl.push(Object.assign({},it,{m:M4.mul(M4.S(1,-1,1),m),noCast:true})); } }
+        const fr=c.relief.whole?{mesh:c.relief.mesh,m,c:[1,1,1],tex:c.relief.front,wrap:.25,noRecv:true}:{mesh:c.relief.mesh,m,c:[1,1,1],tex:c.relief.front,decal:true,noRecv:true}, bk=c.relief.meshB?{mesh:c.relief.meshB,m,c:[1,1,1],noRecv:true}:null;
+        for(const it of [fr,bk]){ if(!it) continue; items.push(it); refl.push(Object.assign({},it,{m:M4.mul(M4.S(1,-1,1),m),noCast:true})); } }
       else if(c.spriteTex){ const hw=c.J.head.world, sc=c.J.head.sc||1, k=sc/1.85, ux=hw[4],uy=hw[5],uz=hw[6], ul=Math.hypot(ux,uy,uz)||1; const up=.11*HEAD_S*sc*(c.scale||1)+.14*k;
         const P=[hw[12]+ux/ul*up, hw[13]+uy/ul*up, hw[14]+uz/ul*up], s=1.12*k*(c.scale||1), b=c.bob?c.bob.z*.8:0, cb=Math.cos(b), sb=Math.sin(b);
         const R=[camR[0]*cb+camU[0]*sb, camR[1]*cb+camU[1]*sb, camR[2]*cb+camU[2]*sb], Uu=[-camR[0]*sb+camU[0]*cb, -camR[1]*sb+camU[1]*cb, -camR[2]*sb+camU[2]*cb];
