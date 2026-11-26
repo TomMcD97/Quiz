@@ -4806,14 +4806,24 @@ function buildPhotoHead3D(cv, hair, skin){
   const bk=document.createElement("canvas"); bk.width=bk.height=S; const bx=bk.getContext("2d"); bx.imageSmoothingEnabled=true; bx.drawImage(fc,0,0,S,S); bx.globalCompositeOperation="destination-in";
   bx.save(); bx.translate(S*(.5+cxn),S*(.5-cyn)); bx.scale(1,ry/rx); const g=bx.createRadialGradient(0,0,0,0,0,S*rx); g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(.5,"rgba(0,0,0,0)"); g.addColorStop(.98,"#000"); bx.fillStyle=g; bx.fillRect(-S*2,-S*2,S*4,S*4); bx.restore();
   tx.fillStyle=HC; tx.fillRect(S,0,S,S); tx.drawImage(bk,S,0);
-  /* one smooth ellipsoid; normals straight from its shape, so the shading has no creases */
-  const RING=64, SEG=96, P=[],Nn=[],U=[],C=[],M=[],I=[];
-  for(const back of [0,1]){ const base=P.length/3;
-    for(let r=0;r<=RING;r++){ const ph=r/RING*Math.PI, cph=Math.cos(ph), sph=Math.sin(ph);
-      for(let k=0;k<=SEG/2;k++){ const th=(back?Math.PI/2:-Math.PI/2)+k/(SEG/2)*Math.PI, x=cxn+rx*sph*Math.sin(th), y=cyn+ry*cph, z=cz+rz*sph*Math.cos(th);
-        P.push(x,y,z); let nx=(x-cxn)/(rx*rx), ny=(y-cyn)/(ry*ry), nz=(z-cz)/(rz*rz); const l=Math.hypot(nx,ny,nz)||1; Nn.push(nx/l,ny/l,nz/l);
-        const u=Math.max(0,Math.min(1,x+.5)), v=Math.max(0,Math.min(1,y+.5)); U.push(back?.5+u*.5:u*.5, v); C.push(1,1,1,1); M.push(.1,.25,.18); } }
-    const W=SEG/2+1; for(let r=0;r<RING;r++) for(let k=0;k<SEG/2;k++){ const a=base+r*W+k,b=a+1,c=a+W,d=c+1; I.push(a,c,b, b,c,d); } }
+  /* the "pillow": your cut-out's own outline (smoothed), puffed up into a soft cushion. Gently domed on the front so the photo
+     is never stretched, rounded at the rim, a shallower dome behind in your hair colour. */
+  let KS=new Float32Array(N*N); for(let i=0;i<N*N;i++) KS[i]=keep[i]; for(let pass=0;pass<2;pass++) for(const dir of [1,N]){ const Tq=new Float32Array(N*N); for(let i=0;i<N*N;i++){ const x=i%N,y=(i/N)|0; let w=0,v=0; for(let k=-2;k<=2;k++){ const xx=dir===1?x+k:x, yy=dir===1?y:y+k; if(xx<0||yy<0||xx>=N||yy>=N) continue; v+=KS[yy*N+xx]; w++; } Tq[i]=v/w; } KS=Tq; }
+  const AN=144, c0x=fx(100), c0y=fy(108), rmin=fx(100+40)-fx(100), rmax=fx(100+100)-fx(100); let RR=new Float32Array(AN);
+  for(let k=0;k<AN;k++){ const an=k/AN*Math.PI*2, dx=Math.cos(an), dy=-Math.sin(an); let last=0; for(let r=0;r<rmax;r+=.5){ const x=Math.round(c0x+dx*r), y=Math.round(c0y+dy*r); if(x<0||y<0||x>=N||y>=N) break; if(KS[y*N+x]>.5) last=r; } RR[k]=Math.max(rmin,last); }
+  for(let pass=0;pass<3;pass++){ const T2=new Float32Array(AN); for(let k=0;k<AN;k++){ let v=0; for(let j=-4;j<=4;j++) v+=RR[(k+j+AN)%AN]; T2[k]=v/9; } RR=T2; }
+  const ctrX=c0x/N-.5, ctrY=.5-c0y/N, rAvg=RR.reduce((p,v)=>p+v,0)/AN/N, DF=rAvg*.34, DB=rAvg*.26, RG=34;
+  const G=[]; for(let i=0;i<=2*RG;i++){ const back=i>RG, t=back?(2*RG-i)/RG:i/RG, e=Math.pow(t,1.2), prof=Math.sqrt(Math.max(0,1-Math.pow(e,6)));
+    for(let k=0;k<AN;k++){ const an=k/AN*Math.PI*2, r=RR[k]/N*e; G.push([ctrX+Math.cos(an)*r, ctrY+Math.sin(an)*r, back?-DB*prof:DF*prof]); } }
+  const gi=(i,k)=>i*AN+((k%AN+AN)%AN), GN=G.map(()=>[0,0,0]), GI=[];
+  for(let i=0;i<2*RG;i++) for(let k=0;k<AN;k++){ const a=gi(i,k), b=gi(i,k+1), c=gi(i+1,k), d=gi(i+1,k+1); GI.push([a,c,b],[b,c,d]); }
+  for(const [a,b,c] of GI){ const A2=G[a],B2=G[b],C2=G[c]; const ux=B2[0]-A2[0],uy=B2[1]-A2[1],uz=B2[2]-A2[2],vx=C2[0]-A2[0],vy=C2[1]-A2[1],vz=C2[2]-A2[2]; const n=[uy*vz-uz*vy, uz*vx-ux*vz, ux*vy-uy*vx]; for(const q of [a,b,c]){ GN[q][0]+=n[0]; GN[q][1]+=n[1]; GN[q][2]+=n[2]; } }
+  GN.forEach((n,q)=>{ const g=G[q]; const o=[g[0]-ctrX,g[1]-ctrY,g[2]]; const i=Math.floor(q/AN); if(i===0){ n[0]=0;n[1]=0;n[2]=1; } else if(i===2*RG){ n[0]=0;n[1]=0;n[2]=-1; } else if(n[0]*o[0]+n[1]*o[1]+n[2]*o[2]<0){ n[0]=-n[0]; n[1]=-n[1]; n[2]=-n[2]; } const l=Math.hypot(...n)||1; n[0]/=l; n[1]/=l; n[2]/=l; });
+  /* two copies of the rim (front picture / back picture), sharing positions and normals so the shading is seamless */
+  const P=[],Nn=[],U=[],C=[],M=[],I=[];
+  for(const back of [0,1]){ const base=P.length/3, i0=back?RG:0, i1=back?2*RG:RG;
+    for(let i=i0;i<=i1;i++) for(let k=0;k<=AN;k++){ const q=gi(i,k), g=G[q], n=GN[q]; P.push(g[0],g[1],g[2]); Nn.push(n[0],n[1],n[2]); const u=Math.max(0,Math.min(1,g[0]+.5)), v=Math.max(0,Math.min(1,g[1]+.5)); U.push(back?.5+u*.5:u*.5, v); C.push(1,1,1,1); M.push(.1,.25,.18); }
+    const W=AN+1; for(let i=0;i<i1-i0;i++) for(let k=0;k<AN;k++){ const a=base+i*W+k,b=a+1,c=a+W,d=c+1; I.push(a,c,b, b,c,d); } }
   return {mesh:{P:new Float32Array(P),N:new Float32Array(Nn),U:new Float32Array(U),C:new Float32Array(C),M:new Float32Array(M),I:new Uint32Array(I)}, tex:T}; }
 const Room={
   ok:null, gx:null, cv:null, wrap:null, tags:null, chars:{}, order:[], items:[], raf:0, last:0, board:{code:null,cap:"",title:""}, want:{}, flash:0,
@@ -4982,7 +4992,10 @@ const Room={
       else { c.lift=c.baseLift||0; c.disp=null; }
       c.J.head.sc=BIG.on?BIG.s:1; poseChar(c,t,dt); bobble(c,dt); const ci=[]; charItems(c,ci,this.gx); for(const x of ci){ items.push(x); refl.push(Object.assign({},x,{m:M4.mul(M4.S(1,-1,1),x.m||M4.I()),noCast:true})); }
       if(c.spriteTex && c.relief){ /* sized so your eyes are as far apart as an avatar's eyes and sit at the same height: same head size as everyone else */
-        const hw=c.J.head.world, sz=(2*.0334*HEAD_S)/(40.2/220), ey=.0882*HEAD_S+sz*(95.5+20-110)/220, m=M4.mul(hw,M4.ch(M4.T(0,ey,.012),M4.S(sz,sz,sz)));
+        const hw=c.J.head.world, sz=(2*.0334*HEAD_S)/(40.2/220), ey=.0882*HEAD_S+sz*(95.5+20-110)/220;
+        /* it only turns part of the way when the body turns side-on, so you never see it edge-on */
+        const fz=[hw[8],hw[9],hw[10]], fl=Math.hypot(fz[0],fz[1],fz[2])||1, fwd0=(fz[0]*camF[0]+fz[1]*camF[1]+fz[2]*camF[2])/fl, yaw=Math.atan2((fz[0]*camR[0]+fz[1]*camR[1]+fz[2]*camR[2])/fl, Math.abs(fwd0)), lim=yaw*.5;
+        const m=M4.mul(hw,M4.ch(M4.T(0,ey,.012),M4.RY(-lim),M4.S(sz,sz,sz)));
         const fr=c.relief.whole?{mesh:c.relief.mesh,m,c:[1,1,1],tex:c.relief.front,wrap:.25,noRecv:true}:{mesh:c.relief.mesh,m,c:[1,1,1],tex:c.relief.front,decal:true,noRecv:true}, bk=c.relief.meshB?{mesh:c.relief.meshB,m,c:[1,1,1],noRecv:true}:null;
         for(const it of [fr,bk]){ if(!it) continue; items.push(it); refl.push(Object.assign({},it,{m:M4.mul(M4.S(1,-1,1),m),noCast:true})); } }
       else if(c.spriteTex){ const hw=c.J.head.world, sc=c.J.head.sc||1, k=sc/1.85, ux=hw[4],uy=hw[5],uz=hw[6], ul=Math.hypot(ux,uy,uz)||1; const up=.11*HEAD_S*sc*(c.scale||1)+.14*k;
