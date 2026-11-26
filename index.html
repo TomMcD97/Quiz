@@ -1200,7 +1200,8 @@ body.tvmode .lb-invite{max-width:520px}body.tvmode .inv-qr{width:220px;height:22
 .fin-stage .room3d{height:min(66vh,600px)}
 @media (max-width:620px){.fin-stage .room3d{height:min(62vh,520px)}}
 .fin-stage .lstage-cap:empty{display:none}
-.fin-stage .emotes{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;scrollbar-width:none;padding-bottom:2px;-webkit-overflow-scrolling:touch}.fin-stage .emotes::-webkit-scrollbar{display:none}.fin-stage .emotes .emo{flex:none}
+.fin-stage .emotes{flex-wrap:wrap;justify-content:center}.fin-stage .emotes .emo{flex:none}
+@media (max-width:620px){.fin-stage .emotes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%}.fin-stage .emotes .emo{justify-content:center;padding:8px 4px;min-width:0;font-size:12px;gap:4px}.fin-stage .emotes .emo .ei{font-size:17px}}
 .champ{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:26px 18px 22px;border-radius:22px;overflow:hidden;
   background:radial-gradient(120% 80% at 50% 0%,color-mix(in srgb,var(--spot) 34%,transparent),transparent 70%),var(--panel2,rgba(255,255,255,.05));border:1px solid color-mix(in srgb,var(--spot) 45%,transparent);animation:champIn .7s cubic-bezier(.2,1.3,.4,1) both}
 .champ.wait3d{display:none}
@@ -6836,7 +6837,8 @@ let dictP=null, DICT=null, DSORT=null;
 function loadDict(){
   if(!dictP) dictP=(async()=>{ try{
     const el=document.getElementById("dictdata"), src=el&&el.dataset.src; let bin;
-    if(src){ /* on the website the dictionary is its own file, fetched when first needed */ const r=await fetch(src); if(!r.ok) throw new Error("dictionary "+r.status); bin=new Uint8Array(await r.arrayBuffer()); }
+    if(src){ /* on the website the dictionary is its own file, fetched when first needed (a test copy keeps it as dict.gz.txt beside the page) */
+      let r=null; try{ r=await fetch(src); }catch(e){} if(!r || !r.ok){ r=await fetch("dict.gz.txt"); } if(!r.ok) throw new Error("dictionary "+r.status); bin=new Uint8Array(await r.arrayBuffer()); }
     else { const b64=el.textContent.trim(); bin=Uint8Array.from(atob(b64), c=>c.charCodeAt(0)); }
     const txt=await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
     DSORT=txt.split("\n"); DICT=new Set(DSORT); return true;
