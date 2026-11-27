@@ -7736,6 +7736,7 @@ async function fillDoneRank(){ const el=$("#donerank"); if(!el || !app.db) retur
   const i=L.findIndex(r=>r.id===myScoreId());
   if(i<0 && D.result && guestDone(D.result)){ /* guest: show where this score would have landed, so logging in feels worth it */
     const would=L.filter(r=>(r.score||0)>D.result.score).length+1;
+    { const c=e2.parentNode&&e2.parentNode.querySelector('.acct-cta'); if(c) c.remove(); }
     e2.innerHTML=`<div class="dr-in"><span>That would put you <b>${ORD(would)}</b> of ${L.length+1} today${would===1?" 🥇":would<=3?" 🏅":""}. Log in so tomorrow's score counts.</span><button type="button" class="dc-go" data-act="acct">Log in →</button></div>`; return; }
   if(i<0){ e2.innerHTML=`<button type="button" class="dc-go" data-act="golb">See today's leaderboard →</button>`; return; }
   D.rank=[i+1,L.length]; showShareCard("q"); e2.innerHTML=`<div class="dr-in"><span>You're <b>${ORD(i+1)}</b> of ${L.length}${L.length>=100?"+":""} today${i===0?" 🥇":i<3?" 🏅":""}</span><button type="button" class="dc-go" data-act="golb">See leaderboards →</button></div>`; }
