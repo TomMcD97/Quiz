@@ -7733,7 +7733,11 @@ async function loadLBTab(){ const el=$("#lbmain"); if(!el) return; const what=ap
 /* where you came on today's word grid, for the share card */
 async function gridRankFill(){ if(!app.db || DG.rank || !DG.key) return; try{ const L=await scoresOf("g", DG.key), i=L.findIndex(r=>r.id===myScoreId()); if(i>=0){ DG.rank=[i+1,L.length]; showShareCard("g"); } }catch(e){} }
 async function fillDoneRank(){ const el=$("#donerank"); if(!el || !app.db) return; await new Promise(r=>setTimeout(r,1500)); const L=await scoresOf("q", todayKey()); const e2=$("#donerank"); if(!e2) return;
-  const i=L.findIndex(r=>r.id===myScoreId()); if(i<0){ e2.innerHTML=`<button type="button" class="dc-go" data-act="golb">See today's leaderboard →</button>`; return; }
+  const i=L.findIndex(r=>r.id===myScoreId());
+  if(i<0 && D.result && guestDone(D.result)){ /* guest: show where this score would have landed, so logging in feels worth it */
+    const would=L.filter(r=>(r.score||0)>D.result.score).length+1;
+    e2.innerHTML=`<div class="dr-in"><span>That would put you <b>${ORD(would)}</b> of ${L.length+1} today${would===1?" 🥇":would<=3?" 🏅":""}. Log in so tomorrow's score counts.</span><button type="button" class="dc-go" data-act="acct">Log in →</button></div>`; return; }
+  if(i<0){ e2.innerHTML=`<button type="button" class="dc-go" data-act="golb">See today's leaderboard →</button>`; return; }
   D.rank=[i+1,L.length]; showShareCard("q"); e2.innerHTML=`<div class="dr-in"><span>You're <b>${ORD(i+1)}</b> of ${L.length}${L.length>=100?"+":""} today${i===0?" 🥇":i<3?" 🏅":""}</span><button type="button" class="dc-go" data-act="golb">See leaderboards →</button></div>`; }
 /* the teaser line on the Daily tab: who's top today, and where you are */
 async function loadTeaser(){ const el=$("#dcteaser"); if(!el) return; const go=`<button type="button" class="dc-go" data-act="htab" data-v="lb">Leaderboards →</button>`;
@@ -7747,7 +7751,7 @@ function howtoHTML(){ return `<div class="rep-sheet howto" id="howto" role="dial
   <div class="ht-s"><span>2</span><div><b>Party mode</b><p class="muted">One person hosts and gets a 4-letter code. Friends join on their own phones with the code, the link or the QR code.</p></div></div>
   <div class="ht-s"><span>3</span><div><b>Eleven rounds</b><p class="muted">From general knowledge to maps, word grids and Heist, where you can steal points off the leader. Highest score at the end wins.</p></div></div>
   ${window.SQ_STANDALONE?`<p class="muted" style="font-size:13px;margin:0">Tip: add Dougle to your home screen so it opens like an app. On iPhone, tap Share then <b>Add to Home Screen</b>.</p>`:""}
-  ${me.nick?"":`<div class="field"><label for="htnick">What should we call you?</label><input class="input" id="htnick" maxlength="18" placeholder="e.g. Sam" autocomplete="nickname"><small class="muted" style="font-size:12px">Shown on leaderboards and in parties. You can change it any time.</small></div>`}
+  ${me.nick?"":`<div class="field"><label for="htnick">What should we call you?</label><input class="input" id="htnick" maxlength="18" placeholder="e.g. Sam" autocomplete="nickname"><small class="muted" style="font-size:12px">Shown to your friends in parties. Log in to get on the daily leaderboards too. You can change it any time.</small></div>`}
   <button class="btn primary" data-act="howtoclose">Let's play</button></div></div>`; }
 let installEv=null; window.addEventListener("beforeinstallprompt", e=>{ e.preventDefault(); installEv=e; const b=$("#installbtn"); if(b) b.hidden=false; });
 function maybeHowto(){ if(!FEAT.howto || LS.get("sq-howto") || app.view!=="home" || $("#howto")) return; const d=document.createElement("div"); d.innerHTML=howtoHTML(); document.body.appendChild(d.firstChild); }
