@@ -377,6 +377,7 @@ button.tile:hover:not(:disabled){border-color:var(--accent)}
 @keyframes glow{0%,100%{box-shadow:0 0 0 0 var(--good-soft)}50%{box-shadow:0 0 0 8px var(--good-soft)}}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 .stage>*{animation:rise .45s cubic-bezier(.2,.8,.3,1) both}
+.stage.still>*,.stage.still .lb-card,.stage.still .lb-marquee,.stage.still .lbstats,.stage.still .lb-invite,.stage.still .lb-stage,.stage.still .lb-grid{animation-name:none}
 .stage>*:nth-child(2){animation-delay:.05s}.stage>*:nth-child(3){animation-delay:.1s}.stage>*:nth-child(4){animation-delay:.15s}.stage>*:nth-child(5){animation-delay:.2s}.stage>*:nth-child(n+6){animation-delay:.25s}
 .intro .ri{animation:slam .65s cubic-bezier(.2,1.2,.4,1) .1s both}
 .opts .opt{animation:rise .4s cubic-bezier(.2,.8,.3,1) both}
@@ -7266,7 +7267,7 @@ let S = null;        // last game state seen (everyone)
 let plan = null;     // host-only: full questions
 let myAns = null, draft = null, qLocalEnd = 0, advLocalEnd = 0, qShownAt = 0;
 let hostLastSeen = 0, hostGone = false, joinedAt = 0;
-let stageKey = "", mapView = null;
+let stageKey = "", mapView = null, lastStageBuilt = "";
 let userReady;
 let mmSeenI=null, mmLocalEnd=0, mmShownAt=0, mmMyAnsK=null;
 let gridWords=[], gridPath=[], topicSentK=null, mmSets={}, mmStarting=false, topicsEnd=0;
@@ -8850,6 +8851,8 @@ function renderStage(){
   if(key===stageKey){ updateLive(); return; }
   if(S && (S.phase==='intro'||S.phase==='reveal'||S.phase==='final') && window.__lastStrobe!==S.phase+':'+S.ri+':'+(S.q&&S.q.k)){ window.__lastStrobe=S.phase+':'+S.ri+':'+(S.q&&S.q.k); strobe(); }
   stageKey=key;
+  /* same screen rebuilt (e.g. host added a bot): don't replay the entrance animations, or the whole lobby blinks */
+  { const _st=$("#stage"); if(_st) _st.classList.toggle("still", key===lastStageBuilt); lastStageBuilt=key; }
   if(mapView){ mapView.destroy(); mapView=null; }
   let h="";
   const R = S.active && S.ri>=0 ? S.active[S.ri] : null;
