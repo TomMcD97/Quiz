@@ -34,7 +34,8 @@ def ok_item(kind,x):
     q=x[0]; a=x[1] if kind in("gk","est","sp") else ""
     if kind in("gk","sp"):
         if len(x)!=5 or len(set(map(norm,x[1:])))!=4: return "bad shape"
-    if kind=="est" and not (len(x)==3 and isinstance(x[1],(int,float)) and isinstance(x[2],str)): return "bad shape"
+    if kind=="est" and not (len(x)==3 and isinstance(x[1],(int,float)) and isinstance(x[2],str) and x[2].strip()): return "bad shape (needs a unit)"
+    if kind=="est" and re.search(r"\b(what|which) year\b",q,re.I) and x[2] not in ("year","AD","BC"): return "year question must use unit 'year'"
     if kind=="pin":
         if not (len(x)==3 and -90<=x[1]<=90 and -180<=x[2]<=180): return "bad shape"
         if any(norm(y[0].split(",")[0])==norm(q.split(",")[0]) or (abs(y[1]-x[1])<0.03 and abs(y[2]-x[2])<0.03) for y in PINS): return "duplicate place"
