@@ -218,6 +218,8 @@ header.top{display:flex;align-items:center;gap:12px;justify-content:space-betwee
 .lb{display:grid;gap:4px;margin:0;padding:0;list-style:none}
 .lb li{display:grid;grid-template-columns:26px 1fr auto;gap:8px;align-items:center;padding:6px 8px;border-radius:8px}
 .lb li.me{background:var(--accent-soft)}
+.lb-lock{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:center;padding:14px;border:1px dashed var(--line);border-radius:14px}.lb-lock-i{font-size:26px;grid-row:span 2}.lb-lock-t b{display:block}.lb-lock-t p{margin:2px 0 0;font-size:13px}.lb-lock .btn{grid-column:2;justify-self:start;margin-top:4px}
+.lb li.lb-gap{padding:0 8px;opacity:.6}.lb-you{margin:0 0 8px;font-size:15px}.lb-note{font-size:12px;margin:8px 0 0}
 .lb .rk{color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums}
 .rounds-preview{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}
 .rp{padding:14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);display:grid;gap:6px;align-content:start}
@@ -7662,11 +7664,11 @@ function dcTabsHTML(){ const tabs=[["q","Quiz"],["g","Grid"]].concat(FEAT.weekly
 function weekDays(){ const out=[], d=new Date(), dow=(d.getDay()+6)%7; for(let i=dow;i>=0;i--){ const t=new Date(d); t.setDate(d.getDate()-i); out.push(t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0")); } return out; }
 async function dayScores(day){ if(!app.db) return []; try{ const snap=await app.db.collection(`${DQ_DB}/${day}/scores`).orderBy("score","desc").limit(100).get(); return snap.docs.map(d=>({id:d.id, ...(d.data()||{})})); }catch(e){ return []; } }
 let weekBusy=false;
-async function loadWeekLB(){ const el=$("#homeweek"); if(!el||weekBusy) return; if(!app.db){ el.innerHTML=`<p class="muted" style="font-size:13px;margin:0">The leaderboard can't be reached right now.</p>`; return; }
+async function loadWeekLB(){ const el=$("#homeweek"); if(!el||weekBusy) return; { const lock=lbLock("q"); if(lock){ el.innerHTML=lock; return; } } if(!app.db){ el.innerHTML=`<p class="muted" style="font-size:13px;margin:0">The leaderboard can't be reached right now.</p>`; return; }
   weekBusy=true; el.innerHTML=`<p class="muted" style="font-size:13px;margin:0">Adding up this week…</p>`;
   try{ const days=weekDays(), all=await Promise.all(days.map(dayScores)), tot={}; all.forEach(L=>L.forEach(r=>{ const t=tot[r.id]||(tot[r.id]={nick:r.nick||"Player",score:0,n:0}); t.score+=Number(r.score)||0; t.n++; t.nick=r.nick||t.nick; }));
-    const rows=Object.entries(tot).sort((a,b)=>b[1].score-a[1].score).slice(0,10);
-    el.innerHTML = rows.length ? `<div class="eyebrow" style="margin:6px 0">This week · ${days.length} day${days.length===1?"":"s"} so far</div><ol class="lb">${rows.map(([id,r],i)=>`<li class="${id===myScoreId()?"me":""}"><span class="rk">${i+1}</span><span>${esc(lbNick(r.nick))} <span class="muted" style="font-size:12px">· ${r.n}/${days.length}</span>${repFlag(id,r.nick)}</span><b class="num">${r.score.toLocaleString("en-GB")}</b></li>`).join("")}</ol>` : `<p class="muted" style="font-size:13px;margin:0">Nobody has played this week yet.</p>`;
+    const rows=Object.entries(tot).sort((a,b)=>b[1].score-a[1].score).slice(0,20).map(([id,r])=>({id,nick:r.nick,score:r.score,sub:`${r.n}/${days.length}`}));
+    el.innerHTML = rows.length ? `<div class="eyebrow" style="margin:6px 0">This week · ${days.length} day${days.length===1?"":"s"} so far</div>${lbTrim(rows,"this week")}` : `<p class="muted" style="font-size:13px;margin:0">Nobody has played this week yet.</p>`;
   }finally{ weekBusy=false; } }
 function myLeagues(){ const L=LS.get("sq-leagues"); return Array.isArray(L)?L.filter(c=>/^[A-Z0-9]{5}$/.test(c)):[]; }
 function leagueId(){ return myScoreId(); }
@@ -7717,6 +7719,21 @@ async function scoresOf(kind, day){ const db=kind==="g"?DG_DB:DQ_DB; if(!app.db)
 const lbNick=n=>{ const v=String(n||"Player").slice(0,18); return badName(v)?"Player":v; };
 const repFlag=(id,nick)=>(!window.SQ_STANDALONE||id===myScoreId())?"":`<button type="button" class="rep-flag" data-act="repname" data-uid="${esc(id)}" data-n="${esc(lbNick(nick))}" aria-label="Report the name ${esc(lbNick(nick))}" title="Report this name">⚑</button>`;
 const lbRow=(i,id,nick,val,sub)=>`<li class="${id===myScoreId()?"me":""}"><span class="rk">${i+1}</span><span>${esc(lbNick(nick))}${sub?` <span class="muted" style="font-size:12px">· ${sub}</span>`:""}${repFlag(id,nick)}</span><b class="num">${val}</b></li>`;
+/* leaderboard gate (28 Nov 2026): today's and this week's boards unlock once you've played today's game while logged in.
+   Small boards show the top 3 and the players around you; the full list appears once LB_FULL people have played. Leagues are never gated. */
+const LB_FULL=20;
+function lbPlayed(kind){ const r=LS.get((kind==="g"?DG_LS:DQ_LS)+todayKey()); return r && !r.inProgress ? r : null; }
+function lbLock(kind){ const g=kind==="g", r=lbPlayed(kind), name=g?"Word Grid":"Daily Dougle";
+  const card=(t,m,act,btn)=>`<div class="lb-lock"><div class="lb-lock-i" aria-hidden="true">🔒</div><div class="lb-lock-t"><b>${t}</b><p class="muted">${m}</p></div><button type="button" class="btn small spot" data-act="${act}">${btn}</button></div>`;
+  if(!r) return card(`Today's ${g?"grid":"quiz"} leaderboard`, `Play today's ${name} to see where you rank.`, g?"dgrid":"daily", "Play now");
+  if(ACCT.on && !app.acct) return card("Log in to see where you rank", `Your score of ${(Number(r.score)||0).toLocaleString("en-GB")} would be on it. Log in before tomorrow's to get ranked.`, "acct", "Log in");
+  return ""; }
+function lbTrim(rows, sub){ /* rows: [{id,nick,score,sub}] best first */
+  const mi=rows.findIndex(r=>r.id===myScoreId()), li=(r,i)=>lbRow(i,r.id,r.nick,(Number(r.score)||0).toLocaleString("en-GB"),r.sub);
+  if(rows.length>=LB_FULL || mi<0) return `<ol class="lb">${rows.map(li).join("")}</ol>`;
+  const keep=new Set([0,1,2,mi-1,mi,mi+1].filter(i=>i>=0&&i<rows.length)); let out="", last=-1;
+  [...keep].sort((a,b)=>a-b).forEach(i=>{ if(i>last+1) out+=`<li class="lb-gap" aria-hidden="true"><span></span><span>···</span><b></b></li>`; out+=li(rows[i],i); last=i; });
+  return `<div class="lb-you">You're <b>${ORD(mi+1)}</b> of ${rows.length} ${sub}</div><ol class="lb">${out}</ol><p class="muted lb-note">The full list appears once ${LB_FULL} people have played.</p>`; }
 let lbSeq=0;
 async function loadLBTab(){ const el=$("#lbmain"); if(!el) return; const what=app.lbWhat==="g"?"g":"q", Ls=myLeagues(); let when=app.lbWhen||"t"; if(when.startsWith("L:")&&!Ls.includes(when.slice(2))) when="t"; const my=++lbSeq;
   if(!app.db){ el.innerHTML=`<p class="muted" style="font-size:13px;margin:0">The leaderboard can't be reached right now.</p>`; return; }
@@ -7724,9 +7741,9 @@ async function loadLBTab(){ const el=$("#lbmain"); if(!el) return; const what=ap
   if(when==="t"){ subscribeLB(`${what==="g"?DG_DB:DQ_DB}/${today}/scores`, "#lbmain", 20, title); return; }
   if(LBS["#lbmain"]){ try{ LBS["#lbmain"](); }catch(e){} delete LBS["#lbmain"]; }
   const days=weekDays(), all=await Promise.all(days.map(d=>scoresOf(what,d))); if(my!==lbSeq || !$("#lbmain")) return;
-  if(when==="w"){ const tot={}; all.forEach(L=>L.forEach(r=>{ const t=tot[r.id]||(tot[r.id]={nick:r.nick,score:0,n:0}); t.score+=Number(r.score)||0; t.n++; t.nick=r.nick||t.nick; }));
-    const rows=Object.entries(tot).sort((a,b)=>b[1].score-a[1].score).slice(0,20);
-    el.innerHTML=rows.length?`<div class="eyebrow" style="margin:0 0 6px">This week · Monday to today</div><ol class="lb">${rows.map(([id,r],i)=>lbRow(i,id,r.nick,r.score.toLocaleString("en-GB"),`${r.n} of ${days.length} days`)).join("")}</ol>`:`<p class="muted" style="font-size:13px;margin:0">Nobody has played this week yet.</p>`; return; }
+  if(when==="w"){ const lock=lbLock(what); if(lock){ el.innerHTML=lock; return; } const tot={}; all.forEach(L=>L.forEach(r=>{ const t=tot[r.id]||(tot[r.id]={nick:r.nick,score:0,n:0}); t.score+=Number(r.score)||0; t.n++; t.nick=r.nick||t.nick; }));
+    const rows=Object.entries(tot).sort((a,b)=>b[1].score-a[1].score).slice(0,20).map(([id,r])=>({id,nick:r.nick,score:r.score,sub:`${r.n} of ${days.length} days`}));
+    el.innerHTML=rows.length?`<div class="eyebrow" style="margin:0 0 6px">This week · Monday to today</div>${lbTrim(rows,"this week")}`:`<p class="muted" style="font-size:13px;margin:0">Nobody has played this week yet.</p>`; return; }
   const code=when.slice(2), L=await leagueDoc(code); if(my!==lbSeq) return; if(!L){ el.innerHTML=`<p class="muted" style="font-size:13px;margin:0">Couldn't load that league.</p>`; return; } lgNameSet(code, L.name);
   const ids=Object.keys(L.members||{}), rows=ids.map(id=>{ let wk=0, td=null; all.forEach((D,i)=>{ const r=D.find(x=>x.id===id); if(r){ wk+=Number(r.score)||0; if(days[i]===today) td=Number(r.score)||0; } }); return {id, nick:L.members[id], wk, td}; }).sort((a,b)=>(b.td??-1)-(a.td??-1)||b.wk-a.wk);
   el.innerHTML=`<div class="eyebrow" style="margin:0 0 6px">${esc(L.name)} · ${ids.length} player${ids.length===1?"":"s"}</div><div class="lg-cols muted"><span></span><span>Today</span><span>Week</span></div>${rows.map((r,i)=>`<div class="lg-r ${r.id===myScoreId()?"me":""}"><span><span class="rk">${i+1}</span>${esc(lbNick(r.nick))}</span><b class="num">${r.td==null?`<span class="muted">–</span>`:r.td.toLocaleString("en-GB")}</b><span class="num">${r.wk.toLocaleString("en-GB")}</span></div>`).join("")}`; }
@@ -7743,6 +7760,8 @@ async function fillDoneRank(){ const el=$("#donerank"); if(!el || !app.db) retur
   D.rank=[i+1,L.length]; showShareCard("q"); e2.innerHTML=`<div class="dr-in"><span>You're <b>${ORD(i+1)}</b> of ${L.length}${L.length>=100?"+":""} today${i===0?" 🥇":i<3?" 🏅":""}</span><button type="button" class="dc-go" data-act="golb">See leaderboards →</button></div>`; }
 /* the teaser line on the Daily tab: who's top today, and where you are */
 async function loadTeaser(){ const el=$("#dcteaser"); if(!el) return; const go=`<button type="button" class="dc-go" data-act="htab" data-v="lb">Leaderboards →</button>`;
+  if(!lbPlayed("q")){ el.innerHTML=`<span class="muted">🔒 Play today's quiz to unlock the leaderboard.</span>`; return; }
+  if(ACCT.on && !app.acct){ el.innerHTML=`<span class="muted">🔒 Log in to see where you rank today.</span><button type="button" class="dc-go" data-act="acct">Log in →</button>`; return; }
   if(!app.db){ el.innerHTML=go; return; } const L=await scoresOf("q", todayKey()); if(!$("#dcteaser")) return;
   if(!L.length){ el.innerHTML=`<span class="muted">Nobody's on today's leaderboard yet. Be first.</span>${go}`; return; }
   const top=L[0], mine=L.findIndex(r=>r.id===myScoreId());
@@ -10315,15 +10334,16 @@ let lbUnsub=null; const LBS={};
 function stopLBs(){ for(const k in LBS){ try{ LBS[k](); }catch(e){} delete LBS[k]; } lbUnsub=null; }
 function subscribeDailyLB(key, sel, lim){ return subscribeLB(`${DQ_DB}/${key}/scores`, sel, lim, "Today's leaderboard"); }
 function subscribeLB(col, sel, lim, title){
-  if(!app.db) return;
   if(LBS[sel]){ try{ LBS[sel](); }catch(e){} delete LBS[sel]; }
+  { const lock=lbLock(col.startsWith(DG_DB+"/")?"g":"q"); if(lock){ const el=$(sel); if(el) el.innerHTML=lock; return; } }
+  if(!app.db) return;
   const t=setTimeout(()=>{ const el=$(sel); if(el && !el.dataset.got) el.innerHTML=`<p class="muted" style="font-size:13px">The leaderboard can't be reached right now.</p>`; }, 10000);
   try{
     LBS[sel]=app.db.collection(col).orderBy("score","desc").limit(lim).onSnapshot(snap=>{
       if(!snap.metadata.fromCache) clearTimeout(t);
       const el=$(sel); if(!el) return; el.dataset.got="1";
       if(snap.empty){ el.innerHTML=`<p class="muted" style="font-size:13px;margin:0">Nobody has played today yet.</p>`; return; }
-      el.innerHTML=`<div class="eyebrow" style="margin:6px 0">${esc(title)}</div><ol class="lb">${snap.docs.map((d,i)=>{ const x=d.data()||{}; return `<li class="${d.id===myScoreId()?"me":""}"><span class="rk">${i+1}</span><span>${esc(String(x.nick||"Player").slice(0,18))}</span><b class="num">${(Number(x.score)||0).toLocaleString("en-GB")}</b></li>`; }).join("")}</ol>`;
+      el.innerHTML=`<div class="eyebrow" style="margin:6px 0">${esc(title)}</div>${lbTrim(snap.docs.map(d=>{ const x=d.data()||{}; return {id:d.id, nick:x.nick, score:x.score}; }),"today")}`;
     }, ()=>{ clearTimeout(t); const el=$(sel); if(el) el.innerHTML=""; });
     lbUnsub=stopLBs;
   }catch(e){ clearTimeout(t); }
